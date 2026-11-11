@@ -1,0 +1,249 @@
+.family-graph-page {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.family-graph-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 21px 24px;
+  border: 1px solid #e8ede6;
+  border-radius: 12px;
+  background: linear-gradient(120deg, #f8faf5, #f2f6ef);
+}
+
+.family-graph-header h1 {
+  margin: 7px 0 5px;
+  color: #344638;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 25px;
+  font-weight: 500;
+}
+
+.family-graph-header p {
+  margin: 0;
+  color: #7f8b82;
+  font-size: 11px;
+}
+
+.family-graph-panel,
+.family-graph-state {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 21px 22px;
+  border: 1px solid #e8ece6;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 26px rgba(48, 65, 50, 0.035);
+}
+
+.family-graph-state {
+  display: grid;
+  min-height: 190px;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  color: #758078;
+  text-align: center;
+}
+
+.family-graph-state h2,
+.family-graph-state p {
+  margin: 0;
+}
+
+.family-graph-state h2 {
+  color: #44554a;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 19px;
+  font-weight: 500;
+}
+
+.family-graph-state p {
+  max-width: 420px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.family-graph-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: #849087;
+  font-size: 10px;
+}
+
+.family-graph-legend-parent {
+  width: 22px;
+  border-radius: 2px;
+}
+
+.family-graph-legend-parent,
+.family-graph-legend-spouse {
+  height: 2px;
+}
+
+.family-graph-legend-parent {
+  background: #8da78f;
+}
+
+.family-graph-legend-spouse {
+  border-top: 2px dotted #c08b76;
+}
+
+.family-graph-hint,
+.family-graph-guidance {
+  overflow-wrap: anywhere;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 7px;
+  background: #f7f8f4;
+  color: #7b877e;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.family-graph-guidance {
+  border-left: 2px solid #9ab09a;
+}
+
+.family-graph-scroll-hint {
+  display: none;
+  margin: -4px 0 10px;
+  color: #849087;
+  font-size: 10px;
+}
+
+.family-graph-scroll {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  overflow: auto;
+  border: 1px solid #edf0eb;
+  border-radius: 9px;
+  background:
+    radial-gradient(#e9eee7 0.8px, transparent 0.8px) 0 0 / 18px 18px,
+    #fcfdfb;
+}
+
+.family-graph-canvas {
+  position: relative;
+  min-width: 100%;
+}
+
+.family-graph-content {
+  position: relative;
+  margin: 0 auto;
+}
+
+.family-graph-edges {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.family-graph-edges path {
+  fill: none;
+  stroke-width: 2;
+}
+
+.family-graph-parent-edge {
+  stroke: #9ab09a;
+}
+
+.family-graph-spouse-edge {
+  stroke: #c08b76;
+  stroke-dasharray: 2 3;
+}
+
+.family-graph-generation {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  width: 100%;
+}
+
+.family-graph-generation h2 {
+  position: absolute;
+  top: -23px;
+  left: 0;
+  margin: 0;
+  color: #9aa59b;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.family-graph-member-node {
+  position: absolute;
+  top: 0;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  width: 110px;
+  box-sizing: border-box;
+  padding: 10px 7px;
+  border: 1px solid #dfe8dc;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 5px 14px rgba(57, 78, 60, 0.08);
+}
+
+.family-graph-member-node strong {
+  overflow: hidden;
+  color: #405447;
+  font-size: 9px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.family-graph-member-node span {
+  overflow: hidden;
+  color: #8b968d;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 740px) {
+  .family-graph-header {
+    align-items: flex-start;
+    padding: 18px;
+  }
+
+  .family-graph-header h1 {
+    font-size: 22px;
+  }
+
+  .family-graph-header .secondary-button {
+    min-height: 33px;
+    padding: 0 9px;
+    font-size: 9px;
+    white-space: nowrap;
+  }
+
+  .family-graph-panel,
+  .family-graph-state {
+    padding: 15px;
+  }
+
+  .family-graph-scroll-hint {
+    display: block;
+  }
+}
+
+@media (max-width: 480px) {
+  .family-graph-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+}

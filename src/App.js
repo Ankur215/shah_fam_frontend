@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import './App.css';
+import FamilyGraph from './FamilyGraph';
 import GiftLog from './GiftLog';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
@@ -69,14 +70,17 @@ function getLocalDateString() {
 }
 
 function getPhoneParts(phone = '') {
-  const country = COUNTRIES.find(({ dialingCode }) => phone.startsWith(dialingCode));
+  const normalizedPhone = typeof phone === 'string' ? phone : '';
+  const country = COUNTRIES.find(({ dialingCode }) =>
+    normalizedPhone.startsWith(dialingCode)
+  );
   return country
     ? {
         country: country.value,
         countryCode: country.dialingCode,
-        phoneNumber: phone.slice(country.dialingCode.length).trim(),
+        phoneNumber: normalizedPhone.slice(country.dialingCode.length).trim(),
       }
-    : { country: '', countryCode: '', phoneNumber: phone };
+    : { country: '', countryCode: '', phoneNumber: normalizedPhone };
 }
 
 function validateMember(member, countryCode, phoneNumber) {
@@ -289,6 +293,13 @@ function App() {
   const availableTithis = selectedPaksha
     ? [...GUJARATI_TITHI_NAMES, selectedPaksha === 'Sud' ? 'Poonam' : 'Amas']
     : [];
+  const relationshipCandidates = members
+    .filter((member) => member.id !== editingMember?.id)
+    .sort((first, second) =>
+      `${first.lastName || ''}${first.firstName}`.localeCompare(
+        `${second.lastName || ''}${second.firstName}`
+      )
+    );
 
   async function saveMember(event) {
     event.preventDefault();
@@ -300,6 +311,8 @@ function App() {
       firstName: String(formData.get('firstName') || '').trim(),
       lastName: String(formData.get('lastName') || '').trim(),
       relationship: formData.get('relationship'),
+      parentIds: formData.getAll('parentIds').map(Number),
+      spouseIds: formData.getAll('spouseIds').map(Number),
       gender: formData.get('gender'),
       dateOfBirth: formData.get('dateOfBirth'),
       gujaratiBirthdayMonth: formData.get('gujaratiBirthdayMonth'),
@@ -332,13 +345,37 @@ function App() {
         }
       );
       const savedMember = await readApiResponse(response);
-      setMembers((currentMembers) =>
-        editingMember
-          ? currentMembers.map((currentMember) =>
-              currentMember.id === savedMember.id ? savedMember : currentMember
-            )
-          : [...currentMembers, savedMember]
-      );
+      const previousSpouseIds = new Set(editingMember?.spouseIds || []);
+      const nextSpouseIds = new Set(savedMember.spouseIds || []);
+      setMembers((currentMembers) => {
+        const updatedMembers = editingMember
+          ? currentMembers.map((currentMember) => {
+              if (currentMember.id === savedMember.id) return savedMember;
+              if (
+                previousSpouseIds.has(currentMember.id) ||
+                nextSpouseIds.has(currentMember.id)
+              ) {
+                const spouseIds = new Set(currentMember.spouseIds || []);
+                if (previousSpouseIds.has(currentMember.id)) {
+                  spouseIds.delete(savedMember.id);
+                }
+                if (nextSpouseIds.has(currentMember.id)) {
+                  spouseIds.add(savedMember.id);
+                }
+                return { ...currentMember, spouseIds: [...spouseIds].sort() };
+              }
+              return currentMember;
+            })
+          : currentMembers.map((currentMember) =>
+              nextSpouseIds.has(currentMember.id)
+                ? {
+                    ...currentMember,
+                    spouseIds: [...new Set([...(currentMember.spouseIds || []), savedMember.id])].sort(),
+                  }
+                : currentMember
+            );
+        return editingMember ? updatedMembers : [...updatedMembers, savedMember];
+      });
       setIsFormOpen(false);
     } catch (error) {
       console.error('Could not save family member through the API.', error);
@@ -375,6 +412,15 @@ function App() {
             Family members
           </button>
           <button
+            className={`nav-item ${activePage === 'graph' ? 'nav-item-active' : ''}`}
+            type="button"
+            aria-current={activePage === 'graph' ? 'page' : undefined}
+            onClick={() => setActivePage('graph')}
+          >
+            <span className="nav-icon" aria-hidden="true">⌘</span>
+            Family graph
+          </button>
+          <button
             className={`nav-item ${activePage === 'gifts' ? 'nav-item-active' : ''}`}
             type="button"
             aria-current={activePage === 'gifts' ? 'page' : undefined}
@@ -396,7 +442,12 @@ function App() {
       <main className="main-content" id={activePage}>
         <header className="topbar">
           <span className="breadcrumb">
-            Family space <span>/</span> {activePage === 'members' ? 'Members' : 'Gift log'}
+            Family space <span>/</span>{' '}
+            {activePage === 'members'
+              ? 'Members'
+              : activePage === 'graph'
+                ? 'Family graph'
+                : 'Gift log'}
           </span>
           <span className="privacy-label">
             <span className="privacy-dot" aria-hidden="true" />
@@ -577,6 +628,14 @@ function App() {
             </p>
           </section>
         </section>
+        ) : activePage === 'graph' ? (
+          <FamilyGraph
+            members={members}
+            isLoading={isLoading}
+            isLoadError={isLoadError}
+            onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
+            onManageMembers={() => setActivePage('members')}
+          />
         ) : (
           <GiftLog />
         )}
@@ -719,6 +778,48 @@ function App() {
                     </span>
                   )}
                 </label>
+                {relationshipCandidates.length > 0 && (
+                  <>
+                    <fieldset className="member-link-picker form-full-width">
+                      <legend>Parents</legend>
+                      <p>Select the family members who are this person’s parents.</p>
+                      <div className="member-link-options">
+                        {relationshipCandidates.map((member) => (
+                          <label key={member.id}>
+                            <input
+                              type="checkbox"
+                              name="parentIds"
+                              value={member.id}
+                              defaultChecked={(editingMember?.parentIds || []).includes(
+                                member.id
+                              )}
+                            />
+                            {`${member.firstName} ${member.lastName || ''}`.trim()}
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
+                    <fieldset className="member-link-picker form-full-width">
+                      <legend>Spouse(s)</legend>
+                      <p>Select this person’s spouse or spouses, if applicable.</p>
+                      <div className="member-link-options">
+                        {relationshipCandidates.map((member) => (
+                          <label key={member.id}>
+                            <input
+                              type="checkbox"
+                              name="spouseIds"
+                              value={member.id}
+                              defaultChecked={(editingMember?.spouseIds || []).includes(
+                                member.id
+                              )}
+                            />
+                            {`${member.firstName} ${member.lastName || ''}`.trim()}
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
+                  </>
+                )}
                 <label>
                   Birthday
                   <input
