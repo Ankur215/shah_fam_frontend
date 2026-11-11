@@ -386,8 +386,77 @@
   border-top: 1px solid #eff1ed;
 }
 
+.gift-direction-group {
+  padding: 13px 0;
+}
+
+.gift-direction-group + .gift-direction-group {
+  border-top: 1px solid #eff1ed;
+}
+
+.gift-direction-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gift-direction-toggle:focus-visible {
+  outline: 2px solid #77957b;
+  outline-offset: 3px;
+}
+
+.gift-direction-title {
+  color: #536457;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.gift-direction-metrics {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px 8px;
+  flex-wrap: wrap;
+}
+
+.gift-direction-count {
+  padding: 3px 7px;
+  border-radius: 12px;
+  background: #f2f5ef;
+  color: #718274;
+  font-size: 9px;
+}
+
+.gift-direction-total {
+  color: #718274;
+  font-size: 9px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.gift-direction-chevron {
+  color: #55775c;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.gift-direction-empty {
+  margin: 0;
+  padding: 10px 0 3px;
+  color: #9aa29c;
+  font-size: 10px;
+}
+
 .gift-record {
-  padding: 15px 0;
+  padding: 12px 0;
 }
 
 .gift-record + .gift-record {
@@ -402,25 +471,6 @@
   margin-bottom: 8px;
 }
 
-.gift-recipient-type {
-  padding: 4px 8px;
-  border-radius: 12px;
-  background: #edf3ed;
-  color: #54755b;
-  font-size: 9px;
-  font-weight: 600;
-}
-
-.gift-recipient-friend {
-  background: #fbf0e9;
-  color: #a96d55;
-}
-
-.gift-recipient-other {
-  background: #f0edf5;
-  color: #75668a;
-}
-
 .gift-record time {
   color: #9aa29c;
   font-size: 9px;
@@ -432,18 +482,30 @@
   gap: 10px;
 }
 
-.gift-edit-button {
+.gift-edit-button,
+.gift-delete-button {
   padding: 3px 5px;
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: #55775c;
   font-size: 10px;
   font-weight: 600;
 }
 
+.gift-edit-button {
+  color: #55775c;
+}
+
+.gift-delete-button {
+  color: #a45c4d;
+}
+
 .gift-edit-button:hover {
   background: #edf3ed;
+}
+
+.gift-delete-button:hover {
+  background: #fff1ed;
 }
 
 .gift-edit-button:focus-visible {
@@ -451,7 +513,18 @@
   outline-offset: 2px;
 }
 
-.gift-record h3 {
+.gift-delete-button:focus-visible {
+  outline: 2px solid #c17a68;
+  outline-offset: 2px;
+}
+
+.gift-edit-button:disabled,
+.gift-delete-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.gift-record h4 {
   margin: 0 0 4px;
   color: #3e4d42;
   font-size: 13px;

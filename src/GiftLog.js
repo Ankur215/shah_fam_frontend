@@ -20,6 +20,29 @@ function formatGiftDate(date) {
   return GIFT_DATE_FORMATTER.format(new Date(`${date}T00:00:00Z`));
 }
 
+function summarizeGiftAmounts(gifts) {
+  const totalsByCurrency = new Map();
+
+  gifts.forEach((gift) => {
+    if (gift.amount === '' || gift.amount === null || gift.amount === undefined) return;
+    const amount = Number(gift.amount);
+    if (!Number.isFinite(amount) || amount < 0) return;
+
+    const currency = String(gift.currency || '').trim().toUpperCase();
+    const cents = Math.round(amount * 100);
+    totalsByCurrency.set(currency, (totalsByCurrency.get(currency) || 0) + cents);
+  });
+
+  const totals = [...totalsByCurrency.entries()]
+    .sort(([firstCurrency], [secondCurrency]) => firstCurrency.localeCompare(secondCurrency))
+    .map(([currency, cents]) => {
+      const amount = (cents / 100).toFixed(2);
+      return currency ? `${amount} ${currency}` : `${amount} (no currency)`;
+    });
+
+  return totals.length ? `Total: ${totals.join(' · ')}` : 'No amounts recorded';
+}
+
 async function readApiResponse(response) {
   const body = await response.text();
   let data = null;
@@ -44,13 +67,56 @@ async function readApiResponse(response) {
   return data;
 }
 
+function GiftEntry({ gift, onEdit, onDelete, isBusy }) {
+  return (
+    <article className="gift-record">
+      <div className="gift-record-top">
+        <time dateTime={gift.dateGiven}>{formatGiftDate(gift.dateGiven)}</time>
+        <div className="gift-record-actions">
+          <button
+            className="gift-edit-button"
+            type="button"
+            disabled={isBusy}
+            aria-label={`Edit ${gift.occasion || gift.giftName} gift for ${gift.recipientName}`}
+            onClick={onEdit}
+          >
+            Edit
+          </button>
+          <button
+            className="gift-delete-button"
+            type="button"
+            disabled={isBusy}
+            aria-label={`Delete ${gift.occasion || gift.giftName} gift for ${gift.recipientName}`}
+            onClick={onDelete}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+      <h4>{gift.giftName}</h4>
+      <div className="gift-record-details">
+        {gift.occasion && <span>{gift.occasion}</span>}
+        {gift.amount && (
+          <span>
+            {gift.amount}{gift.currency ? ` ${gift.currency}` : ''}
+          </span>
+        )}
+      </div>
+      {gift.notes && <p className="gift-notes">{gift.notes}</p>}
+    </article>
+  );
+}
+
 function GiftLog() {
   const [gifts, setGifts] = useState([]);
   const [editingGift, setEditingGift] = useState(null);
+  const [giftDirection, setGiftDirection] = useState('Given');
   const [expandedGroups, setExpandedGroups] = useState({});
+  const [expandedCategories, setExpandedCategories] = useState({});
   const [groupSearch, setGroupSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingGiftId, setDeletingGiftId] = useState(null);
   const [error, setError] = useState('');
   const [isLoadError, setIsLoadError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -95,6 +161,7 @@ function GiftLog() {
     const gift = {
       recipientName: String(formData.get('recipientName') || '').trim(),
       recipientType: formData.get('recipientType'),
+      direction: formData.get('direction'),
       giftName: String(formData.get('giftName') || '').trim(),
       occasion: String(formData.get('occasion') || '').trim(),
       dateGiven: formData.get('dateGiven'),
@@ -129,6 +196,7 @@ function GiftLog() {
       );
       if (!editingGift) form.reset();
       setEditingGift(null);
+      setGiftDirection('Given');
     } catch (saveError) {
       console.error(
         `Could not ${editingGift ? 'update' : 'save'} a gift through the API.`,
@@ -139,6 +207,36 @@ function GiftLog() {
       );
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function deleteGift(gift) {
+    const description = [gift.occasion, gift.giftName].filter(Boolean).join(' — ');
+    if (!window.confirm(`Delete “${description}” for ${gift.recipientName}? This cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingGiftId(gift.id);
+    setError('');
+    try {
+      const response = await fetch(`${GIFTS_ENDPOINT}/${gift.id}`, {
+        method: 'DELETE',
+      });
+      await readApiResponse(response);
+      setGifts((currentGifts) =>
+        currentGifts.filter((currentGift) => currentGift.id !== gift.id)
+      );
+      if (editingGift?.id === gift.id) {
+        setEditingGift(null);
+        setGiftDirection('Given');
+      }
+    } catch (deleteError) {
+      console.error('Could not delete a gift through the API.', deleteError);
+      setError(
+        `Could not delete gift. ${deleteError.message || 'Check that the API and database are available.'}`
+      );
+    } finally {
+      setDeletingGiftId(null);
     }
   }
 
@@ -173,7 +271,7 @@ function GiftLog() {
         <div>
           <span className="eyebrow">THOUGHTFULNESS, REMEMBERED</span>
           <h1 id="gift-page-heading">Gift log</h1>
-          <p>Keep a little record of the gifts you’ve shared with the people you love.</p>
+          <p>Keep track of thoughtful gifts given and received.</p>
         </div>
         <div className="gift-total" aria-label={`${gifts.length} gifts recorded`}>
           <span aria-hidden="true">✦</span>
@@ -190,7 +288,7 @@ function GiftLog() {
           <div>
             <span className="summary-label">FAMILY</span>
             <strong>{familyGiftCount}</strong>
-            <small>{familyGiftCount === 1 ? 'gift given' : 'gifts given'}</small>
+            <small>{familyGiftCount === 1 ? 'gift recorded' : 'gifts recorded'}</small>
           </div>
         </div>
         <div className="gift-stat-card gift-stat-friends">
@@ -198,7 +296,7 @@ function GiftLog() {
           <div>
             <span className="summary-label">FRIENDS</span>
             <strong>{friendGiftCount}</strong>
-            <small>{friendGiftCount === 1 ? 'gift given' : 'gifts given'}</small>
+            <small>{friendGiftCount === 1 ? 'gift recorded' : 'gifts recorded'}</small>
           </div>
         </div>
       </div>
@@ -225,15 +323,15 @@ function GiftLog() {
 
           <div className="gift-form-grid">
             <label>
-              For <span className="required-mark">*</span>
-              <input
-                name="recipientName"
-                required
-                maxLength="100"
-                autoComplete="name"
-                placeholder="Person’s name"
-                defaultValue={editingGift?.recipientName || ''}
-              />
+              Direction
+              <select
+                name="direction"
+                value={giftDirection}
+                onChange={(event) => setGiftDirection(event.target.value)}
+              >
+                <option value="Given">Given (we gave)</option>
+                <option value="Received">Received (we got)</option>
+              </select>
             </label>
             <label>
               They’re my
@@ -247,12 +345,24 @@ function GiftLog() {
               </select>
             </label>
             <label className="gift-form-full">
+              {giftDirection === 'Received' ? 'From' : 'To'}{' '}
+              <span className="required-mark">*</span>
+              <input
+                name="recipientName"
+                required
+                maxLength="100"
+                autoComplete="name"
+                placeholder="Person’s name"
+                defaultValue={editingGift?.recipientName || ''}
+              />
+            </label>
+            <label className="gift-form-full">
               Gift <span className="required-mark">*</span>
               <input
                 name="giftName"
                 required
                 maxLength="150"
-                placeholder="What did you give?"
+                placeholder="What was given?"
                 defaultValue={editingGift?.giftName || ''}
               />
             </label>
@@ -266,7 +376,7 @@ function GiftLog() {
               />
             </label>
             <label>
-              Date given <span className="required-mark">*</span>
+              Gift date <span className="required-mark">*</span>
               <input
                 name="dateGiven"
                 type="date"
@@ -322,16 +432,21 @@ function GiftLog() {
                 <button
                   className="cancel-button"
                   type="button"
-                  disabled={isSaving}
+                  disabled={isSaving || deletingGiftId !== null}
                   onClick={() => {
                     setEditingGift(null);
+                    setGiftDirection('Given');
                     setError('');
                   }}
                 >
                   Cancel
                 </button>
               )}
-              <button className="primary-button" type="submit" disabled={isSaving}>
+              <button
+                className="primary-button"
+                type="submit"
+                disabled={isSaving || deletingGiftId !== null}
+              >
                 {isSaving
                   ? 'Saving…'
                   : editingGift
@@ -389,6 +504,18 @@ function GiftLog() {
                   {visibleRecipientGroups.map((group) => {
                     const isExpanded = Boolean(expandedGroups[group.key]);
                     const panelId = `gift-group-${group.gifts[0].id}`;
+                    const categories = ['Given', 'Received'].map((direction) => ({
+                      direction,
+                      gifts: group.gifts.filter(
+                        (gift) => (gift.direction || 'Given') === direction
+                      ),
+                    }));
+                    const directionSummary = categories
+                      .filter((category) => category.gifts.length > 0)
+                      .map((category) =>
+                        `${category.gifts.length} ${category.direction.toLowerCase()}`
+                      )
+                      .join(' · ');
                     return (
                       <section className="gift-group" key={group.key}>
                         <button
@@ -409,8 +536,7 @@ function GiftLog() {
                           <span className="gift-group-summary">
                             <strong>{group.name}</strong>
                             <span>
-                              {group.recipientType} · {group.gifts.length}{' '}
-                              {group.gifts.length === 1 ? 'gift' : 'gifts'}
+                              {group.recipientType} · {directionSummary}
                             </span>
                           </span>
                           <span className="gift-group-action">
@@ -423,38 +549,76 @@ function GiftLog() {
                           id={panelId}
                           hidden={!isExpanded}
                         >
-                          {group.gifts.map((gift) => (
-                            <article className="gift-record" key={gift.id}>
-                              <div className="gift-record-top">
-                                <span className={`gift-recipient-type gift-recipient-${gift.recipientType.toLowerCase()}`}>
-                                  {gift.recipientType}
-                                </span>
-                                <div className="gift-record-actions">
-                                  <time dateTime={gift.dateGiven}>
-                                    {formatGiftDate(gift.dateGiven)}
-                                  </time>
-                                  <button
-                                    className="gift-edit-button"
-                                    type="button"
-                                    aria-label={`Edit ${gift.occasion || gift.giftName} gift for ${gift.recipientName}`}
-                                    onClick={() => setEditingGift(gift)}
+                          {categories.map((category) => {
+                            const categoryKey = `${group.key}:${category.direction}`;
+                            const categoryPanelId = `${panelId}-${category.direction.toLowerCase()}-records`;
+                            const isCategoryExpanded =
+                              expandedCategories[categoryKey] !== false;
+
+                            return (
+                              <section
+                                className="gift-direction-group"
+                                key={category.direction}
+                                aria-labelledby={`${panelId}-${category.direction.toLowerCase()}`}
+                              >
+                                <button
+                                  className="gift-direction-toggle"
+                                  type="button"
+                                  aria-expanded={isCategoryExpanded}
+                                  aria-controls={categoryPanelId}
+                                  onClick={() =>
+                                    setExpandedCategories((currentCategories) => ({
+                                      ...currentCategories,
+                                      [categoryKey]: !isCategoryExpanded,
+                                    }))
+                                  }
+                                >
+                                  <span
+                                    className="gift-direction-title"
+                                    id={`${panelId}-${category.direction.toLowerCase()}`}
+                                    role="heading"
+                                    aria-level="3"
                                   >
-                                    Edit
-                                  </button>
-                                </div>
-                              </div>
-                              <h3>{gift.giftName}</h3>
-                              <div className="gift-record-details">
-                                {gift.occasion && <span>{gift.occasion}</span>}
-                                {gift.amount && (
-                                  <span>
-                                    {gift.amount}{gift.currency ? ` ${gift.currency}` : ''}
+                                    {category.direction}
                                   </span>
-                                )}
-                              </div>
-                              {gift.notes && <p className="gift-notes">{gift.notes}</p>}
-                            </article>
-                          ))}
+                                  <span className="gift-direction-metrics">
+                                    <span className="gift-direction-count">
+                                      {category.gifts.length}{' '}
+                                      {category.gifts.length === 1 ? 'gift' : 'gifts'}
+                                    </span>
+                                    <span className="gift-direction-total">
+                                      {summarizeGiftAmounts(category.gifts)}
+                                    </span>
+                                    <span className="gift-direction-chevron" aria-hidden="true">
+                                      {isCategoryExpanded ? '−' : '+'}
+                                    </span>
+                                  </span>
+                                </button>
+                                <div id={categoryPanelId} hidden={!isCategoryExpanded}>
+                                  {category.gifts.length > 0 ? (
+                                    category.gifts.map((gift) => (
+                                      <GiftEntry
+                                        key={gift.id}
+                                        gift={gift}
+                                        isBusy={isSaving || deletingGiftId !== null}
+                                        onEdit={() => {
+                                          setEditingGift(gift);
+                                          setGiftDirection(gift.direction || 'Given');
+                                        }}
+                                        onDelete={() => deleteGift(gift)}
+                                      />
+                                    ))
+                                  ) : (
+                                    <p className="gift-direction-empty">
+                                      {category.direction === 'Given'
+                                        ? 'No gifts given to this person yet.'
+                                        : 'No gifts received from this person yet.'}
+                                    </p>
+                                  )}
+                                </div>
+                              </section>
+                            );
+                          })}
                         </div>
                       </section>
                     );

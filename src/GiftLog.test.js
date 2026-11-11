@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import GiftLog from './GiftLog';
 
 function apiResponse(data, status = 200) {
@@ -11,6 +11,7 @@ function apiResponse(data, status = 200) {
 
 afterEach(() => {
   jest.resetAllMocks();
+  jest.restoreAllMocks();
 });
 
 test('loads gift history from the API', async () => {
@@ -46,6 +47,7 @@ test('saves a gift and displays the saved entry', async () => {
     id: 9,
     recipientName: 'Asha Shah',
     recipientType: 'Family',
+    direction: 'Given',
     giftName: 'A book',
     occasion: 'Just because',
     dateGiven: '2025-10-10',
@@ -62,10 +64,10 @@ test('saves a gift and displays the saved entry', async () => {
   fireEvent.change(screen.getByPlaceholderText('Person’s name'), {
     target: { value: 'Asha Shah' },
   });
-  fireEvent.change(screen.getByPlaceholderText('What did you give?'), {
+  fireEvent.change(screen.getByPlaceholderText('What was given?'), {
     target: { value: 'A book' },
   });
-  fireEvent.change(screen.getByLabelText('Date given *'), {
+  fireEvent.change(screen.getByLabelText('Gift date *'), {
     target: { value: '2025-10-10' },
   });
   fireEvent.change(screen.getByPlaceholderText('Birthday, wedding, just because…'), {
@@ -80,6 +82,7 @@ test('saves a gift and displays the saved entry', async () => {
     body: JSON.stringify({
       recipientName: 'Asha Shah',
       recipientType: 'Family',
+      direction: 'Given',
       giftName: 'A book',
       occasion: 'Just because',
       dateGiven: '2025-10-10',
@@ -92,11 +95,80 @@ test('saves a gift and displays the saved entry', async () => {
   expect(screen.getByText('Asha Shah')).toBeInTheDocument();
 });
 
+test('records a received gift from the recipient group', async () => {
+  const receivedGift = {
+    id: 15,
+    recipientName: 'Example Friend Group',
+    recipientType: 'Friend',
+    direction: 'Received',
+    giftName: 'Wine bottle',
+    occasion: 'Home visit',
+    dateGiven: '2026-11-11',
+    amount: '20.00',
+    currency: 'USD',
+    notes: '',
+  };
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(apiResponse([]))
+    .mockResolvedValueOnce(apiResponse(receivedGift, 201));
+
+  render(<GiftLog />);
+
+  fireEvent.change(screen.getByLabelText('Direction'), {
+    target: { value: 'Received' },
+  });
+  fireEvent.change(screen.getByLabelText('They’re my'), {
+    target: { value: 'Friend' },
+  });
+  fireEvent.change(screen.getByLabelText('From *'), {
+    target: { value: 'Example Friend Group' },
+  });
+  fireEvent.change(screen.getByPlaceholderText('What was given?'), {
+    target: { value: 'Wine bottle' },
+  });
+  fireEvent.change(screen.getByLabelText('Gift date *'), {
+    target: { value: '2026-11-11' },
+  });
+  fireEvent.change(screen.getByLabelText('Amount'), {
+    target: { value: '20.00' },
+  });
+  fireEvent.change(screen.getByLabelText('Currency code'), {
+    target: { value: 'USD' },
+  });
+  fireEvent.change(screen.getByPlaceholderText('Birthday, wedding, just because…'), {
+    target: { value: 'Home visit' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save gift' }));
+
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+  expect(global.fetch).toHaveBeenLastCalledWith('/api/gifts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      recipientName: 'Example Friend Group',
+      recipientType: 'Friend',
+      direction: 'Received',
+      giftName: 'Wine bottle',
+      occasion: 'Home visit',
+      dateGiven: '2026-11-11',
+      amount: '20.00',
+      currency: 'USD',
+      notes: '',
+    }),
+  });
+  expect(await screen.findByText('Wine bottle')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Friend · 1 received/ }))
+    .toHaveTextContent('Friend · 1 received');
+  expect(screen.getByRole('heading', { name: 'Received' })).toBeInTheDocument();
+  expect(screen.getByText('No gifts given to this person yet.')).toBeInTheDocument();
+});
+
 test('groups gifts by recipient and reveals all of their entries', async () => {
   const firstGift = {
     id: 21,
     recipientName: 'Tanmay-Janki',
     recipientType: 'Friend',
+    direction: 'Given',
     giftName: 'Tummy time toy',
     occasion: 'Siya born',
     dateGiven: '2026-11-11',
@@ -107,16 +179,25 @@ test('groups gifts by recipient and reveals all of their entries', async () => {
   const secondGift = {
     ...firstGift,
     id: 22,
+    direction: 'Received',
     giftName: 'Writing board',
     occasion: 'Siya - 2 year bday',
     amount: '50.00',
   };
-  global.fetch = jest.fn().mockResolvedValue(apiResponse([firstGift, secondGift]));
+  const thirdGift = {
+    ...firstGift,
+    id: 23,
+    giftName: 'Family meal',
+    occasion: 'New Year',
+    amount: '12.50',
+    currency: 'CAD',
+  };
+  global.fetch = jest.fn().mockResolvedValue(apiResponse([firstGift, secondGift, thirdGift]));
 
   render(<GiftLog />);
 
   const recipientGroup = await screen.findByRole('button', { name: /Tanmay-Janki/ });
-  expect(recipientGroup).toHaveTextContent('2 gifts');
+  expect(recipientGroup).toHaveTextContent('2 given · 1 received');
   expect(recipientGroup).toHaveAttribute('aria-expanded', 'false');
   expect(document.getElementById('gift-group-21')).toHaveAttribute('hidden');
 
@@ -124,10 +205,25 @@ test('groups gifts by recipient and reveals all of their entries', async () => {
 
   expect(recipientGroup).toHaveAttribute('aria-expanded', 'true');
   expect(document.getElementById('gift-group-21')).not.toHaveAttribute('hidden');
-  expect(await screen.findByText('Tummy time toy')).toBeInTheDocument();
-  expect(screen.getByText('Writing board')).toBeInTheDocument();
-  expect(screen.getByText('Siya born')).toBeInTheDocument();
-  expect(screen.getByText('Siya - 2 year bday')).toBeInTheDocument();
+  const givenSection = screen.getByRole('region', { name: 'Given' });
+  const receivedSection = screen.getByRole('region', { name: 'Received' });
+  expect(within(givenSection).getByText('Tummy time toy')).toBeInTheDocument();
+  expect(within(givenSection).getByText('Siya born')).toBeInTheDocument();
+  expect(within(givenSection).getByText('Family meal')).toBeInTheDocument();
+  expect(within(givenSection).queryByText('Writing board')).not.toBeInTheDocument();
+  expect(within(receivedSection).getByText('Writing board')).toBeInTheDocument();
+  expect(within(receivedSection).getByText('Siya - 2 year bday')).toBeInTheDocument();
+  expect(within(givenSection).getByText('Total: 12.50 CAD · 40.00 USD')).toBeInTheDocument();
+  expect(within(receivedSection).getByText('Total: 50.00 USD')).toBeInTheDocument();
+
+  const givenAccordion = within(givenSection).getByRole('button', {
+    name: /Given.*2 gifts.*Total: 12.50 CAD · 40.00 USD/,
+  });
+  fireEvent.click(givenAccordion);
+  expect(givenAccordion).toHaveAttribute('aria-expanded', 'false');
+  expect(within(givenSection).getByText('Tummy time toy')).not.toBeVisible();
+  fireEvent.click(givenAccordion);
+  expect(within(givenSection).getByText('Tummy time toy')).toBeVisible();
 });
 
 test('edits a saved gift and displays the updated entry', async () => {
@@ -135,6 +231,7 @@ test('edits a saved gift and displays the updated entry', async () => {
     id: 12,
     recipientName: 'Maya Patel',
     recipientType: 'Friend',
+    direction: 'Given',
     giftName: 'Photo album',
     occasion: 'Birthday',
     dateGiven: '2025-11-12',
@@ -159,7 +256,7 @@ test('edits a saved gift and displays the updated entry', async () => {
     name: 'Edit Birthday gift for Maya Patel',
   }));
   expect(screen.getByRole('heading', { name: 'Edit gift' })).toBeInTheDocument();
-  expect(screen.getByLabelText('For *')).toHaveValue('Maya Patel');
+  expect(screen.getByLabelText('To *')).toHaveValue('Maya Patel');
   expect(screen.getByLabelText('They’re my')).toHaveValue('Friend');
   expect(screen.getByLabelText('Gift *')).toHaveValue('Photo album');
   expect(screen.getByLabelText('Amount')).toHaveValue(35.5);
@@ -183,6 +280,7 @@ test('edits a saved gift and displays the updated entry', async () => {
     body: JSON.stringify({
       recipientName: 'Maya Patel',
       recipientType: 'Friend',
+      direction: 'Given',
       giftName: 'Framed photo',
       occasion: 'Birthday',
       dateGiven: '2025-11-12',
@@ -194,6 +292,68 @@ test('edits a saved gift and displays the updated entry', async () => {
   expect(await screen.findByText('Framed photo')).toBeInTheDocument();
   expect(screen.getByText('Updated note')).toBeInTheDocument();
   expect(screen.queryByText('Photo album')).not.toBeInTheDocument();
+});
+
+test('confirms and deletes a gift from its recipient history', async () => {
+  const gift = {
+    id: 31,
+    recipientName: 'Maya Patel',
+    recipientType: 'Friend',
+    direction: 'Given',
+    giftName: 'Photo album',
+    occasion: 'Birthday',
+    dateGiven: '2025-11-12',
+    amount: '35.50',
+    currency: 'USD',
+    notes: '',
+  };
+  const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(apiResponse([gift]))
+    .mockResolvedValueOnce(apiResponse({ id: gift.id }));
+
+  render(<GiftLog />);
+
+  fireEvent.click(await screen.findByRole('button', { name: /Maya Patel/ }));
+  fireEvent.click(screen.getByRole('button', {
+    name: 'Delete Birthday gift for Maya Patel',
+  }));
+
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+  expect(confirmSpy).toHaveBeenCalledWith(
+    'Delete “Birthday — Photo album” for Maya Patel? This cannot be undone.'
+  );
+  expect(global.fetch).toHaveBeenLastCalledWith('/api/gifts/31', {
+    method: 'DELETE',
+  });
+  expect(await screen.findByText('No gifts logged yet')).toBeInTheDocument();
+});
+
+test('keeps a gift when deletion is canceled', async () => {
+  const gift = {
+    id: 32,
+    recipientName: 'Maya Patel',
+    recipientType: 'Friend',
+    direction: 'Received',
+    giftName: 'Flowers',
+    occasion: 'Thank you',
+    dateGiven: '2025-11-12',
+    amount: '',
+    currency: '',
+    notes: '',
+  };
+  jest.spyOn(window, 'confirm').mockReturnValue(false);
+  global.fetch = jest.fn().mockResolvedValue(apiResponse([gift]));
+
+  render(<GiftLog />);
+
+  fireEvent.click(await screen.findByRole('button', { name: /Maya Patel/ }));
+  fireEvent.click(screen.getByRole('button', {
+    name: 'Delete Thank you gift for Maya Patel',
+  }));
+
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+  expect(await screen.findByText('Flowers')).toBeInTheDocument();
 });
 
 test('shows an API error when gift history cannot be loaded', async () => {
