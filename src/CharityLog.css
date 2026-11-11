@@ -359,25 +359,35 @@
   opacity: 0.6;
 }
 
-.charity-record h3 {
-  margin: 0 0 4px;
+.charity-record-organization {
+  margin: 0 0 5px;
   color: #3e4d42;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
-.charity-record-organization,
+.charity-record-activity,
 .charity-record-notes {
   margin: 0;
   color: #7e8981;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.55;
   overflow-wrap: anywhere;
+}
+
+.charity-record-activity strong,
+.charity-record-notes strong,
+.charity-record-metrics strong {
+  color: #57665b;
+  font-weight: 600;
 }
 
 .charity-record-metrics {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 7px;
   margin-top: 10px;
 }
@@ -387,7 +397,7 @@
   border: 1px solid #edf0eb;
   border-radius: 5px;
   color: #748077;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .charity-record-notes {

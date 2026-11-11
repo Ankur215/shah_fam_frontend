@@ -31,7 +31,7 @@ test('loads gift history from the API', async () => {
     ])
   );
 
-  render(<GiftLog />);
+  const { container } = render(<GiftLog />);
 
   const recipientGroup = await screen.findByRole('button', { name: /Maya Patel/ });
   expect(recipientGroup).toHaveAttribute('aria-expanded', 'false');
@@ -39,6 +39,11 @@ test('loads gift history from the API', async () => {
   expect(await screen.findByText('Handmade photo album')).toBeInTheDocument();
   expect(screen.getByText('Maya Patel')).toBeInTheDocument();
   expect(screen.getByText('A memory from our trip.')).toBeInTheDocument();
+  expect(container.querySelector('.gift-record h4')).toHaveTextContent('Birthday');
+  expect(container.querySelector('.gift-record-gift')).toHaveTextContent(
+    'Gift: Handmade photo album'
+  );
+  expect(container.querySelector('.gift-record-amount')).toHaveTextContent('35.50 USD');
   expect(global.fetch).toHaveBeenCalledWith('/api/gifts');
 });
 

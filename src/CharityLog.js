@@ -145,25 +145,33 @@ function CharityRecordEntry({
           </button>
         </div>
       </header>
-      <h3>{record.activity}</h3>
-      <p className="charity-record-organization">{record.organization}</p>
+      <h3 className="charity-record-organization">{record.organization}</h3>
+      <p className="charity-record-activity">
+        <strong>Activity:</strong> {record.activity}
+      </p>
+      {record.notes && (
+        <p className="charity-record-notes">
+          <strong>Notes:</strong> {record.notes}
+        </p>
+      )}
       {(record.amount || record.volunteerHours) && (
         <div className="charity-record-metrics">
           {record.amount && (
             <span>
+              <strong>Amount:</strong>{' '}
               {record.amount}
               {record.currency ? ` ${record.currency}` : ''}
             </span>
           )}
           {record.volunteerHours && (
             <span>
-              {record.volunteerHours} volunteer{' '}
+              <strong>Volunteer hours:</strong>{' '}
+              {record.volunteerHours}{' '}
               {Number(record.volunteerHours) === 1 ? 'hour' : 'hours'}
             </span>
           )}
         </div>
       )}
-      {record.notes && <p className="charity-record-notes">{record.notes}</p>}
     </article>
   );
 }

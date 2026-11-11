@@ -45,18 +45,20 @@ test('loads and shows every charity work record newest first', async () => {
   const { container } = render(<CharityLog />);
 
   const entries = await screen.findAllByRole('article');
-  expect(entries.map((entry) => within(entry).getByRole('heading').textContent)).toEqual([
-    'Prepared dinner',
-    'Donated groceries',
-  ]);
+  expect(entries.map((entry) => entry.querySelector('.charity-record-activity').textContent))
+    .toEqual(['Activity: Prepared dinner', 'Activity: Donated groceries']);
   expect(screen.getByText('Local Shelter')).toBeInTheDocument();
-  expect(screen.getByText('2.50 volunteer hours')).toBeInTheDocument();
-  expect(screen.getByText('Helped serve families')).toBeInTheDocument();
+  expect(screen.getByText('Volunteer hours:').parentElement).toHaveTextContent(
+    'Volunteer hours: 2.50 hours'
+  );
+  expect(screen.getByText('Notes:').parentElement).toHaveTextContent(
+    'Notes: Helped serve families'
+  );
   expect(container.querySelector('.charity-summary')).toHaveTextContent('2.5');
   expect(global.fetch).toHaveBeenCalledWith('/api/charity-records');
 });
 
-test('saves a charity work record and includes its optional contribution details', async () => {
+test('saves a charity record with amount, activity, and notes in order', async () => {
   const savedRecord = {
     id: 7,
     organization: 'Community Food Bank',
@@ -72,7 +74,7 @@ test('saves a charity work record and includes its optional contribution details
     .mockResolvedValueOnce(apiResponse([]))
     .mockResolvedValueOnce(apiResponse(savedRecord, 201));
 
-  render(<CharityLog />);
+  const { container } = render(<CharityLog />);
 
   fireEvent.change(screen.getByLabelText(/organization \/ charity/i), {
     target: { value: 'Community Food Bank' },
@@ -116,7 +118,26 @@ test('saves a charity work record and includes its optional contribution details
     }),
   });
   expect(await screen.findByText('Packed meal boxes')).toBeInTheDocument();
-  expect(screen.getByText('Family volunteer day')).toBeInTheDocument();
+  expect(screen.getByText('Activity:').parentElement).toHaveTextContent(
+    'Activity: Packed meal boxes'
+  );
+  expect(screen.getByText('Amount:').parentElement).toHaveTextContent(
+    'Amount: 25.50 USD'
+  );
+  expect(screen.getByText('Notes:').parentElement).toHaveTextContent(
+    'Notes: Family volunteer day'
+  );
+  expect(
+    [...container.querySelector('.charity-record').children].map(
+      (element) => element.className
+    )
+  ).toEqual([
+    'charity-record-top',
+    'charity-record-organization',
+    'charity-record-activity',
+    'charity-record-notes',
+    'charity-record-metrics',
+  ]);
 });
 
 test('moves a charity record and saves the new sequence', async () => {
@@ -151,8 +172,8 @@ test('moves a charity record and saves the new sequence', async () => {
   const { container } = render(<CharityLog />);
 
   expect(
-    (await screen.findAllByRole('heading', { level: 3 })).map((heading) => heading.textContent)
-  ).toEqual(['Donated groceries', 'Prepared dinner']);
+    (await screen.findAllByText(/Activity:/)).map((activity) => activity.textContent)
+  ).toEqual(['Activity:', 'Activity:']);
   fireEvent.click(screen.getByRole('button', { name: 'Move Prepared dinner up' }));
 
   await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
@@ -162,8 +183,10 @@ test('moves a charity record and saves the new sequence', async () => {
     body: JSON.stringify({ recordIds: [2, 1] }),
   });
   expect(
-    [...container.querySelectorAll('.charity-record h3')].map((heading) => heading.textContent)
-  ).toEqual(['Prepared dinner', 'Donated groceries']);
+    [...container.querySelectorAll('.charity-record-activity')].map(
+      (activity) => activity.textContent
+    )
+  ).toEqual(['Activity: Prepared dinner', 'Activity: Donated groceries']);
 });
 
 test('edits and deletes an existing charity record', async () => {

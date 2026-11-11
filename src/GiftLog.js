@@ -124,11 +124,13 @@ function GiftEntry({
           </button>
         </div>
       </div>
-      <h4>{gift.giftName}</h4>
+      <h4>{gift.occasion || gift.giftName}</h4>
       <div className="gift-record-details">
-        {gift.occasion && <span>{gift.occasion}</span>}
+        {gift.occasion && (
+          <span className="gift-record-gift">Gift: {gift.giftName}</span>
+        )}
         {gift.amount && (
-          <span>
+          <span className="gift-record-amount">
             {gift.amount}{gift.currency ? ` ${gift.currency}` : ''}
           </span>
         )}
@@ -431,6 +433,15 @@ function GiftLog() {
               />
             </label>
             <label className="gift-form-full">
+              Occasion
+              <input
+                name="occasion"
+                maxLength="100"
+                placeholder="Birthday, wedding, just because…"
+                defaultValue={editingGift?.occasion || ''}
+              />
+            </label>
+            <label>
               Gift <span className="required-mark">*</span>
               <input
                 name="giftName"
@@ -438,15 +449,6 @@ function GiftLog() {
                 maxLength="150"
                 placeholder="What was given?"
                 defaultValue={editingGift?.giftName || ''}
-              />
-            </label>
-            <label>
-              Occasion
-              <input
-                name="occasion"
-                maxLength="100"
-                placeholder="Birthday, wedding, just because…"
-                defaultValue={editingGift?.occasion || ''}
               />
             </label>
             <label>
