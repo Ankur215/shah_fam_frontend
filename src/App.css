@@ -90,11 +90,15 @@ button {
   align-items: center;
   gap: 11px;
   padding: 0 12px;
+  border: 0;
   border-radius: 8px;
+  background: transparent;
   color: #606d65;
   font-size: 12px;
   font-weight: 600;
+  text-align: left;
   text-decoration: none;
+  width: 100%;
 }
 
 .nav-item-active {
@@ -104,6 +108,7 @@ button {
 
 .nav-icon {
   width: 17px;
+  flex: 0 0 auto;
   font-size: 20px;
   line-height: 1;
   text-align: center;
@@ -950,13 +955,21 @@ button {
   }
 
   .sidebar nav {
-    display: block;
+    display: flex;
+    gap: 3px;
   }
 
   .nav-item {
+    width: auto;
     min-height: 35px;
-    padding: 0 9px;
-    font-size: 10px;
+    gap: 5px;
+    padding: 0 7px;
+    font-size: 9px;
+  }
+
+  .nav-icon {
+    width: 14px;
+    font-size: 16px;
   }
 
   .main-content {

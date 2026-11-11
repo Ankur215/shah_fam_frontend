@@ -45,6 +45,17 @@ test('shows the family member empty state after loading members from the API', a
   expect(global.fetch).toHaveBeenCalledWith('/api/family-members');
 });
 
+test('opens the gift log from the main navigation', async () => {
+  render(<App />);
+
+  fireEvent.click(await screen.findByRole('button', { name: /gift log/i }));
+
+  expect(
+    await screen.findByRole('heading', { name: 'Gifts by person' })
+  ).toBeInTheDocument();
+  expect(global.fetch).toHaveBeenCalledWith('/api/gifts');
+});
+
 test('offers specific sibling, in-law, and extended-family relationships', async () => {
   render(<App />);
   fireEvent.click(

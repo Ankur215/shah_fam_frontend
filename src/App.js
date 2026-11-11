@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import './App.css';
+import GiftLog from './GiftLog';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 const FAMILY_MEMBERS_ENDPOINT = `${API_URL}/api/family-members`;
@@ -205,6 +206,7 @@ function formatDate(date) {
 
 function App() {
   const [members, setMembers] = useState([]);
+  const [activePage, setActivePage] = useState('members');
   const [search, setSearch] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
@@ -363,10 +365,24 @@ function App() {
 
         <div className="sidebar-label">FAMILY</div>
         <nav aria-label="Main navigation">
-          <a className="nav-item nav-item-active" href="#members">
+          <button
+            className={`nav-item ${activePage === 'members' ? 'nav-item-active' : ''}`}
+            type="button"
+            aria-current={activePage === 'members' ? 'page' : undefined}
+            onClick={() => setActivePage('members')}
+          >
             <span className="nav-icon" aria-hidden="true">⌂</span>
             Family members
-          </a>
+          </button>
+          <button
+            className={`nav-item ${activePage === 'gifts' ? 'nav-item-active' : ''}`}
+            type="button"
+            aria-current={activePage === 'gifts' ? 'page' : undefined}
+            onClick={() => setActivePage('gifts')}
+          >
+            <span className="nav-icon" aria-hidden="true">♡</span>
+            Gift log
+          </button>
         </nav>
 
         <div className="sidebar-note">
@@ -377,15 +393,18 @@ function App() {
         <div className="sidebar-footer">A little closer, wherever we are.</div>
       </aside>
 
-      <main className="main-content" id="members">
+      <main className="main-content" id={activePage}>
         <header className="topbar">
-          <span className="breadcrumb">Family space <span>/</span> Members</span>
+          <span className="breadcrumb">
+            Family space <span>/</span> {activePage === 'members' ? 'Members' : 'Gift log'}
+          </span>
           <span className="privacy-label">
             <span className="privacy-dot" aria-hidden="true" />
             Private family space
           </span>
         </header>
 
+        {activePage === 'members' ? (
         <section className="page-content">
           <div className="welcome-banner">
             <div className="welcome-copy">
@@ -558,6 +577,9 @@ function App() {
             </p>
           </section>
         </section>
+        ) : (
+          <GiftLog />
+        )}
       </main>
 
       {isFormOpen && (
