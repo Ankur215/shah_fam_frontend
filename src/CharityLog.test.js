@@ -119,6 +119,53 @@ test('saves a charity work record and includes its optional contribution details
   expect(screen.getByText('Family volunteer day')).toBeInTheDocument();
 });
 
+test('moves a charity record and saves the new sequence', async () => {
+  const firstRecord = {
+    id: 1,
+    organization: 'Community Pantry',
+    workType: 'Donation',
+    activity: 'Donated groceries',
+    datePerformed: '2026-03-10',
+    amount: '',
+    currency: '',
+    volunteerHours: '',
+    notes: '',
+    sortOrder: 0,
+  };
+  const secondRecord = {
+    ...firstRecord,
+    id: 2,
+    organization: 'Local Shelter',
+    activity: 'Prepared dinner',
+    sortOrder: 1,
+  };
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(apiResponse([firstRecord, secondRecord]))
+    .mockResolvedValueOnce(
+      apiResponse([
+        { ...secondRecord, sortOrder: 0 },
+        { ...firstRecord, sortOrder: 1 },
+      ])
+    );
+
+  const { container } = render(<CharityLog />);
+
+  expect(
+    (await screen.findAllByRole('heading', { level: 3 })).map((heading) => heading.textContent)
+  ).toEqual(['Donated groceries', 'Prepared dinner']);
+  fireEvent.click(screen.getByRole('button', { name: 'Move Prepared dinner up' }));
+
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+  expect(global.fetch).toHaveBeenLastCalledWith('/api/charity-records/order', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recordIds: [2, 1] }),
+  });
+  expect(
+    [...container.querySelectorAll('.charity-record h3')].map((heading) => heading.textContent)
+  ).toEqual(['Prepared dinner', 'Donated groceries']);
+});
+
 test('edits and deletes an existing charity record', async () => {
   const record = {
     id: 12,

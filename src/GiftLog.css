@@ -482,6 +482,7 @@
   gap: 10px;
 }
 
+.gift-move-button,
 .gift-edit-button,
 .gift-delete-button {
   padding: 3px 5px;
@@ -490,6 +491,20 @@
   background: transparent;
   font-size: 10px;
   font-weight: 600;
+}
+
+.gift-move-button {
+  width: 23px;
+  height: 23px;
+  padding: 0;
+  border: 1px solid #e8ede7;
+  background: #fff;
+  color: #55775c;
+  line-height: 1;
+}
+
+.gift-move-button:hover:not(:disabled) {
+  background: #edf3ed;
 }
 
 .gift-edit-button {
@@ -508,6 +523,7 @@
   background: #fff1ed;
 }
 
+.gift-move-button:focus-visible,
 .gift-edit-button:focus-visible {
   outline: 2px solid #77957b;
   outline-offset: 2px;
@@ -518,6 +534,7 @@
   outline-offset: 2px;
 }
 
+.gift-move-button:disabled,
 .gift-edit-button:disabled,
 .gift-delete-button:disabled {
   cursor: wait;

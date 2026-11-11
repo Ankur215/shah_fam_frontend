@@ -22,9 +22,21 @@ function formatDate(date) {
 
 function sortRecords(records) {
   return [...records].sort(
-    (first, second) =>
-      second.datePerformed.localeCompare(first.datePerformed) ||
-      second.id - first.id
+    (first, second) => {
+      const firstOrder = Number(first.sortOrder);
+      const secondOrder = Number(second.sortOrder);
+      const normalizedFirstOrder = Number.isFinite(firstOrder)
+        ? firstOrder
+        : Number.MAX_SAFE_INTEGER;
+      const normalizedSecondOrder = Number.isFinite(secondOrder)
+        ? secondOrder
+        : Number.MAX_SAFE_INTEGER;
+      return (
+        normalizedFirstOrder - normalizedSecondOrder ||
+        second.datePerformed.localeCompare(first.datePerformed) ||
+        second.id - first.id
+      );
+    }
   );
 }
 
@@ -74,7 +86,17 @@ async function readApiResponse(response) {
   return data;
 }
 
-function CharityRecordEntry({ record, onEdit, onDelete, isBusy }) {
+function CharityRecordEntry({
+  record,
+  index,
+  recordCount,
+  onMoveUp,
+  onMoveDown,
+  onEdit,
+  onDelete,
+  canReorder,
+  isBusy,
+}) {
   return (
     <article className="charity-record">
       <header className="charity-record-top">
@@ -83,6 +105,26 @@ function CharityRecordEntry({ record, onEdit, onDelete, isBusy }) {
           <span className="charity-record-type">{record.workType}</span>
         </div>
         <div className="charity-record-actions">
+          <button
+            className="charity-move-button"
+            type="button"
+            disabled={isBusy || !canReorder || index === 0}
+            aria-label={`Move ${record.activity} up`}
+            title={canReorder ? 'Move record up' : 'Clear search to reorder records'}
+            onClick={onMoveUp}
+          >
+            ↑
+          </button>
+          <button
+            className="charity-move-button"
+            type="button"
+            disabled={isBusy || !canReorder || index === recordCount - 1}
+            aria-label={`Move ${record.activity} down`}
+            title={canReorder ? 'Move record down' : 'Clear search to reorder records'}
+            onClick={onMoveDown}
+          >
+            ↓
+          </button>
           <button
             className="charity-edit-button"
             type="button"
@@ -132,6 +174,7 @@ function CharityLog() {
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
   const [deletingRecordId, setDeletingRecordId] = useState(null);
   const [error, setError] = useState('');
   const [isLoadError, setIsLoadError] = useState(false);
@@ -247,6 +290,47 @@ function CharityLog() {
       );
     } finally {
       setDeletingRecordId(null);
+    }
+  }
+
+  async function moveRecord(index, offset) {
+    const targetIndex = index + offset;
+    if (
+      isReordering ||
+      search.trim() ||
+      targetIndex < 0 ||
+      targetIndex >= records.length
+    ) {
+      return;
+    }
+
+    const previousRecords = records;
+    const reorderedRecords = [...records];
+    const [movedRecord] = reorderedRecords.splice(index, 1);
+    reorderedRecords.splice(targetIndex, 0, movedRecord);
+    setRecords(reorderedRecords);
+    setIsReordering(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${CHARITY_ENDPOINT}/order`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recordIds: reorderedRecords.map((record) => record.id) }),
+      });
+      const savedRecords = await readApiResponse(response);
+      if (!Array.isArray(savedRecords)) {
+        throw new Error('The server returned an unexpected charity record order.');
+      }
+      setRecords(sortRecords(savedRecords));
+    } catch (reorderError) {
+      console.error('Could not reorder charity work records through the API.', reorderError);
+      setRecords(previousRecords);
+      setError(
+        `Could not reorder charity records. ${reorderError.message || 'Check that the API and database are available.'}`
+      );
+    } finally {
+      setIsReordering(false);
     }
   }
 
@@ -408,7 +492,7 @@ function CharityLog() {
                 <button
                   className="cancel-button"
                   type="button"
-                  disabled={isSaving || deletingRecordId !== null}
+                  disabled={isSaving || isReordering || deletingRecordId !== null}
                   onClick={() => {
                     setEditingRecord(null);
                     setError('');
@@ -420,7 +504,7 @@ function CharityLog() {
               <button
                 className="primary-button"
                 type="submit"
-                disabled={isSaving || deletingRecordId !== null}
+                disabled={isSaving || isReordering || deletingRecordId !== null}
               >
                 {isSaving
                   ? 'Saving…'
@@ -479,11 +563,16 @@ function CharityLog() {
               </label>
               <div className="charity-record-list">
                 {visibleRecords.length > 0 ? (
-                  visibleRecords.map((record) => (
+                  visibleRecords.map((record, index) => (
                     <CharityRecordEntry
                       key={record.id}
                       record={record}
-                      isBusy={isSaving || deletingRecordId !== null}
+                      index={index}
+                      recordCount={visibleRecords.length}
+                      canReorder={!search.trim()}
+                      isBusy={isSaving || isReordering || deletingRecordId !== null}
+                      onMoveUp={() => moveRecord(index, -1)}
+                      onMoveDown={() => moveRecord(index, 1)}
                       onEdit={() => {
                         setEditingRecord(record);
                         setError('');

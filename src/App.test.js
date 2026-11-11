@@ -47,6 +47,31 @@ test('shows the family member empty state after loading members from the API', a
   expect(global.fetch).toHaveBeenCalledWith('/api/family-members');
 });
 
+test('moves a family member and saves the reordered sequence', async () => {
+  const firstMember = { ...savedMember, id: 1, firstName: 'Asha' };
+  const secondMember = { ...savedMember, id: 2, firstName: 'Rohan' };
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(apiResponse([firstMember, secondMember]))
+    .mockResolvedValueOnce(apiResponse([secondMember, firstMember]));
+
+  const { container } = render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Move Rohan Shah up' }));
+
+  await waitFor(() =>
+    expect(global.fetch).toHaveBeenLastCalledWith('/api/family-members/order', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memberIds: [2, 1] }),
+    })
+  );
+  await waitFor(() => {
+    const names = [...container.querySelectorAll('.member-name strong')].map(
+      (memberName) => memberName.textContent
+    );
+    expect(names).toEqual(['Rohan Shah', 'Asha Shah']);
+  });
+});
+
 test('opens the gift log from the main navigation', async () => {
   render(<App />);
 

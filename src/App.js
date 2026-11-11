@@ -222,6 +222,7 @@ function App() {
   const [isLoadError, setIsLoadError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isReorderingMembers, setIsReorderingMembers] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [validationErrors, setValidationErrors] = useState({});
 
@@ -270,25 +271,19 @@ function App() {
 
   const filteredMembers = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return members
-      .filter((member) => {
-        const searchableText = [
-          member.firstName,
-          member.lastName,
-          member.relationship,
-          member.email,
-          member.city,
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        return searchableText.includes(query);
-      })
-      .sort((first, second) =>
-        `${first.lastName || ''}${first.firstName}`.localeCompare(
-          `${second.lastName || ''}${second.firstName}`
-        )
-      );
+    return members.filter((member) => {
+      const searchableText = [
+        member.firstName,
+        member.lastName,
+        member.relationship,
+        member.email,
+        member.city,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return searchableText.includes(query);
+    });
   }, [members, search]);
   const editingPhone = getPhoneParts(editingMember?.phone);
   const availableTithis = selectedPaksha
@@ -385,6 +380,43 @@ function App() {
       );
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function moveMember(index, offset) {
+    if (search.trim() || isReorderingMembers) return;
+    const destination = index + offset;
+    if (destination < 0 || destination >= members.length) return;
+
+    const previousMembers = members;
+    const reorderedMembers = [...members];
+    [reorderedMembers[index], reorderedMembers[destination]] = [
+      reorderedMembers[destination],
+      reorderedMembers[index],
+    ];
+    setMembers(reorderedMembers);
+    setIsReorderingMembers(true);
+    setApiError('');
+
+    try {
+      const response = await fetch(`${FAMILY_MEMBERS_ENDPOINT}/order`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberIds: reorderedMembers.map((member) => member.id) }),
+      });
+      const savedMembers = await readApiResponse(response);
+      if (!Array.isArray(savedMembers)) {
+        throw new Error('The server returned an unexpected family-members order response.');
+      }
+      setMembers(savedMembers);
+    } catch (error) {
+      console.error('Could not reorder family members through the API.', error);
+      setMembers(previousMembers);
+      setApiError(
+        `Could not reorder family members. ${error.message || 'Check that the API and database are available.'}`
+      );
+    } finally {
+      setIsReorderingMembers(false);
     }
   }
 
@@ -515,6 +547,7 @@ function App() {
               <button
                 className="primary-button"
                 type="button"
+                disabled={isReorderingMembers}
                 onClick={() => openMemberForm()}
               >
                 <span aria-hidden="true">＋</span> Add family member
@@ -594,14 +627,47 @@ function App() {
                       <span className="detail-label">CONTACT</span>
                       <span>{member.phone || member.email || '—'}</span>
                     </div>
-                    <button
-                      className="member-edit-button"
-                      type="button"
-                      aria-label={`Edit ${member.firstName} ${member.lastName || ''}`.trim()}
-                      onClick={() => openMemberForm(member)}
-                    >
-                      Edit
-                    </button>
+                    <div className="member-actions">
+                      <button
+                        className="member-move-button"
+                        type="button"
+                        aria-label={`Move ${member.firstName} ${member.lastName || ''} up`}
+                        title={search.trim() ? 'Clear search to reorder the full list' : 'Move up'}
+                        disabled={
+                          isReorderingMembers || Boolean(search.trim()) || index === 0
+                        }
+                        onClick={() => moveMember(index, -1)}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        className="member-move-button"
+                        type="button"
+                        aria-label={`Move ${member.firstName} ${member.lastName || ''} down`}
+                        title={
+                          search.trim()
+                            ? 'Clear search to reorder the full list'
+                            : 'Move down'
+                        }
+                        disabled={
+                          isReorderingMembers ||
+                          Boolean(search.trim()) ||
+                          index === filteredMembers.length - 1
+                        }
+                        onClick={() => moveMember(index, 1)}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        className="member-edit-button"
+                        type="button"
+                        disabled={isReorderingMembers}
+                        aria-label={`Edit ${member.firstName} ${member.lastName || ''}`.trim()}
+                        onClick={() => openMemberForm(member)}
+                      >
+                        Edit
+                      </button>
+                    </div>
                   </article>
                 ))}
               </div>

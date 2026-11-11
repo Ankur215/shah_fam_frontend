@@ -67,12 +67,43 @@ async function readApiResponse(response) {
   return data;
 }
 
-function GiftEntry({ gift, onEdit, onDelete, isBusy }) {
+function GiftEntry({
+  gift,
+  onEdit,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
+  isBusy,
+}) {
+  const moveDescription = gift.occasion
+    ? `${gift.occasion} gift`
+    : gift.giftName;
+
   return (
     <article className="gift-record">
       <div className="gift-record-top">
         <time dateTime={gift.dateGiven}>{formatGiftDate(gift.dateGiven)}</time>
         <div className="gift-record-actions">
+          <button
+            className="gift-move-button"
+            type="button"
+            disabled={isBusy || !canMoveUp}
+            aria-label={`Move ${moveDescription} for ${gift.recipientName} up`}
+            onClick={onMoveUp}
+          >
+            ↑
+          </button>
+          <button
+            className="gift-move-button"
+            type="button"
+            disabled={isBusy || !canMoveDown}
+            aria-label={`Move ${moveDescription} for ${gift.recipientName} down`}
+            onClick={onMoveDown}
+          >
+            ↓
+          </button>
           <button
             className="gift-edit-button"
             type="button"
@@ -116,6 +147,7 @@ function GiftLog() {
   const [groupSearch, setGroupSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
   const [deletingGiftId, setDeletingGiftId] = useState(null);
   const [error, setError] = useState('');
   const [isLoadError, setIsLoadError] = useState(false);
@@ -237,6 +269,48 @@ function GiftLog() {
       );
     } finally {
       setDeletingGiftId(null);
+    }
+  }
+
+  async function moveGift(categoryGifts, index, offset) {
+    if (isReordering) return;
+    const destination = index + offset;
+    if (destination < 0 || destination >= categoryGifts.length) return;
+
+    const previousGifts = gifts;
+    const reorderedCategory = [...categoryGifts];
+    [reorderedCategory[index], reorderedCategory[destination]] = [
+      reorderedCategory[destination],
+      reorderedCategory[index],
+    ];
+    const categoryIds = new Set(categoryGifts.map((gift) => gift.id));
+    let categoryIndex = 0;
+    const reorderedGifts = gifts.map((gift) =>
+      categoryIds.has(gift.id) ? reorderedCategory[categoryIndex++] : gift
+    );
+    setGifts(reorderedGifts);
+    setIsReordering(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${GIFTS_ENDPOINT}/order`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ giftIds: reorderedGifts.map((gift) => gift.id) }),
+      });
+      const savedGifts = await readApiResponse(response);
+      if (!Array.isArray(savedGifts)) {
+        throw new Error('The server returned an unexpected gifts order response.');
+      }
+      setGifts(savedGifts);
+    } catch (reorderError) {
+      console.error('Could not reorder gifts through the API.', reorderError);
+      setGifts(previousGifts);
+      setError(
+        `Could not reorder gifts. ${reorderError.message || 'Check that the API and database are available.'}`
+      );
+    } finally {
+      setIsReordering(false);
     }
   }
 
@@ -432,7 +506,7 @@ function GiftLog() {
                 <button
                   className="cancel-button"
                   type="button"
-                  disabled={isSaving || deletingGiftId !== null}
+                  disabled={isSaving || isReordering || deletingGiftId !== null}
                   onClick={() => {
                     setEditingGift(null);
                     setGiftDirection('Given');
@@ -445,7 +519,7 @@ function GiftLog() {
               <button
                 className="primary-button"
                 type="submit"
-                disabled={isSaving || deletingGiftId !== null}
+                disabled={isSaving || isReordering || deletingGiftId !== null}
               >
                 {isSaving
                   ? 'Saving…'
@@ -600,7 +674,30 @@ function GiftLog() {
                                       <GiftEntry
                                         key={gift.id}
                                         gift={gift}
-                                        isBusy={isSaving || deletingGiftId !== null}
+                                        isBusy={
+                                          isSaving ||
+                                          isReordering ||
+                                          deletingGiftId !== null
+                                        }
+                                        canMoveUp={category.gifts.indexOf(gift) > 0}
+                                        canMoveDown={
+                                          category.gifts.indexOf(gift) <
+                                          category.gifts.length - 1
+                                        }
+                                        onMoveUp={() =>
+                                          moveGift(
+                                            category.gifts,
+                                            category.gifts.indexOf(gift),
+                                            -1
+                                          )
+                                        }
+                                        onMoveDown={() =>
+                                          moveGift(
+                                            category.gifts,
+                                            category.gifts.indexOf(gift),
+                                            1
+                                          )
+                                        }
                                         onEdit={() => {
                                           setEditingGift(gift);
                                           setGiftDirection(gift.direction || 'Given');

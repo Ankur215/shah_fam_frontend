@@ -498,7 +498,7 @@ button {
 .member-row {
   display: grid;
   min-height: 73px;
-  grid-template-columns: minmax(150px, 1.5fr) minmax(100px, 1fr) 56px minmax(112px, 1fr) 14px;
+  grid-template-columns: minmax(150px, 1.5fr) minmax(100px, 1fr) 56px minmax(112px, 1fr) auto;
   align-items: center;
   gap: 18px;
   border-bottom: 1px solid #eff1ed;
@@ -590,6 +590,40 @@ button {
   color: #55775c;
   font-size: 10px;
   font-weight: 600;
+}
+
+.member-actions {
+  display: flex;
+  grid-column: -2;
+  align-items: center;
+  justify-self: end;
+  gap: 5px;
+}
+
+.member-move-button {
+  width: 23px;
+  height: 23px;
+  padding: 0;
+  border: 1px solid #e8ede7;
+  border-radius: 5px;
+  background: #fff;
+  color: #55775c;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.member-move-button:hover:not(:disabled) {
+  background: #edf3ed;
+}
+
+.member-move-button:focus-visible {
+  outline: 2px solid #77957b;
+  outline-offset: 2px;
+}
+
+.member-move-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .member-edit-button:hover {
@@ -971,7 +1005,7 @@ button {
   }
 
   .member-row {
-    grid-template-columns: minmax(135px, 1.4fr) minmax(90px, 1fr) 48px minmax(100px, 1fr) 10px;
+    grid-template-columns: minmax(135px, 1.4fr) minmax(90px, 1fr) 48px minmax(100px, 1fr) auto;
     gap: 10px;
   }
 }

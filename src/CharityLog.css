@@ -307,7 +307,8 @@
 }
 
 .charity-edit-button,
-.charity-delete-button {
+.charity-delete-button,
+.charity-move-button {
   padding: 3px 5px;
   border: 0;
   border-radius: 4px;
@@ -324,6 +325,18 @@
   color: #a45c4d;
 }
 
+.charity-move-button {
+  min-width: 20px;
+  padding: 2px 3px;
+  background: #f2f5ef;
+  color: #55775c;
+  font-size: 11px;
+}
+
+.charity-move-button:hover {
+  background: #e8eee6;
+}
+
 .charity-edit-button:hover {
   background: #edf3ed;
 }
@@ -333,13 +346,15 @@
 }
 
 .charity-edit-button:focus-visible,
-.charity-delete-button:focus-visible {
+.charity-delete-button:focus-visible,
+.charity-move-button:focus-visible {
   outline: 2px solid #77957b;
   outline-offset: 2px;
 }
 
 .charity-edit-button:disabled,
-.charity-delete-button:disabled {
+.charity-delete-button:disabled,
+.charity-move-button:disabled {
   cursor: wait;
   opacity: 0.6;
 }

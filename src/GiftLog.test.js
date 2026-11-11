@@ -368,3 +368,42 @@ test('shows an API error when gift history cannot be loaded', async () => {
   );
   expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
 });
+
+test('moves a gift within its direction and saves the reordered sequence', async () => {
+  const firstGift = {
+    id: 1,
+    recipientName: 'Asha Shah',
+    recipientType: 'Family',
+    direction: 'Given',
+    giftName: 'First gift',
+    occasion: '',
+    dateGiven: '2025-11-12',
+    amount: '',
+    currency: '',
+    notes: '',
+  };
+  const secondGift = { ...firstGift, id: 2, giftName: 'Second gift' };
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(apiResponse([firstGift, secondGift]))
+    .mockResolvedValueOnce(apiResponse([secondGift, firstGift]));
+
+  const { container } = render(<GiftLog />);
+  fireEvent.click(await screen.findByRole('button', { name: /Asha Shah/ }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Move Second gift for Asha Shah up' })
+  );
+
+  await waitFor(() =>
+    expect(global.fetch).toHaveBeenLastCalledWith('/api/gifts/order', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ giftIds: [2, 1] }),
+    })
+  );
+  await waitFor(() => {
+    const names = [...container.querySelectorAll('.gift-record h4')].map(
+      (giftName) => giftName.textContent
+    );
+    expect(names).toEqual(['Second gift', 'First gift']);
+  });
+});
