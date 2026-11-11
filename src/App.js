@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import './App.css';
+import CharityLog from './CharityLog';
 import FamilyGraph from './FamilyGraph';
 import GiftLog from './GiftLog';
 
@@ -429,6 +430,15 @@ function App() {
             <span className="nav-icon" aria-hidden="true">♡</span>
             Gift log
           </button>
+          <button
+            className={`nav-item ${activePage === 'charity' ? 'nav-item-active' : ''}`}
+            type="button"
+            aria-current={activePage === 'charity' ? 'page' : undefined}
+            onClick={() => setActivePage('charity')}
+          >
+            <span className="nav-icon" aria-hidden="true">✦</span>
+            Charity work
+          </button>
         </nav>
 
         <div className="sidebar-note">
@@ -636,8 +646,10 @@ function App() {
             onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
             onManageMembers={() => setActivePage('members')}
           />
-        ) : (
+        ) : activePage === 'gifts' ? (
           <GiftLog />
+        ) : (
+          <CharityLog />
         )}
       </main>
 

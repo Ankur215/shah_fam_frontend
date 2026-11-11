@@ -1,0 +1,466 @@
+.charity-page {
+  color: #354339;
+}
+
+.charity-page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+
+.charity-page-heading h1 {
+  margin: 8px 0 6px;
+  color: #2c4133;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.6px;
+}
+
+.charity-page-heading p,
+.charity-card-heading p,
+.charity-history-heading p {
+  margin: 0;
+  color: #879188;
+  font-size: 11px;
+}
+
+.charity-record-count {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 15px;
+  border: 1px solid #e8ebe4;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.charity-record-count > span {
+  color: #bd9262;
+  font-size: 22px;
+}
+
+.charity-record-count > div {
+  display: grid;
+}
+
+.charity-record-count strong {
+  color: #344a39;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 23px;
+  font-weight: 500;
+}
+
+.charity-record-count small {
+  color: #929a94;
+  font-size: 9px;
+}
+
+.charity-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 17px;
+}
+
+.charity-summary > div {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  padding: 13px 17px;
+  border: 1px solid #e8ebe4;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.charity-summary strong {
+  overflow-wrap: anywhere;
+  color: #344a39;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.charity-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr);
+  align-items: start;
+  gap: 15px;
+}
+
+.charity-form-card,
+.charity-history-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #e8ebe4;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.charity-card-heading,
+.charity-history-heading {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 17px;
+}
+
+.charity-card-heading > span {
+  display: grid;
+  width: 35px;
+  height: 35px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: #edf3ed;
+  color: #55775c;
+  font-size: 20px;
+}
+
+.charity-card-heading h2,
+.charity-history-heading h2 {
+  margin: 0 0 5px;
+  color: #354339;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.charity-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px 11px;
+}
+
+.charity-form-grid label {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 6px;
+  color: #58655b;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.charity-form-grid input,
+.charity-form-grid select,
+.charity-form-grid textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 8px 9px;
+  border: 1px solid #e2e7e1;
+  border-radius: 6px;
+  outline: none;
+  background: #fff;
+  color: #435047;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.charity-form-grid textarea {
+  min-height: 77px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.45;
+}
+
+.charity-form-grid input:focus,
+.charity-form-grid select:focus,
+.charity-form-grid textarea:focus {
+  border-color: #77957b;
+  box-shadow: 0 0 0 3px rgba(110, 148, 116, 0.12);
+}
+
+.charity-form-grid input::placeholder,
+.charity-form-grid textarea::placeholder {
+  color: #aab1ab;
+}
+
+.charity-form-grid input[type='date'] {
+  padding: 6px;
+}
+
+.charity-form-full {
+  grid-column: 1 / -1;
+}
+
+.charity-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 17px;
+  padding-top: 14px;
+  border-top: 1px solid #edf0eb;
+}
+
+.charity-form-actions > span {
+  color: #98a099;
+  font-size: 9px;
+}
+
+.charity-form-actions > div {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.charity-history-heading {
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+
+.charity-history-heading > span {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 14px;
+  background: #f2f5ef;
+  color: #718274;
+  font-size: 9px;
+}
+
+.charity-search {
+  display: flex;
+  height: 36px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 0 10px;
+  border: 1px solid #e7eae5;
+  border-radius: 6px;
+  background: #fdfdfc;
+  color: #89948c;
+}
+
+.charity-search:focus-within {
+  border-color: #77957b;
+  box-shadow: 0 0 0 3px rgba(110, 148, 116, 0.12);
+}
+
+.charity-search > span:first-child {
+  font-size: 19px;
+}
+
+.charity-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #39473d;
+  font: inherit;
+  font-size: 10px;
+}
+
+.charity-record-list {
+  display: grid;
+  gap: 8px;
+}
+
+.charity-record {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid #e9ede7;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.charity-record-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+
+.charity-record-top > div:first-child {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 9px;
+}
+
+.charity-record time {
+  color: #9aa29c;
+  font-size: 9px;
+}
+
+.charity-record-type {
+  padding: 3px 7px;
+  border-radius: 12px;
+  background: #edf3ed;
+  color: #64806a;
+  font-size: 9px;
+}
+
+.charity-record-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.charity-edit-button,
+.charity-delete-button {
+  padding: 3px 5px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.charity-edit-button {
+  color: #55775c;
+}
+
+.charity-delete-button {
+  color: #a45c4d;
+}
+
+.charity-edit-button:hover {
+  background: #edf3ed;
+}
+
+.charity-delete-button:hover {
+  background: #fff1ed;
+}
+
+.charity-edit-button:focus-visible,
+.charity-delete-button:focus-visible {
+  outline: 2px solid #77957b;
+  outline-offset: 2px;
+}
+
+.charity-edit-button:disabled,
+.charity-delete-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.charity-record h3 {
+  margin: 0 0 4px;
+  color: #3e4d42;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.charity-record-organization,
+.charity-record-notes {
+  margin: 0;
+  color: #7e8981;
+  font-size: 10px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.charity-record-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.charity-record-metrics span {
+  padding: 4px 7px;
+  border: 1px solid #edf0eb;
+  border-radius: 5px;
+  color: #748077;
+  font-size: 9px;
+}
+
+.charity-record-notes {
+  margin-top: 10px;
+  white-space: pre-wrap;
+}
+
+.charity-empty-state {
+  display: grid;
+  min-height: 185px;
+  align-content: center;
+  justify-items: center;
+  padding: 20px 10px;
+  border-top: 1px solid #eff1ed;
+  text-align: center;
+}
+
+.charity-empty-state h3 {
+  margin: 3px 0 5px;
+  color: #425348;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.charity-empty-state p {
+  margin: 0;
+  color: #929b94;
+  font-size: 10px;
+}
+
+@media (max-width: 1000px) {
+  .charity-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 740px) {
+  .charity-page-heading h1 {
+    font-size: 26px;
+  }
+
+  .charity-form-card,
+  .charity-history-card {
+    padding: 17px;
+  }
+}
+
+@media (max-width: 480px) {
+  .charity-page-heading {
+    align-items: flex-start;
+  }
+
+  .charity-page-heading h1 {
+    font-size: 23px;
+  }
+
+  .charity-page-heading p {
+    max-width: 220px;
+    font-size: 10px;
+    line-height: 1.5;
+  }
+
+  .charity-record-count {
+    gap: 7px;
+    padding: 8px 10px;
+  }
+
+  .charity-record-count strong {
+    font-size: 19px;
+  }
+
+  .charity-record-count small {
+    max-width: 56px;
+    font-size: 8px;
+  }
+
+  .charity-form-grid {
+    gap: 12px 8px;
+  }
+
+  .charity-form-grid label {
+    font-size: 9px;
+  }
+
+  .charity-form-grid input,
+  .charity-form-grid select,
+  .charity-form-grid textarea {
+    font-size: 10px;
+  }
+}

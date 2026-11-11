@@ -58,6 +58,17 @@ test('opens the gift log from the main navigation', async () => {
   expect(global.fetch).toHaveBeenCalledWith('/api/gifts');
 });
 
+test('opens the charity work section from the main navigation', async () => {
+  render(<App />);
+
+  fireEvent.click(await screen.findByRole('button', { name: /charity work/i }));
+
+  expect(
+    await screen.findByRole('heading', { name: 'Charity work' })
+  ).toBeInTheDocument();
+  expect(global.fetch).toHaveBeenCalledWith('/api/charity-records');
+});
+
 test('shows connected family members by generation in the family graph', async () => {
   const spouse = {
     ...savedMember,
