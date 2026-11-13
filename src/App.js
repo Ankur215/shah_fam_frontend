@@ -119,6 +119,16 @@ function validateMember(member, countryCode, phoneNumber) {
   if (member.dateOfBirth && member.dateOfBirth > today) {
     errors.dateOfBirth = 'Birthday cannot be in the future.';
   }
+  if (member.dateOfDeath && member.dateOfDeath > today) {
+    errors.dateOfDeath = 'Death date cannot be in the future.';
+  }
+  if (
+    member.dateOfBirth &&
+    member.dateOfDeath &&
+    member.dateOfDeath < member.dateOfBirth
+  ) {
+    errors.dateOfDeath = 'Death date cannot be before the birthday.';
+  }
   const hasGujaratiBirthday =
     member.gujaratiBirthdayMonth ||
     member.gujaratiBirthdayPaksha ||
@@ -137,6 +147,50 @@ function validateMember(member, countryCode, phoneNumber) {
     (member.gujaratiBirthdayPaksha === 'Vad' && member.gujaratiBirthdayTithi === 'Poonam')
   ) {
     errors.gujaratiBirthdayTithi = 'Choose a tithi that matches the selected paksha.';
+  }
+  const hasGujaratiDeathTithi =
+    member.gujaratiDeathMonth ||
+    member.gujaratiDeathPaksha ||
+    member.gujaratiDeathTithi;
+  if (hasGujaratiDeathTithi && !member.gujaratiDeathMonth) {
+    errors.gujaratiDeathMonth = 'Choose a month for the Gujarati death tithi.';
+  }
+  if (hasGujaratiDeathTithi && !member.gujaratiDeathPaksha) {
+    errors.gujaratiDeathPaksha = 'Choose Sud or Vad for the Gujarati death tithi.';
+  }
+  if (hasGujaratiDeathTithi && !member.gujaratiDeathTithi) {
+    errors.gujaratiDeathTithi = 'Choose a tithi for the Gujarati death date.';
+  }
+  if (
+    (member.gujaratiDeathPaksha === 'Sud' && member.gujaratiDeathTithi === 'Amas') ||
+    (member.gujaratiDeathPaksha === 'Vad' && member.gujaratiDeathTithi === 'Poonam')
+  ) {
+    errors.gujaratiDeathTithi = 'Choose a tithi that matches the selected paksha.';
+  }
+  const hasGujaratiAnniversaryTithi =
+    member.gujaratiAnniversaryMonth ||
+    member.gujaratiAnniversaryPaksha ||
+    member.gujaratiAnniversaryTithi;
+  if (hasGujaratiAnniversaryTithi && !member.gujaratiAnniversaryMonth) {
+    errors.gujaratiAnniversaryMonth =
+      'Choose a month for the Gujarati wedding anniversary.';
+  }
+  if (hasGujaratiAnniversaryTithi && !member.gujaratiAnniversaryPaksha) {
+    errors.gujaratiAnniversaryPaksha =
+      'Choose Sud or Vad for the Gujarati wedding anniversary.';
+  }
+  if (hasGujaratiAnniversaryTithi && !member.gujaratiAnniversaryTithi) {
+    errors.gujaratiAnniversaryTithi =
+      'Choose a tithi for the Gujarati wedding anniversary.';
+  }
+  if (
+    (member.gujaratiAnniversaryPaksha === 'Sud' &&
+      member.gujaratiAnniversaryTithi === 'Amas') ||
+    (member.gujaratiAnniversaryPaksha === 'Vad' &&
+      member.gujaratiAnniversaryTithi === 'Poonam')
+  ) {
+    errors.gujaratiAnniversaryTithi =
+      'Choose a tithi that matches the selected paksha.';
   }
   if (member.relationship.length > 50) {
     errors.relationship = 'Relationship must be 50 characters or fewer.';
@@ -184,19 +238,25 @@ function getInitials(firstName, lastName) {
   return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
 }
 
-function calculateAge(dateOfBirth) {
-  if (!dateOfBirth) return null;
+function calculateElapsedYears(date) {
+  if (!date) return null;
 
   const today = new Date();
-  const birthday = new Date(`${dateOfBirth}T00:00:00`);
-  let age = today.getFullYear() - birthday.getFullYear();
-  const hasHadBirthdayThisYear =
-    today.getMonth() > birthday.getMonth() ||
-    (today.getMonth() === birthday.getMonth() &&
-      today.getDate() >= birthday.getDate());
+  const startDate = new Date(`${date}T00:00:00`);
+  let years = today.getFullYear() - startDate.getFullYear();
+  const anniversaryHasPassed =
+    today.getMonth() > startDate.getMonth() ||
+    (today.getMonth() === startDate.getMonth() &&
+      today.getDate() >= startDate.getDate());
 
-  if (!hasHadBirthdayThisYear) age -= 1;
-  return age >= 0 ? age : null;
+  if (!anniversaryHasPassed) years -= 1;
+  return years >= 0 ? years : null;
+}
+
+function formatElapsedYears(date, description) {
+  const years = calculateElapsedYears(date);
+  if (years === null) return '';
+  return `${years} ${years === 1 ? 'year' : 'years'} ${description}`;
 }
 
 function formatDate(date) {
@@ -209,15 +269,54 @@ function formatDate(date) {
   }).format(new Date(`${date}T00:00:00Z`));
 }
 
+function MedicalReports() {
+  return (
+    <section
+      className="page-content medical-reports-page"
+      aria-labelledby="medical-reports-heading"
+    >
+      <header className="medical-reports-heading">
+        <span className="eyebrow">HEALTH RECORDS</span>
+        <h1 id="medical-reports-heading">Medical reports</h1>
+        <p>Redacted summaries of the medical documents you choose to keep here.</p>
+      </header>
+
+      <article className="medical-report-card">
+        <div className="medical-report-header">
+          <div>
+            <span className="eyebrow">PULMONARY FUNCTION TEST</span>
+            <h2>Reported interpretation</h2>
+          </div>
+          <time dateTime="2024-04-24">Apr 24, 2024</time>
+        </div>
+        <p className="medical-report-result">
+          Normal spirometry. No significant bronchodilator response.
+        </p>
+        <p className="medical-report-note" role="note">
+          Redacted summary from a scanned report. Numerical measurements were
+          omitted because OCR could not read the table reliably. This summary is
+          not medical advice; confirm the report with a qualified clinician.
+        </p>
+      </article>
+    </section>
+  );
+}
+
 function App() {
   const [members, setMembers] = useState([]);
   const [activePage, setActivePage] = useState('members');
+  const [isLogsMenuOpen, setIsLogsMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [selectedCountry, setSelectedCountry] = useState(DEFAULT_COUNTRY);
   const [selectedPaksha, setSelectedPaksha] = useState('');
   const [selectedTithi, setSelectedTithi] = useState('');
+  const [isDeceased, setIsDeceased] = useState(false);
+  const [selectedDeathPaksha, setSelectedDeathPaksha] = useState('');
+  const [selectedDeathTithi, setSelectedDeathTithi] = useState('');
+  const [selectedAnniversaryPaksha, setSelectedAnniversaryPaksha] = useState('');
+  const [selectedAnniversaryTithi, setSelectedAnniversaryTithi] = useState('');
   const [apiError, setApiError] = useState('');
   const [isLoadError, setIsLoadError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -231,6 +330,11 @@ function App() {
     setSelectedCountry(member ? getPhoneParts(member.phone).country : DEFAULT_COUNTRY);
     setSelectedPaksha(member?.gujaratiBirthdayPaksha || '');
     setSelectedTithi(member?.gujaratiBirthdayTithi || '');
+    setIsDeceased(Boolean(member?.isDeceased || member?.dateOfDeath));
+    setSelectedDeathPaksha(member?.gujaratiDeathPaksha || '');
+    setSelectedDeathTithi(member?.gujaratiDeathTithi || '');
+    setSelectedAnniversaryPaksha(member?.gujaratiAnniversaryPaksha || '');
+    setSelectedAnniversaryTithi(member?.gujaratiAnniversaryTithi || '');
     setValidationErrors({});
     setApiError('');
     setIsFormOpen(true);
@@ -289,6 +393,12 @@ function App() {
   const availableTithis = selectedPaksha
     ? [...GUJARATI_TITHI_NAMES, selectedPaksha === 'Sud' ? 'Poonam' : 'Amas']
     : [];
+  const availableAnniversaryTithis = selectedAnniversaryPaksha
+    ? [
+        ...GUJARATI_TITHI_NAMES,
+        selectedAnniversaryPaksha === 'Sud' ? 'Poonam' : 'Amas',
+      ]
+    : [];
   const relationshipCandidates = members
     .filter((member) => member.id !== editingMember?.id)
     .sort((first, second) =>
@@ -314,7 +424,15 @@ function App() {
       gujaratiBirthdayMonth: formData.get('gujaratiBirthdayMonth'),
       gujaratiBirthdayPaksha: formData.get('gujaratiBirthdayPaksha'),
       gujaratiBirthdayTithi: formData.get('gujaratiBirthdayTithi'),
+      isDeceased,
+      dateOfDeath: isDeceased ? formData.get('dateOfDeath') : '',
+      gujaratiDeathMonth: isDeceased ? formData.get('gujaratiDeathMonth') : '',
+      gujaratiDeathPaksha: isDeceased ? formData.get('gujaratiDeathPaksha') : '',
+      gujaratiDeathTithi: isDeceased ? formData.get('gujaratiDeathTithi') : '',
       anniversaryDate: formData.get('anniversaryDate'),
+      gujaratiAnniversaryMonth: formData.get('gujaratiAnniversaryMonth'),
+      gujaratiAnniversaryPaksha: formData.get('gujaratiAnniversaryPaksha'),
+      gujaratiAnniversaryTithi: formData.get('gujaratiAnniversaryTithi'),
       phone: phoneNumber ? [countryCode, phoneNumber].join(' ') : '',
       email: String(formData.get('email') || '').trim(),
       address: String(formData.get('address') || '').trim(),
@@ -454,23 +572,55 @@ function App() {
             Family graph
           </button>
           <button
-            className={`nav-item ${activePage === 'gifts' ? 'nav-item-active' : ''}`}
+            className={`nav-item ${activePage === 'medical' ? 'nav-item-active' : ''}`}
             type="button"
-            aria-current={activePage === 'gifts' ? 'page' : undefined}
-            onClick={() => setActivePage('gifts')}
+            aria-current={activePage === 'medical' ? 'page' : undefined}
+            onClick={() => setActivePage('medical')}
           >
-            <span className="nav-icon" aria-hidden="true">♡</span>
-            Gift log
+            <span className="nav-icon" aria-hidden="true">✚</span>
+            Medical reports
           </button>
-          <button
-            className={`nav-item ${activePage === 'charity' ? 'nav-item-active' : ''}`}
-            type="button"
-            aria-current={activePage === 'charity' ? 'page' : undefined}
-            onClick={() => setActivePage('charity')}
-          >
-            <span className="nav-icon" aria-hidden="true">✦</span>
-            Charity work
-          </button>
+          <div className="nav-group">
+            <button
+              className={`nav-item ${
+                activePage === 'gifts' || activePage === 'charity' ? 'nav-item-active' : ''
+              }`}
+              type="button"
+              aria-expanded={isLogsMenuOpen}
+              aria-controls="logs-submenu"
+              onClick={() => setIsLogsMenuOpen((isOpen) => !isOpen)}
+            >
+              <span className="nav-icon" aria-hidden="true">▤</span>
+              Gifts & Giving
+              <span className="nav-chevron" aria-hidden="true">
+                {isLogsMenuOpen ? '⌃' : '⌄'}
+              </span>
+            </button>
+            {isLogsMenuOpen && (
+              <div className="nav-submenu" id="logs-submenu">
+                <button
+                  className={`nav-item nav-subitem ${
+                    activePage === 'gifts' ? 'nav-item-active' : ''
+                  }`}
+                  type="button"
+                  aria-current={activePage === 'gifts' ? 'page' : undefined}
+                  onClick={() => setActivePage('gifts')}
+                >
+                  Gift log
+                </button>
+                <button
+                  className={`nav-item nav-subitem ${
+                    activePage === 'charity' ? 'nav-item-active' : ''
+                  }`}
+                  type="button"
+                  aria-current={activePage === 'charity' ? 'page' : undefined}
+                  onClick={() => setActivePage('charity')}
+                >
+                  Charity work
+                </button>
+              </div>
+            )}
+          </div>
         </nav>
 
         <div className="sidebar-note">
@@ -489,7 +639,11 @@ function App() {
               ? 'Members'
               : activePage === 'graph'
                 ? 'Family graph'
-                : 'Gift log'}
+                : activePage === 'gifts'
+                  ? 'Gift log'
+                  : activePage === 'charity'
+                    ? 'Charity work'
+                    : 'Medical reports'}
           </span>
           <span className="privacy-label">
             <span className="privacy-dot" aria-hidden="true" />
@@ -608,20 +762,74 @@ function App() {
                       <span>{member.relationship || 'Family member'}</span>
                     </div>
                     <div className="member-detail">
-                      <span className="detail-label">BIRTHDAY</span>
-                      <span>{formatDate(member.dateOfBirth)}</span>
-                      {member.gujaratiBirthdayMonth && member.gujaratiBirthdayTithi && (
-                        <span className="gujarati-birthday">
-                          {member.gujaratiBirthdayMonth} · {member.gujaratiBirthdayPaksha}{' '}
-                          {member.gujaratiBirthdayTithi}
-                        </span>
+                      {(member.dateOfBirth ||
+                        (member.gujaratiBirthdayMonth && member.gujaratiBirthdayTithi)) && (
+                        <>
+                          <span className="detail-label">BIRTHDAY</span>
+                          {member.gujaratiBirthdayMonth && member.gujaratiBirthdayTithi && (
+                            <span className="gujarati-birthday">
+                              {member.gujaratiBirthdayMonth} · {member.gujaratiBirthdayPaksha}{' '}
+                              {member.gujaratiBirthdayTithi}
+                            </span>
+                          )}
+                          {member.dateOfBirth && (
+                            <>
+                              <span>{formatDate(member.dateOfBirth)}</span>
+                              <span className="elapsed-years">
+                                {formatElapsedYears(member.dateOfBirth, 'old')}
+                              </span>
+                            </>
+                          )}
+                        </>
                       )}
                     </div>
-                    <div className="member-detail member-age">
-                      <span className="detail-label">AGE</span>
-                      <span>
-                        {calculateAge(member.dateOfBirth) ?? '—'}
-                      </span>
+                    <div className="member-detail">
+                      {member.isDeceased &&
+                        (member.dateOfDeath ||
+                          (member.gujaratiDeathMonth && member.gujaratiDeathTithi)) && (
+                          <>
+                            <span className="detail-label">DEATH DATE</span>
+                            {member.gujaratiDeathMonth && member.gujaratiDeathTithi && (
+                              <span className="gujarati-birthday">
+                                {member.gujaratiDeathMonth} · {member.gujaratiDeathPaksha}{' '}
+                                {member.gujaratiDeathTithi}
+                              </span>
+                            )}
+                            {member.dateOfDeath && (
+                              <>
+                                <span>{formatDate(member.dateOfDeath)}</span>
+                                <span className="elapsed-years">
+                                  {formatElapsedYears(member.dateOfDeath, 'ago')}
+                                </span>
+                              </>
+                            )}
+                          </>
+                        )}
+                    </div>
+                    <div className="member-detail">
+                      {(member.anniversaryDate ||
+                        (member.gujaratiAnniversaryMonth &&
+                          member.gujaratiAnniversaryTithi)) && (
+                        <>
+                          <span className="detail-label">WEDDING ANNIVERSARY</span>
+                          {member.gujaratiAnniversaryMonth &&
+                            member.gujaratiAnniversaryTithi && (
+                              <span className="gujarati-birthday">
+                                {member.gujaratiAnniversaryMonth} ·{' '}
+                                {member.gujaratiAnniversaryPaksha}{' '}
+                                {member.gujaratiAnniversaryTithi}
+                              </span>
+                            )}
+                          {member.anniversaryDate && (
+                            <>
+                              <span>{formatDate(member.anniversaryDate)}</span>
+                              <span className="elapsed-years">
+                                {formatElapsedYears(member.anniversaryDate, 'married')}
+                              </span>
+                            </>
+                          )}
+                        </>
+                      )}
                     </div>
                     <div className="member-detail member-contact">
                       <span className="detail-label">CONTACT</span>
@@ -714,8 +922,10 @@ function App() {
           />
         ) : activePage === 'gifts' ? (
           <GiftLog />
-        ) : (
+        ) : activePage === 'charity' ? (
           <CharityLog />
+        ) : (
+          <MedicalReports />
         )}
       </main>
 
@@ -994,7 +1204,7 @@ function App() {
                   )}
                 </label>
                 <label>
-                  Anniversary
+                  Wedding Anniversary
                   <input
                     name="anniversaryDate"
                     type="date"
@@ -1008,6 +1218,216 @@ function App() {
                     </span>
                   )}
                 </label>
+                <label>
+                  Gujarati wedding anniversary month
+                  <select
+                    name="gujaratiAnniversaryMonth"
+                    defaultValue={editingMember?.gujaratiAnniversaryMonth || ''}
+                    aria-invalid={Boolean(validationErrors.gujaratiAnniversaryMonth)}
+                    aria-describedby={
+                      validationErrors.gujaratiAnniversaryMonth
+                        ? 'gujaratiAnniversaryMonth-error'
+                        : undefined
+                    }
+                  >
+                    <option value="">Choose month</option>
+                    {GUJARATI_BIRTHDAY_MONTHS.map((month) => (
+                      <option key={month}>{month}</option>
+                    ))}
+                  </select>
+                  {validationErrors.gujaratiAnniversaryMonth && (
+                    <span
+                      className="field-error"
+                      id="gujaratiAnniversaryMonth-error"
+                    >
+                      {validationErrors.gujaratiAnniversaryMonth}
+                    </span>
+                  )}
+                </label>
+                <label>
+                  Gujarati wedding anniversary paksha
+                  <select
+                    name="gujaratiAnniversaryPaksha"
+                    value={selectedAnniversaryPaksha}
+                    onChange={(event) => {
+                      const paksha = event.target.value;
+                      setSelectedAnniversaryPaksha(paksha);
+                      setSelectedAnniversaryTithi((tithi) =>
+                        (tithi === 'Poonam' && paksha !== 'Sud') ||
+                        (tithi === 'Amas' && paksha !== 'Vad')
+                          ? ''
+                          : tithi
+                      );
+                    }}
+                    aria-invalid={Boolean(validationErrors.gujaratiAnniversaryPaksha)}
+                    aria-describedby={
+                      validationErrors.gujaratiAnniversaryPaksha
+                        ? 'gujaratiAnniversaryPaksha-error'
+                        : undefined
+                    }
+                  >
+                    <option value="">Choose paksha</option>
+                    <option value="Sud">Sud</option>
+                    <option value="Vad">Vad</option>
+                  </select>
+                  {validationErrors.gujaratiAnniversaryPaksha && (
+                    <span
+                      className="field-error"
+                      id="gujaratiAnniversaryPaksha-error"
+                    >
+                      {validationErrors.gujaratiAnniversaryPaksha}
+                    </span>
+                  )}
+                </label>
+                <label>
+                  Gujarati wedding anniversary tithi
+                  <select
+                    name="gujaratiAnniversaryTithi"
+                    value={selectedAnniversaryTithi}
+                    onChange={(event) =>
+                      setSelectedAnniversaryTithi(event.target.value)
+                    }
+                    aria-invalid={Boolean(validationErrors.gujaratiAnniversaryTithi)}
+                    aria-describedby={
+                      validationErrors.gujaratiAnniversaryTithi
+                        ? 'gujaratiAnniversaryTithi-error'
+                        : undefined
+                    }
+                  >
+                    <option value="">Choose tithi</option>
+                    {availableAnniversaryTithis.map((tithi) => (
+                      <option key={tithi}>{tithi}</option>
+                    ))}
+                  </select>
+                  {validationErrors.gujaratiAnniversaryTithi && (
+                    <span
+                      className="field-error"
+                      id="gujaratiAnniversaryTithi-error"
+                    >
+                      {validationErrors.gujaratiAnniversaryTithi}
+                    </span>
+                  )}
+                </label>
+                <label className="deceased-toggle form-full-width">
+                  <input
+                    name="isDeceased"
+                    type="checkbox"
+                    checked={isDeceased}
+                    onChange={(event) => setIsDeceased(event.target.checked)}
+                  />
+                  This person has passed away
+                </label>
+                <fieldset
+                  className="death-details form-full-width"
+                  hidden={!isDeceased}
+                >
+                    <legend>Death details</legend>
+                    <div className="death-fields">
+                      <label>
+                        Date of death
+                        <input
+                          name="dateOfDeath"
+                          type="date"
+                          max={getLocalDateString()}
+                          defaultValue={editingMember?.dateOfDeath || ''}
+                          aria-invalid={Boolean(validationErrors.dateOfDeath)}
+                          aria-describedby={
+                            validationErrors.dateOfDeath ? 'dateOfDeath-error' : undefined
+                          }
+                        />
+                        {validationErrors.dateOfDeath && (
+                          <span className="field-error" id="dateOfDeath-error">
+                            {validationErrors.dateOfDeath}
+                          </span>
+                        )}
+                      </label>
+                      <label>
+                        Gujarati death month
+                        <select
+                          name="gujaratiDeathMonth"
+                          defaultValue={editingMember?.gujaratiDeathMonth || ''}
+                          aria-invalid={Boolean(validationErrors.gujaratiDeathMonth)}
+                          aria-describedby={
+                            validationErrors.gujaratiDeathMonth
+                              ? 'gujaratiDeathMonth-error'
+                              : undefined
+                          }
+                        >
+                          <option value="">Choose month</option>
+                          {GUJARATI_BIRTHDAY_MONTHS.map((month) => (
+                            <option key={month}>{month}</option>
+                          ))}
+                        </select>
+                        {validationErrors.gujaratiDeathMonth && (
+                          <span className="field-error" id="gujaratiDeathMonth-error">
+                            {validationErrors.gujaratiDeathMonth}
+                          </span>
+                        )}
+                      </label>
+                      <label>
+                        Gujarati death paksha
+                        <select
+                          name="gujaratiDeathPaksha"
+                          value={selectedDeathPaksha}
+                          onChange={(event) => {
+                            const paksha = event.target.value;
+                            setSelectedDeathPaksha(paksha);
+                            setSelectedDeathTithi((tithi) =>
+                              (tithi === 'Poonam' && paksha !== 'Sud') ||
+                              (tithi === 'Amas' && paksha !== 'Vad')
+                                ? ''
+                                : tithi
+                            );
+                          }}
+                          aria-invalid={Boolean(validationErrors.gujaratiDeathPaksha)}
+                          aria-describedby={
+                            validationErrors.gujaratiDeathPaksha
+                              ? 'gujaratiDeathPaksha-error'
+                              : undefined
+                          }
+                        >
+                          <option value="">Choose paksha</option>
+                          <option value="Sud">Sud</option>
+                          <option value="Vad">Vad</option>
+                        </select>
+                        {validationErrors.gujaratiDeathPaksha && (
+                          <span className="field-error" id="gujaratiDeathPaksha-error">
+                            {validationErrors.gujaratiDeathPaksha}
+                          </span>
+                        )}
+                      </label>
+                      <label>
+                        Gujarati death tithi
+                        <select
+                          name="gujaratiDeathTithi"
+                          value={selectedDeathTithi}
+                          onChange={(event) => setSelectedDeathTithi(event.target.value)}
+                          aria-invalid={Boolean(validationErrors.gujaratiDeathTithi)}
+                          aria-describedby={
+                            validationErrors.gujaratiDeathTithi
+                              ? 'gujaratiDeathTithi-error'
+                              : undefined
+                          }
+                        >
+                          <option value="">Choose tithi</option>
+                          {(selectedDeathPaksha
+                            ? [
+                                ...GUJARATI_TITHI_NAMES,
+                                selectedDeathPaksha === 'Sud' ? 'Poonam' : 'Amas',
+                              ]
+                            : []
+                          ).map((tithi) => (
+                            <option key={tithi}>{tithi}</option>
+                          ))}
+                        </select>
+                        {validationErrors.gujaratiDeathTithi && (
+                          <span className="field-error" id="gujaratiDeathTithi-error">
+                            {validationErrors.gujaratiDeathTithi}
+                          </span>
+                        )}
+                      </label>
+                    </div>
+                </fieldset>
                 <label>
                   Country
                   <select

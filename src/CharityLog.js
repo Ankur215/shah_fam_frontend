@@ -250,15 +250,19 @@ function CharityLog() {
         }
       );
       const savedRecord = await readApiResponse(response);
-      setRecords((currentRecords) =>
-        sortRecords(
-          editingRecord
-            ? currentRecords.map((currentRecord) =>
-                currentRecord.id === savedRecord.id ? savedRecord : currentRecord
-              )
-            : [...currentRecords, savedRecord]
-        )
-      );
+      setRecords((currentRecords) => {
+        if (editingRecord) {
+          return sortRecords(
+            currentRecords.map((currentRecord) =>
+              currentRecord.id === savedRecord.id ? savedRecord : currentRecord
+            )
+          );
+        }
+        return [savedRecord, ...currentRecords].map((record, sortOrder) => ({
+          ...record,
+          sortOrder,
+        }));
+      });
       if (!editingRecord) form.reset();
       setEditingRecord(null);
     } catch (saveError) {

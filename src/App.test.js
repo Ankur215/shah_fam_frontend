@@ -8,10 +8,18 @@ const savedMember = {
   relationship: 'Self',
   gender: '',
   dateOfBirth: '',
+  isDeceased: false,
+  dateOfDeath: '',
   gujaratiBirthdayMonth: '',
   gujaratiBirthdayPaksha: '',
   gujaratiBirthdayTithi: '',
+  gujaratiDeathMonth: '',
+  gujaratiDeathPaksha: '',
+  gujaratiDeathTithi: '',
   anniversaryDate: '',
+  gujaratiAnniversaryMonth: '',
+  gujaratiAnniversaryPaksha: '',
+  gujaratiAnniversaryTithi: '',
   phone: '',
   email: '',
   address: '',
@@ -75,7 +83,8 @@ test('moves a family member and saves the reordered sequence', async () => {
 test('opens the gift log from the main navigation', async () => {
   render(<App />);
 
-  fireEvent.click(await screen.findByRole('button', { name: /gift log/i }));
+  fireEvent.click(await screen.findByRole('button', { name: /gifts & giving/i }));
+  fireEvent.click(screen.getByRole('button', { name: 'Gift log' }));
 
   expect(
     await screen.findByRole('heading', { name: 'Gifts by person' })
@@ -86,12 +95,27 @@ test('opens the gift log from the main navigation', async () => {
 test('opens the charity work section from the main navigation', async () => {
   render(<App />);
 
-  fireEvent.click(await screen.findByRole('button', { name: /charity work/i }));
+  fireEvent.click(await screen.findByRole('button', { name: /gifts & giving/i }));
+  fireEvent.click(screen.getByRole('button', { name: 'Charity work' }));
 
   expect(
     await screen.findByRole('heading', { name: 'Charity work' })
   ).toBeInTheDocument();
   expect(global.fetch).toHaveBeenCalledWith('/api/charity-records');
+});
+
+test('opens medical reports and displays only the redacted summary', async () => {
+  render(<App />);
+
+  fireEvent.click(await screen.findByRole('button', { name: /medical reports/i }));
+
+  expect(
+    await screen.findByRole('heading', { name: 'Medical reports' })
+  ).toBeInTheDocument();
+  expect(screen.getByText('Normal spirometry. No significant bronchodilator response.'))
+    .toBeInTheDocument();
+  expect(screen.getByText(/numerical measurements were omitted/i)).toBeInTheDocument();
+  expect(screen.queryByText(/patient code|date of birth/i)).not.toBeInTheDocument();
 });
 
 test('shows connected family members by generation in the family graph', async () => {
@@ -390,9 +414,19 @@ test('posts a family member to the API and displays the saved record', async () 
       apiResponse({
         ...savedMember,
         phone: '+1 555-0100',
+        dateOfBirth: '1980-04-23',
         gujaratiBirthdayMonth: 'Kartak',
         gujaratiBirthdayPaksha: 'Sud',
         gujaratiBirthdayTithi: 'Poonam',
+        isDeceased: true,
+        dateOfDeath: '2000-02-20',
+        gujaratiDeathMonth: 'Vaishakh',
+        gujaratiDeathPaksha: 'Vad',
+        gujaratiDeathTithi: 'Amas',
+        anniversaryDate: '2005-05-15',
+        gujaratiAnniversaryMonth: 'Vaishakh',
+        gujaratiAnniversaryPaksha: 'Sud',
+        gujaratiAnniversaryTithi: 'Poonam',
       })
     );
 
@@ -410,6 +444,9 @@ test('posts a family member to the API and displays the saved record', async () 
   fireEvent.change(screen.getByLabelText(/relationship/i), {
     target: { value: 'Self' },
   });
+  fireEvent.change(screen.getByLabelText('Birthday', { exact: true }), {
+    target: { value: '1980-04-23' },
+  });
   fireEvent.change(screen.getByLabelText('Gujarati birthday month'), {
     target: { value: 'Kartak' },
   });
@@ -420,6 +457,38 @@ test('posts a family member to the API and displays the saved record', async () 
   expect(screen.queryByRole('option', { name: 'Amas' })).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Gujarati birthday tithi'), {
     target: { value: 'Poonam' },
+  });
+  fireEvent.change(screen.getByLabelText('Wedding Anniversary'), {
+    target: { value: '2005-05-15' },
+  });
+  fireEvent.change(
+    screen.getByLabelText('Gujarati wedding anniversary month'),
+    { target: { value: 'Vaishakh' } }
+  );
+  fireEvent.change(
+    screen.getByLabelText('Gujarati wedding anniversary paksha'),
+    { target: { value: 'Sud' } }
+  );
+  fireEvent.change(
+    screen.getByLabelText('Gujarati wedding anniversary tithi'),
+    { target: { value: 'Poonam' } }
+  );
+  expect(screen.getByLabelText('Date of death')).not.toBeVisible();
+  fireEvent.click(screen.getByRole('checkbox', {
+    name: 'This person has passed away',
+  }));
+  expect(screen.getByLabelText('Date of death')).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Date of death'), {
+    target: { value: '2000-02-20' },
+  });
+  fireEvent.change(screen.getByLabelText('Gujarati death month'), {
+    target: { value: 'Vaishakh' },
+  });
+  fireEvent.change(screen.getByLabelText('Gujarati death paksha'), {
+    target: { value: 'Vad' },
+  });
+  fireEvent.change(screen.getByLabelText('Gujarati death tithi'), {
+    target: { value: 'Amas' },
   });
   expect(screen.getByLabelText('Country')).toHaveValue('IN');
   expect(screen.getByLabelText('Country code')).toHaveValue('+91');
@@ -443,11 +512,19 @@ test('posts a family member to the API and displays the saved record', async () 
       parentIds: [],
       spouseIds: [],
       gender: '',
-      dateOfBirth: '',
+      dateOfBirth: '1980-04-23',
       gujaratiBirthdayMonth: 'Kartak',
       gujaratiBirthdayPaksha: 'Sud',
       gujaratiBirthdayTithi: 'Poonam',
-      anniversaryDate: '',
+      isDeceased: true,
+      dateOfDeath: '2000-02-20',
+      gujaratiDeathMonth: 'Vaishakh',
+      gujaratiDeathPaksha: 'Vad',
+      gujaratiDeathTithi: 'Amas',
+      anniversaryDate: '2005-05-15',
+      gujaratiAnniversaryMonth: 'Vaishakh',
+      gujaratiAnniversaryPaksha: 'Sud',
+      gujaratiAnniversaryTithi: 'Poonam',
       phone: '+1 555-0100',
       email: '',
       address: '',
@@ -455,6 +532,36 @@ test('posts a family member to the API and displays the saved record', async () 
   });
   expect(await screen.findByText('Asha Shah')).toBeInTheDocument();
   expect(screen.getByText('Kartak · Sud Poonam')).toBeInTheDocument();
+  expect(screen.getByText('Vaishakh · Vad Amas')).toBeInTheDocument();
+  expect(screen.getByText('Vaishakh · Sud Poonam')).toBeInTheDocument();
+  const dateBlocks = screen
+    .getByText('Asha Shah')
+    .closest('.member-row')
+    .querySelectorAll('.member-detail');
+  expect(dateBlocks[0]).toHaveTextContent('BIRTHDAY');
+  expect(dateBlocks[0]).toHaveTextContent(/\d+ years? old/);
+  expect(dateBlocks[1]).toHaveTextContent('DEATH DATE');
+  expect(dateBlocks[1]).toHaveTextContent(/\d+ years? ago/);
+  expect(dateBlocks[2]).toHaveTextContent('WEDDING ANNIVERSARY');
+  expect(dateBlocks[2]).toHaveTextContent(/\d+ years? married/);
+  expect(dateBlocks[0].textContent.indexOf('Kartak')).toBeLessThan(
+    dateBlocks[0].textContent.indexOf('Apr 23, 1980')
+  );
+  expect(dateBlocks[0].textContent.indexOf('Apr 23, 1980')).toBeLessThan(
+    dateBlocks[0].textContent.indexOf('years old')
+  );
+  expect(dateBlocks[1].textContent.indexOf('Vaishakh')).toBeLessThan(
+    dateBlocks[1].textContent.indexOf('Feb 20, 2000')
+  );
+  expect(dateBlocks[1].textContent.indexOf('Feb 20, 2000')).toBeLessThan(
+    dateBlocks[1].textContent.indexOf('years ago')
+  );
+  expect(dateBlocks[2].textContent.indexOf('Vaishakh')).toBeLessThan(
+    dateBlocks[2].textContent.indexOf('May 15, 2005')
+  );
+  expect(dateBlocks[2].textContent.indexOf('May 15, 2005')).toBeLessThan(
+    dateBlocks[2].textContent.indexOf('years married')
+  );
 });
 
 test('edits an existing family member through the API', async () => {
@@ -501,7 +608,15 @@ test('edits an existing family member through the API', async () => {
       gujaratiBirthdayMonth: 'Vaishakh',
       gujaratiBirthdayPaksha: 'Vad',
       gujaratiBirthdayTithi: 'Amas',
+      isDeceased: false,
+      dateOfDeath: '',
+      gujaratiDeathMonth: '',
+      gujaratiDeathPaksha: '',
+      gujaratiDeathTithi: '',
       anniversaryDate: '',
+      gujaratiAnniversaryMonth: '',
+      gujaratiAnniversaryPaksha: '',
+      gujaratiAnniversaryTithi: '',
       phone: '+44 20 1234 5678',
       email: '',
       address: '',
@@ -509,6 +624,13 @@ test('edits an existing family member through the API', async () => {
   });
   expect(await screen.findByText('Asha Patel')).toBeInTheDocument();
   expect(screen.queryByText('Asha Shah')).not.toBeInTheDocument();
+  const dateBlocks = screen
+    .getByText('Asha Patel')
+    .closest('.member-row')
+    .querySelectorAll('.member-detail');
+  expect(dateBlocks[0]).toHaveTextContent('Vaishakh · Vad Amas');
+  expect(dateBlocks[1]).toBeEmptyDOMElement();
+  expect(dateBlocks[2]).toBeEmptyDOMElement();
 });
 
 test('opens an edit form when the API returns a null phone number', async () => {

@@ -69,9 +69,22 @@ test('saves a charity record with amount, activity, and notes in order', async (
     currency: 'USD',
     volunteerHours: '2.50',
     notes: 'Family volunteer day',
+    sortOrder: 0,
+  };
+  const existingRecord = {
+    id: 6,
+    organization: 'Local Shelter',
+    workType: 'Donation',
+    activity: 'Provided supplies',
+    datePerformed: '2026-11-11',
+    amount: '',
+    currency: '',
+    volunteerHours: '',
+    notes: '',
+    sortOrder: 0,
   };
   global.fetch = jest.fn()
-    .mockResolvedValueOnce(apiResponse([]))
+    .mockResolvedValueOnce(apiResponse([existingRecord]))
     .mockResolvedValueOnce(apiResponse(savedRecord, 201));
 
   const { container } = render(<CharityLog />);
@@ -118,7 +131,14 @@ test('saves a charity record with amount, activity, and notes in order', async (
     }),
   });
   expect(await screen.findByText('Packed meal boxes')).toBeInTheDocument();
-  expect(screen.getByText('Activity:').parentElement).toHaveTextContent(
+  expect(
+    [...container.querySelectorAll('.charity-record-activity')].map(
+      (activity) => activity.textContent
+    )
+  ).toEqual(['Activity: Packed meal boxes', 'Activity: Provided supplies']);
+  expect(
+    within(container.querySelectorAll('.charity-record')[0]).getByText('Activity:').parentElement
+  ).toHaveTextContent(
     'Activity: Packed meal boxes'
   );
   expect(screen.getByText('Amount:').parentElement).toHaveTextContent(
