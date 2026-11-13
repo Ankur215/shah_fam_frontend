@@ -269,6 +269,85 @@ function formatDate(date) {
   }).format(new Date(`${date}T00:00:00Z`));
 }
 
+function getNextCelebration(members) {
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const celebrations = members.flatMap((member) =>
+    [
+      { date: member.dateOfBirth, type: 'Birthday' },
+      { date: member.anniversaryDate, type: 'Wedding anniversary' },
+    ]
+      .filter(({ date }) => date)
+      .map(({ date, type }) => {
+        const eventDate = new Date(`${date}T00:00:00`);
+        let year = today.getFullYear();
+        let upcomingDate = new Date(year, eventDate.getMonth(), eventDate.getDate());
+        if (upcomingDate < todayStart) {
+          year += 1;
+          upcomingDate = new Date(year, eventDate.getMonth(), eventDate.getDate());
+        }
+
+        const formattedDate = [
+          upcomingDate.getFullYear(),
+          String(upcomingDate.getMonth() + 1).padStart(2, '0'),
+          String(upcomingDate.getDate()).padStart(2, '0'),
+        ].join('-');
+        return {
+          date: formattedDate,
+          type,
+          memberName: `${member.firstName} ${member.lastName || ''}`.trim(),
+        };
+      })
+  );
+  celebrations.sort(
+    (first, second) =>
+      first.date.localeCompare(second.date) ||
+      first.type.localeCompare(second.type) ||
+      first.memberName.localeCompare(second.memberName)
+  );
+  if (celebrations.length === 0) return null;
+
+  const date = celebrations[0].date;
+  const eventsForDate = celebrations.filter((celebration) => celebration.date === date);
+  const events = eventsForDate.reduce((groupedEvents, celebration) => {
+    let eventGroup = groupedEvents.find(({ type }) => type === celebration.type);
+    if (!eventGroup) {
+      eventGroup = { type: celebration.type, memberNames: [] };
+      groupedEvents.push(eventGroup);
+    }
+    eventGroup.memberNames.push(celebration.memberName);
+    return groupedEvents;
+  }, []);
+  return { date, events };
+}
+
+function formatCelebrationEvents(events) {
+  return events
+    .map(({ type, memberNames }) => {
+      const names =
+        memberNames.length < 3
+          ? memberNames.join(' & ')
+          : `${memberNames.slice(0, -1).join(', ')} & ${memberNames[memberNames.length - 1]}`;
+      return `${type}: ${names}`;
+    })
+    .join(' · ');
+}
+
+function formatDaysUntil(date) {
+  const [year, month, day] = date.split('-').map(Number);
+  const targetDay = Date.UTC(year, month - 1, day);
+  const today = new Date();
+  const currentDay = Date.UTC(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
+  const daysUntil = Math.round((targetDay - currentDay) / 86400000);
+  if (daysUntil === 0) return 'Today';
+  if (daysUntil === 1) return 'Tomorrow';
+  return `In ${daysUntil} days`;
+}
+
 function MedicalReports() {
   return (
     <section
@@ -406,6 +485,7 @@ function App() {
         `${second.lastName || ''}${second.firstName}`
       )
     );
+  const nextCelebration = getNextCelebration(members);
 
   async function saveMember(event) {
     event.preventDefault();
@@ -680,14 +760,32 @@ function App() {
                 </span>
               </div>
             </section>
-            <section className="summary-card summary-card-warm" aria-label="Birthday count">
+            <section
+              className="summary-card summary-card-warm"
+              aria-label="Upcoming event"
+            >
               <span className="summary-icon summary-icon-warm" aria-hidden="true">♡</span>
               <div>
-                <span className="summary-label">BIRTHDAYS SAVED</span>
-                <strong className="summary-number">
-                  {members.filter((member) => member.dateOfBirth).length}
-                </strong>
-                <span className="summary-caption">special dates to remember</span>
+                <span className="summary-label">UPCOMING EVENT</span>
+                {nextCelebration ? (
+                  <>
+                    <div className="summary-celebration-date">
+                      <strong className="summary-number summary-date">
+                        {formatDate(nextCelebration.date)}
+                      </strong>
+                      <span className="upcoming-countdown">
+                        {formatDaysUntil(nextCelebration.date)}
+                      </span>
+                    </div>
+                    <span className="summary-caption summary-event-caption">
+                      {formatCelebrationEvents(nextCelebration.events)}
+                    </span>
+                  </>
+                ) : (
+                  <span className="summary-caption">
+                    Add a birthday or wedding anniversary
+                  </span>
+                )}
               </div>
             </section>
           </div>

@@ -35,6 +35,17 @@ function apiResponse(data, status = 200) {
   };
 }
 
+function dateFromToday(days) {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + days);
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
 beforeEach(() => {
   global.fetch = jest.fn().mockResolvedValue(apiResponse([]));
 });
@@ -53,6 +64,46 @@ test('shows the family member empty state after loading members from the API', a
     screen.getByRole('button', { name: /add your first member/i })
   ).toBeInTheDocument();
   expect(global.fetch).toHaveBeenCalledWith('/api/family-members');
+});
+
+test('shows the next upcoming birthday or wedding anniversary', async () => {
+  const tomorrow = dateFromToday(1);
+  global.fetch = jest.fn().mockResolvedValue(
+    apiResponse([
+      {
+        ...savedMember,
+        firstName: 'Rohan',
+        dateOfBirth: tomorrow,
+        anniversaryDate: tomorrow,
+      },
+      {
+        ...savedMember,
+        id: 2,
+        firstName: 'Asha',
+        dateOfBirth: tomorrow,
+      },
+    ])
+  );
+
+  render(<App />);
+
+  await screen.findByText(
+    'Birthday: Asha Shah & Rohan Shah · Wedding anniversary: Rohan Shah'
+  );
+  const upcomingCelebration = screen.getByRole('region', {
+    name: 'Upcoming event',
+  });
+  const formattedDate = new Intl.DateTimeFormat('en', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${tomorrow}T00:00:00Z`));
+  expect(upcomingCelebration).toHaveTextContent(formattedDate);
+  expect(upcomingCelebration).toHaveTextContent('Tomorrow');
+  expect(upcomingCelebration).toHaveTextContent(
+    'Birthday: Asha Shah & Rohan Shah · Wedding anniversary: Rohan Shah'
+  );
 });
 
 test('moves a family member and saves the reordered sequence', async () => {

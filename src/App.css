@@ -456,9 +456,36 @@ button {
   font-weight: 500;
 }
 
+.summary-date {
+  font-size: 19px;
+}
+
+.summary-celebration-date {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.upcoming-countdown {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f5eee7;
+  color: #966c52;
+  font-size: 9px;
+  font-weight: 600;
+}
+
 .summary-caption {
   color: #929a94;
   font-size: 10px;
+}
+
+.summary-event-caption {
+  grid-column: 1 / -1;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .members-panel {
