@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import './GiftLog.css';
+import { apiFetch } from './api';
 
 const GIFTS_ENDPOINT = `${process.env.REACT_APP_API_URL || ''}/api/gifts`;
 const GIFT_DATE_FORMATTER = new Intl.DateTimeFormat('en', {
@@ -163,7 +164,7 @@ function GiftLog() {
       setError('');
       setIsLoadError(false);
       try {
-        const response = await fetch(GIFTS_ENDPOINT);
+        const response = await apiFetch(GIFTS_ENDPOINT);
         const data = await readApiResponse(response);
         if (!Array.isArray(data)) {
           throw new Error('The server returned an unexpected gifts response.');
@@ -207,7 +208,7 @@ function GiftLog() {
     setIsSaving(true);
     setError('');
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         editingGift ? `${GIFTS_ENDPOINT}/${editingGift.id}` : GIFTS_ENDPOINT,
         {
           method: editingGift ? 'PUT' : 'POST',
@@ -253,7 +254,7 @@ function GiftLog() {
     setDeletingGiftId(gift.id);
     setError('');
     try {
-      const response = await fetch(`${GIFTS_ENDPOINT}/${gift.id}`, {
+      const response = await apiFetch(`${GIFTS_ENDPOINT}/${gift.id}`, {
         method: 'DELETE',
       });
       await readApiResponse(response);
@@ -295,7 +296,7 @@ function GiftLog() {
     setError('');
 
     try {
-      const response = await fetch(`${GIFTS_ENDPOINT}/order`, {
+      const response = await apiFetch(`${GIFTS_ENDPOINT}/order`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ giftIds: reorderedGifts.map((gift) => gift.id) }),

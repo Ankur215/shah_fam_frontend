@@ -35,6 +35,10 @@ function apiResponse(data, status = 200) {
   };
 }
 
+function authenticatedResponse() {
+  return apiResponse({ user: { id: 1, email: 'admin@example.com', role: 'admin' } });
+}
+
 function dateFromToday(days) {
   const date = new Date();
   date.setHours(12, 0, 0, 0);
@@ -47,7 +51,11 @@ function dateFromToday(days) {
 }
 
 beforeEach(() => {
-  global.fetch = jest.fn().mockResolvedValue(apiResponse([]));
+  global.fetch = jest.fn((url) =>
+    Promise.resolve(
+      url === '/api/auth/me' ? authenticatedResponse() : apiResponse([])
+    )
+  );
 });
 
 afterEach(() => {
@@ -60,16 +68,124 @@ test('shows the family member empty state after loading members from the API', a
   expect(
     await screen.findByRole('heading', { name: /your family story starts here/i })
   ).toBeInTheDocument();
+  expect(screen.getByText('Admin user')).toBeInTheDocument();
+  const userAccountsButton = screen.getByRole('button', { name: 'User accounts' });
+  const familyMenuButton = screen.getByRole('button', { name: 'Family', exact: true });
+  expect(
+    userAccountsButton.compareDocumentPosition(familyMenuButton) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+  ).toBeTruthy();
+  const familySubmenu = document.getElementById('family-submenu');
+  expect(
+    within(familySubmenu).getByRole('button', { name: 'Family members' })
+  ).toBeInTheDocument();
+  expect(
+    within(familySubmenu).getByRole('button', { name: 'Family graph' })
+  ).toBeInTheDocument();
   expect(
     screen.getByRole('button', { name: /add your first member/i })
   ).toBeInTheDocument();
   expect(global.fetch).toHaveBeenCalledWith('/api/family-members');
 });
 
+test('requires a login before opening the family space', async () => {
+  const user = { id: 2, email: 'family@example.com', role: 'user' };
+  global.fetch = jest.fn((url) =>
+    Promise.resolve(
+      url === '/api/auth/me'
+        ? apiResponse({ error: 'Authentication is required.' }, 401)
+        : url === '/api/auth/login'
+          ? apiResponse({ user })
+          : apiResponse([])
+    )
+  );
+
+  render(<App />);
+  fireEvent.change(await screen.findByLabelText('Email address'), {
+    target: { value: 'family@example.com' },
+  });
+  fireEvent.change(screen.getByLabelText('Password'), {
+    target: { value: 'a-secure-family-password' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+  expect(
+    await screen.findByRole('button', { name: /family members/i })
+  ).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'User accounts' })).not.toBeInTheDocument();
+});
+
+test('returns to sign in when the backend session expires', async () => {
+  const user = { id: 2, email: 'family@example.com', role: 'user' };
+  global.fetch = jest.fn((url) =>
+    Promise.resolve(
+      url === '/api/auth/me'
+        ? apiResponse({ user })
+        : apiResponse({ error: 'Authentication is required.' }, 401)
+    )
+  );
+
+  render(<App />);
+
+  expect(
+    await screen.findByRole('heading', { name: 'Your family, together.' })
+  ).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+});
+
+test('shows only pages granted to a regular user', async () => {
+  const user = {
+    id: 2,
+    email: 'family@example.com',
+    role: 'user',
+    accessPages: ['medical'],
+  };
+  global.fetch = jest.fn((url) =>
+    Promise.resolve(
+      url === '/api/auth/me' ? apiResponse({ user }) : apiResponse([])
+    )
+  );
+
+  render(<App />);
+
+  expect(
+    await screen.findByRole('heading', { name: 'Medical reports' })
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: /family members/i })
+  ).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Gifts & Giving' })).not.toBeInTheDocument();
+  expect(global.fetch).not.toHaveBeenCalledWith('/api/family-members');
+});
+
+test('shows only the gifts and charity modules granted to a regular user', async () => {
+  const user = {
+    id: 2,
+    email: 'family@example.com',
+    role: 'user',
+    accessPages: ['gifts'],
+  };
+  global.fetch = jest.fn((url) =>
+    Promise.resolve(
+      url === '/api/auth/me' ? apiResponse({ user }) : apiResponse([])
+    )
+  );
+
+  render(<App />);
+
+  const menuButton = await screen.findByRole('button', { name: /gifts & giving/i });
+  fireEvent.click(menuButton);
+  expect(await screen.findByRole('button', { name: 'Gift log' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Charity work' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /family members/i })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Gift log' }));
+  expect(await screen.findByRole('heading', { name: /gift log/i })).toBeInTheDocument();
+});
+
 test('shows the next upcoming birthday or wedding anniversary', async () => {
   const tomorrow = dateFromToday(1);
-  global.fetch = jest.fn().mockResolvedValue(
-    apiResponse([
+  const members = [
       {
         ...savedMember,
         firstName: 'Rohan',
@@ -82,7 +198,11 @@ test('shows the next upcoming birthday or wedding anniversary', async () => {
         firstName: 'Asha',
         dateOfBirth: tomorrow,
       },
-    ])
+    ];
+  global.fetch = jest.fn((url) =>
+    Promise.resolve(
+      url === '/api/auth/me' ? authenticatedResponse() : apiResponse(members)
+    )
   );
 
   render(<App />);
@@ -110,6 +230,7 @@ test('moves a family member and saves the reordered sequence', async () => {
   const firstMember = { ...savedMember, id: 1, firstName: 'Asha' };
   const secondMember = { ...savedMember, id: 2, firstName: 'Rohan' };
   global.fetch = jest.fn()
+    .mockResolvedValueOnce(authenticatedResponse())
     .mockResolvedValueOnce(apiResponse([firstMember, secondMember]))
     .mockResolvedValueOnce(apiResponse([secondMember, firstMember]));
 
@@ -191,6 +312,7 @@ test('shows connected family members by generation in the family graph', async (
     relationship: 'Brother',
     parentIds: [1, 2],
   };
+  global.fetch.mockResolvedValueOnce(authenticatedResponse());
   global.fetch.mockResolvedValueOnce(
     apiResponse([{ ...savedMember, spouseIds: [2] }, spouse, child, sibling])
   );
@@ -260,6 +382,7 @@ test('orders family graph branches and members as Binal, Ankur, Palak, Akhil', a
       parentIds: [4],
     },
   ];
+  global.fetch.mockResolvedValueOnce(authenticatedResponse());
   global.fetch.mockResolvedValueOnce(apiResponse(members));
 
   const { container } = render(<App />);
@@ -360,6 +483,7 @@ test('keeps spouse pairs adjacent and aligns parents above their children', asyn
       spouseIds: [9],
     },
   ];
+  global.fetch.mockResolvedValueOnce(authenticatedResponse());
   global.fetch.mockResolvedValueOnce(apiResponse(members));
 
   const { container } = render(<App />);
@@ -402,6 +526,7 @@ test('saves selected parents and spouses as member connections', async () => {
     relationship: 'Spouse',
   };
   global.fetch
+    .mockResolvedValueOnce(authenticatedResponse())
     .mockResolvedValueOnce(apiResponse([savedMember, spouse]))
     .mockResolvedValueOnce(apiResponse({
       ...savedMember,
@@ -428,7 +553,7 @@ test('saves selected parents and spouses as member connections', async () => {
   );
   fireEvent.click(screen.getByRole('button', { name: /save family member/i }));
 
-  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
   expect(global.fetch).toHaveBeenLastCalledWith('/api/family-members', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -460,6 +585,7 @@ test('offers specific sibling, in-law, and extended-family relationships', async
 
 test('posts a family member to the API and displays the saved record', async () => {
   global.fetch
+    .mockResolvedValueOnce(authenticatedResponse())
     .mockResolvedValueOnce(apiResponse([]))
     .mockResolvedValueOnce(
       apiResponse({
@@ -552,7 +678,7 @@ test('posts a family member to the API and displays the saved record', async () 
   });
   fireEvent.click(screen.getByRole('button', { name: /save family member/i }));
 
-  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
   expect(global.fetch).toHaveBeenLastCalledWith('/api/family-members', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -625,6 +751,7 @@ test('edits an existing family member through the API', async () => {
   };
   const updatedMember = { ...memberWithCountryCode, lastName: 'Patel' };
   global.fetch
+    .mockResolvedValueOnce(authenticatedResponse())
     .mockResolvedValueOnce(apiResponse([memberWithCountryCode]))
     .mockResolvedValueOnce(apiResponse(updatedMember));
 
@@ -644,7 +771,7 @@ test('edits an existing family member through the API', async () => {
   });
   fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
-  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
   expect(global.fetch).toHaveBeenLastCalledWith('/api/family-members/1', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -685,6 +812,7 @@ test('edits an existing family member through the API', async () => {
 });
 
 test('opens an edit form when the API returns a null phone number', async () => {
+  global.fetch.mockResolvedValueOnce(authenticatedResponse());
   global.fetch.mockResolvedValueOnce(
     apiResponse([{ ...savedMember, phone: null }])
   );
@@ -697,6 +825,7 @@ test('opens an edit form when the API returns a null phone number', async () => 
 
 test('keeps the form open and displays an API error when saving fails', async () => {
   global.fetch
+    .mockResolvedValueOnce(authenticatedResponse())
     .mockResolvedValueOnce(apiResponse([savedMember]))
     .mockResolvedValueOnce(
       apiResponse({ error: 'Could not save family member to the database.' }, 503)
@@ -721,6 +850,7 @@ test('keeps the form open and displays an API error when saving fails', async ()
 
 test('shows the HTTP status when the API returns an empty error response', async () => {
   global.fetch
+    .mockResolvedValueOnce(authenticatedResponse())
     .mockResolvedValueOnce(apiResponse([]))
     .mockResolvedValueOnce({
       ok: false,
@@ -766,7 +896,7 @@ test('validates required name, email, phone, and future birthday before saving',
   expect(screen.getByText(/enter a valid email address/i)).toBeInTheDocument();
   expect(screen.getByText(/phone number with 7–15 digits/i)).toBeInTheDocument();
   expect(screen.getByText(/birthday cannot be in the future/i)).toBeInTheDocument();
-  expect(global.fetch).toHaveBeenCalledTimes(1);
+  expect(global.fetch).toHaveBeenCalledTimes(2);
 });
 
 test('requires a country when a phone number is entered', async () => {
@@ -788,5 +918,5 @@ test('requires a country when a phone number is entered', async () => {
   expect(
     await screen.findByText(/choose a country to add its calling code/i)
   ).toBeInTheDocument();
-  expect(global.fetch).toHaveBeenCalledTimes(1);
+  expect(global.fetch).toHaveBeenCalledTimes(2);
 });

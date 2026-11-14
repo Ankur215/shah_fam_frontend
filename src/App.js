@@ -3,8 +3,10 @@ import './App.css';
 import CharityLog from './CharityLog';
 import FamilyGraph from './FamilyGraph';
 import GiftLog from './GiftLog';
+import AccountManagement from './AccountManagement';
+import AuthPage from './AuthPage';
+import { API_URL, apiFetch } from './api';
 
-const API_URL = process.env.REACT_APP_API_URL || '';
 const FAMILY_MEMBERS_ENDPOINT = `${API_URL}/api/family-members`;
 const PHONE_CHARACTERS_PATTERN = /^[\d\s().-]+$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -383,7 +385,12 @@ function MedicalReports() {
 
 function App() {
   const [members, setMembers] = useState([]);
+  const [authUser, setAuthUser] = useState(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
+  const [logoutError, setLogoutError] = useState('');
   const [activePage, setActivePage] = useState('members');
+  const [isFamilyMenuOpen, setIsFamilyMenuOpen] = useState(true);
   const [isLogsMenuOpen, setIsLogsMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -403,6 +410,94 @@ function App() {
   const [isReorderingMembers, setIsReorderingMembers] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [validationErrors, setValidationErrors] = useState({});
+  const accessPages = authUser?.role === 'admin'
+    ? ['family', 'medical', 'gifts', 'charity']
+    : authUser?.accessPages || ['family', 'medical'];
+  const hasFamilyPageAccess = accessPages.includes('family');
+  const hasMedicalPageAccess = accessPages.includes('medical');
+  const hasGiftsPageAccess = accessPages.includes('gifts');
+  const hasCharityPageAccess = accessPages.includes('charity');
+  const hasAnyModuleAccess = accessPages.length > 0;
+  const firstAccessiblePage = hasFamilyPageAccess
+    ? 'members'
+    : hasMedicalPageAccess
+      ? 'medical'
+      : hasGiftsPageAccess
+        ? 'gifts'
+        : hasCharityPageAccess
+          ? 'charity'
+          : 'no-access';
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function restoreSession() {
+      try {
+        const response = await apiFetch(`${API_URL}/api/auth/me`);
+        if (response.status === 401) return;
+        const data = await readApiResponse(response);
+        if (!data.user) return;
+        if (!['admin', 'user'].includes(data.user.role)) {
+          throw new Error('The server returned an invalid session response.');
+        }
+        if (isCurrent) setAuthUser(data.user);
+      } catch (error) {
+        console.error('Could not restore the signed-in session.', error);
+        if (isCurrent) {
+          setAuthError(
+            `Could not connect to the account service. ${error.message || 'Check that the API is running.'}`
+          );
+        }
+      } finally {
+        if (isCurrent) setIsAuthLoading(false);
+      }
+    }
+
+    restoreSession();
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleExpiredSession() {
+      setAuthUser(null);
+      setMembers([]);
+      setActivePage('members');
+    }
+
+    window.addEventListener('shah-family-session-expired', handleExpiredSession);
+    return () =>
+      window.removeEventListener('shah-family-session-expired', handleExpiredSession);
+  }, []);
+
+  useEffect(() => {
+    if (!authUser) return;
+    const pageAccess = {
+      members: hasFamilyPageAccess,
+      graph: hasFamilyPageAccess,
+      medical: hasMedicalPageAccess,
+      gifts: hasGiftsPageAccess,
+      charity: hasCharityPageAccess,
+      accounts: authUser.role === 'admin',
+      'no-access': !hasAnyModuleAccess,
+    };
+    if (
+      pageAccess[activePage] === false ||
+      (activePage === 'no-access' && hasAnyModuleAccess)
+    ) {
+      setActivePage(firstAccessiblePage);
+    }
+  }, [
+    activePage,
+    authUser,
+    firstAccessiblePage,
+    hasAnyModuleAccess,
+    hasCharityPageAccess,
+    hasFamilyPageAccess,
+    hasGiftsPageAccess,
+    hasMedicalPageAccess,
+  ]);
 
   function openMemberForm(member = null) {
     setEditingMember(member);
@@ -423,11 +518,16 @@ function App() {
     let isCurrent = true;
 
     async function loadMembers() {
+      if (!authUser || !hasFamilyPageAccess) {
+        setMembers([]);
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       setApiError('');
       setIsLoadError(false);
       try {
-        const response = await fetch(FAMILY_MEMBERS_ENDPOINT);
+        const response = await apiFetch(FAMILY_MEMBERS_ENDPOINT);
         const data = await readApiResponse(response);
         if (!Array.isArray(data)) {
           throw new Error('The server returned an unexpected family-members response.');
@@ -450,7 +550,7 @@ function App() {
     return () => {
       isCurrent = false;
     };
-  }, [loadAttempt]);
+  }, [authUser, hasFamilyPageAccess, loadAttempt]);
 
   const filteredMembers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -528,7 +628,7 @@ function App() {
     setIsSaving(true);
     setApiError('');
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         editingMember
           ? `${FAMILY_MEMBERS_ENDPOINT}/${editingMember.id}`
           : FAMILY_MEMBERS_ENDPOINT,
@@ -597,7 +697,7 @@ function App() {
     setApiError('');
 
     try {
-      const response = await fetch(`${FAMILY_MEMBERS_ENDPOINT}/order`, {
+      const response = await apiFetch(`${FAMILY_MEMBERS_ENDPOINT}/order`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memberIds: reorderedMembers.map((member) => member.id) }),
@@ -618,6 +718,42 @@ function App() {
     }
   }
 
+  async function signOut() {
+    setLogoutError('');
+    try {
+      const response = await apiFetch(`${API_URL}/api/auth/logout`, {
+        method: 'POST',
+      });
+      await readApiResponse(response);
+      setAuthUser(null);
+      setMembers([]);
+      setActivePage('members');
+    } catch (error) {
+      console.error('Could not sign out.', error);
+      setLogoutError(`Could not sign out. ${error.message || 'Please try again.'}`);
+    }
+  }
+
+  if (isAuthLoading) {
+    return (
+      <main className="auth-page" aria-live="polite">
+        <p>Loading your family space…</p>
+      </main>
+    );
+  }
+
+  if (!authUser) {
+    return (
+      <AuthPage
+        initialError={authError}
+        onAuthenticated={(user) => {
+          setAuthError('');
+          setAuthUser(user);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -631,27 +767,67 @@ function App() {
           </span>
         </a>
 
-        <div className="sidebar-label">FAMILY</div>
         <nav aria-label="Main navigation">
-          <button
-            className={`nav-item ${activePage === 'members' ? 'nav-item-active' : ''}`}
-            type="button"
-            aria-current={activePage === 'members' ? 'page' : undefined}
-            onClick={() => setActivePage('members')}
-          >
-            <span className="nav-icon" aria-hidden="true">⌂</span>
-            Family members
-          </button>
-          <button
-            className={`nav-item ${activePage === 'graph' ? 'nav-item-active' : ''}`}
-            type="button"
-            aria-current={activePage === 'graph' ? 'page' : undefined}
-            onClick={() => setActivePage('graph')}
-          >
-            <span className="nav-icon" aria-hidden="true">⌘</span>
-            Family graph
-          </button>
-          <button
+          {authUser.role === 'admin' && (
+            <button
+              className={`nav-item ${activePage === 'accounts' ? 'nav-item-active' : ''}`}
+              type="button"
+              aria-current={activePage === 'accounts' ? 'page' : undefined}
+              onClick={() => setActivePage('accounts')}
+            >
+              <span className="nav-icon" aria-hidden="true">♙</span>
+              User accounts
+            </button>
+          )}
+          {(authUser.role === 'admin' || hasFamilyPageAccess || hasMedicalPageAccess) && (
+            <div className="sidebar-label">FAMILY</div>
+          )}
+          {hasFamilyPageAccess && (
+            <div className="nav-group">
+              <button
+                className={`nav-item ${
+                  activePage === 'members' || activePage === 'graph'
+                    ? 'nav-item-active'
+                    : ''
+                }`}
+                type="button"
+                aria-expanded={isFamilyMenuOpen}
+                aria-controls="family-submenu"
+                onClick={() => setIsFamilyMenuOpen((isOpen) => !isOpen)}
+              >
+                <span className="nav-icon" aria-hidden="true">⌂</span>
+                Family
+                <span className="nav-chevron" aria-hidden="true">
+                  {isFamilyMenuOpen ? '⌃' : '⌄'}
+                </span>
+              </button>
+              {isFamilyMenuOpen && (
+                <div className="nav-submenu" id="family-submenu">
+                  <button
+                    className={`nav-item nav-subitem ${
+                      activePage === 'members' ? 'nav-item-active' : ''
+                    }`}
+                    type="button"
+                    aria-current={activePage === 'members' ? 'page' : undefined}
+                    onClick={() => setActivePage('members')}
+                  >
+                    Family members
+                  </button>
+                  <button
+                    className={`nav-item nav-subitem ${
+                      activePage === 'graph' ? 'nav-item-active' : ''
+                    }`}
+                    type="button"
+                    aria-current={activePage === 'graph' ? 'page' : undefined}
+                    onClick={() => setActivePage('graph')}
+                  >
+                    Family graph
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          {hasMedicalPageAccess && <button
             className={`nav-item ${activePage === 'medical' ? 'nav-item-active' : ''}`}
             type="button"
             aria-current={activePage === 'medical' ? 'page' : undefined}
@@ -659,8 +835,8 @@ function App() {
           >
             <span className="nav-icon" aria-hidden="true">✚</span>
             Medical reports
-          </button>
-          <div className="nav-group">
+          </button>}
+          {(hasGiftsPageAccess || hasCharityPageAccess) && <div className="nav-group">
             <button
               className={`nav-item ${
                 activePage === 'gifts' || activePage === 'charity' ? 'nav-item-active' : ''
@@ -678,7 +854,7 @@ function App() {
             </button>
             {isLogsMenuOpen && (
               <div className="nav-submenu" id="logs-submenu">
-                <button
+                {hasGiftsPageAccess && <button
                   className={`nav-item nav-subitem ${
                     activePage === 'gifts' ? 'nav-item-active' : ''
                   }`}
@@ -687,8 +863,8 @@ function App() {
                   onClick={() => setActivePage('gifts')}
                 >
                   Gift log
-                </button>
-                <button
+                </button>}
+                {hasCharityPageAccess && <button
                   className={`nav-item nav-subitem ${
                     activePage === 'charity' ? 'nav-item-active' : ''
                   }`}
@@ -697,10 +873,10 @@ function App() {
                   onClick={() => setActivePage('charity')}
                 >
                   Charity work
-                </button>
+                </button>}
               </div>
             )}
-          </div>
+          </div>}
         </nav>
 
         <div className="sidebar-note">
@@ -723,15 +899,39 @@ function App() {
                   ? 'Gift log'
                   : activePage === 'charity'
                     ? 'Charity work'
-                    : 'Medical reports'}
+                    : activePage === 'accounts'
+                      ? 'User accounts'
+                      : 'Medical reports'}
           </span>
-          <span className="privacy-label">
-            <span className="privacy-dot" aria-hidden="true" />
-            Private family space
-          </span>
+          <div className="account-session">
+            <span className="privacy-label">
+              <span className="privacy-dot" aria-hidden="true" />
+              {authUser.email}
+            </span>
+            <span className={`account-role-label account-role-label-${authUser.role}`}>
+              {authUser.role === 'admin' ? 'Admin user' : 'Normal user'}
+            </span>
+            <button className="sign-out-button" type="button" onClick={signOut}>
+              Sign out
+            </button>
+          </div>
         </header>
+        {logoutError && (
+          <p className="session-error" role="alert">
+            {logoutError}
+          </p>
+        )}
 
-        {activePage === 'members' ? (
+        {activePage === 'accounts' && authUser.role === 'admin' ? (
+          <AccountManagement />
+        ) : activePage === 'medical' && hasMedicalPageAccess ? (
+          <MedicalReports />
+        ) : activePage === 'no-access' || !hasAnyModuleAccess ? (
+          <section className="page-content">
+            <h1>No pages are enabled for this account</h1>
+            <p>Ask your family administrator to grant access.</p>
+          </section>
+        ) : activePage === 'members' && hasFamilyPageAccess ? (
         <section className="page-content">
           <div className="welcome-banner">
             <div className="welcome-copy">
@@ -1010,7 +1210,7 @@ function App() {
             </p>
           </section>
         </section>
-        ) : activePage === 'graph' ? (
+        ) : activePage === 'graph' && hasFamilyPageAccess ? (
           <FamilyGraph
             members={members}
             isLoading={isLoading}
@@ -1018,12 +1218,14 @@ function App() {
             onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
             onManageMembers={() => setActivePage('members')}
           />
-        ) : activePage === 'gifts' ? (
+        ) : activePage === 'gifts' && hasGiftsPageAccess ? (
           <GiftLog />
-        ) : activePage === 'charity' ? (
+        ) : activePage === 'charity' && hasCharityPageAccess ? (
           <CharityLog />
         ) : (
-          <MedicalReports />
+          <section className="page-content">
+            <h1>This page is not available</h1>
+          </section>
         )}
       </main>
 

@@ -273,6 +273,47 @@ button {
   font-size: 10px;
 }
 
+.account-role-label {
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: #f0f3ed;
+  color: #607466;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.account-role-label-admin {
+  background: #e8f1e8;
+  color: #3f694d;
+}
+
+.account-session {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sign-out-button {
+  padding: 6px 10px;
+  border: 1px solid #e0e6dd;
+  border-radius: 6px;
+  background: #fff;
+  color: #526357;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.sign-out-button:hover {
+  background: #f5f7f3;
+}
+
+.session-error {
+  margin: 14px 5.1% 0;
+  color: #a63b34;
+  font-size: 12px;
+}
+
 .privacy-dot {
   width: 7px;
   height: 7px;
@@ -1325,7 +1366,14 @@ button {
     font-size: 12px;
   }
 
-  .brand-name small,
+  .brand-name small {
+    display: none;
+  }
+
+  .account-session {
+    gap: 8px;
+  }
+
   .privacy-label {
     display: none;
   }

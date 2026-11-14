@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import './CharityLog.css';
+import { apiFetch } from './api';
 
 const CHARITY_ENDPOINT = `${process.env.REACT_APP_API_URL || ''}/api/charity-records`;
 const DATE_FORMATTER = new Intl.DateTimeFormat('en', {
@@ -196,7 +197,7 @@ function CharityLog() {
       setError('');
       setIsLoadError(false);
       try {
-        const response = await fetch(CHARITY_ENDPOINT);
+        const response = await apiFetch(CHARITY_ENDPOINT);
         const data = await readApiResponse(response);
         if (!Array.isArray(data)) {
           throw new Error('The server returned an unexpected charity records response.');
@@ -239,7 +240,7 @@ function CharityLog() {
     setIsSaving(true);
     setError('');
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         editingRecord
           ? `${CHARITY_ENDPOINT}/${editingRecord.id}`
           : CHARITY_ENDPOINT,
@@ -287,7 +288,7 @@ function CharityLog() {
     setDeletingRecordId(record.id);
     setError('');
     try {
-      const response = await fetch(`${CHARITY_ENDPOINT}/${record.id}`, {
+      const response = await apiFetch(`${CHARITY_ENDPOINT}/${record.id}`, {
         method: 'DELETE',
       });
       await readApiResponse(response);
@@ -325,7 +326,7 @@ function CharityLog() {
     setError('');
 
     try {
-      const response = await fetch(`${CHARITY_ENDPOINT}/order`, {
+      const response = await apiFetch(`${CHARITY_ENDPOINT}/order`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recordIds: reorderedRecords.map((record) => record.id) }),
