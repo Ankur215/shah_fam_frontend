@@ -2,9 +2,37 @@
   margin-bottom: 22px;
 }
 
+.account-section-nav {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+
+.account-section-nav button {
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid var(--family-border);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--family-primary-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.account-section-nav button.account-section-active {
+  border-color: var(--family-primary);
+  background: var(--family-primary);
+  color: #fff;
+}
+
+.account-section-nav button:focus-visible {
+  outline: 3px solid var(--family-focus);
+  outline-offset: 2px;
+}
+
 .account-heading h1 {
   margin: 5px 0 7px;
-  color: #2c4133;
+  color: var(--family-heading);
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 31px;
   font-weight: 500;
@@ -21,7 +49,7 @@
   max-width: 680px;
   margin-bottom: 18px;
   padding: 22px;
-  border: 1px solid #e9eee7;
+  border: 1px solid var(--family-border);
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 8px 24px rgb(39 53 47 / 4%);
@@ -29,8 +57,26 @@
 
 .account-card h2 {
   margin: 0 0 18px;
-  color: #34483a;
+  color: var(--family-heading);
   font-size: 15px;
+}
+
+.account-workspace-selection label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--family-primary-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.account-workspace-selection select {
+  width: min(100%, 420px);
+  min-height: 42px;
+  padding: 0 11px;
+  border: 1px solid var(--family-border);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--family-text);
 }
 
 .account-form {
@@ -50,16 +96,16 @@
 .account-form select {
   min-height: 42px;
   padding: 0 11px;
-  border: 1px solid #dfe5dc;
+  border: 1px solid var(--family-border);
   border-radius: 7px;
   background: #fff;
-  color: #27352f;
+  color: var(--family-text);
 }
 
 .account-form input:focus,
 .account-form select:focus {
-  border-color: #6d9474;
-  outline: 3px solid rgb(85 122 97 / 12%);
+  border-color: var(--family-focus);
+  outline: 3px solid var(--family-tint);
 }
 
 .account-page-permissions {
@@ -90,7 +136,7 @@
   width: 15px;
   min-height: 15px;
   margin: 0;
-  accent-color: #557a61;
+  accent-color: var(--family-primary);
 }
 
 .account-page-permissions .account-hint {
@@ -115,7 +161,7 @@
 }
 
 .account-notice {
-  color: #3f694d;
+  color: var(--family-primary-strong);
 }
 
 .account-submit {
@@ -123,7 +169,7 @@
   margin-top: 5px;
   border: 0;
   border-radius: 7px;
-  background: #557a61;
+  background: var(--family-primary);
   color: #fff;
   font-size: 12px;
   font-weight: 700;
@@ -170,10 +216,10 @@
 .account-edit-form > input {
   min-height: 42px;
   padding: 0 11px;
-  border: 1px solid #dfe5dc;
+  border: 1px solid var(--family-border);
   border-radius: 7px;
   background: #fff;
-  color: #27352f;
+  color: var(--family-text);
 }
 
 .account-actions {
@@ -184,7 +230,7 @@
 
 .account-actions button {
   padding: 6px 9px;
-  border: 1px solid #dfe5dc;
+  border: 1px solid var(--family-border);
   border-radius: 6px;
   background: #fff;
   color: #46564b;
@@ -201,14 +247,14 @@
   flex: 0 0 auto;
   padding: 4px 8px;
   border-radius: 10px;
-  background: #f0f3ed;
+  background: var(--family-tint);
   color: #607466;
   font-size: 10px;
 }
 
 .account-role-admin {
-  background: #e8f1e8;
-  color: #3f694d;
+  background: var(--family-soft);
+  color: var(--family-primary-strong);
 }
 
 .account-email {

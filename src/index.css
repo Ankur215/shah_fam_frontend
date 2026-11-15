@@ -1,10 +1,24 @@
+:root {
+  --family-primary: #557a61;
+  --family-primary-dark: #45694f;
+  --family-primary-strong: #3f694d;
+  --family-tint: #edf3ed;
+  --family-soft: #e8f1e8;
+  --family-focus: #77957b;
+  --family-canvas: #f8f9f6;
+  --family-border: #e6ebe4;
+  --family-heading: #2c4133;
+  --family-text: #27352f;
+  --family-muted-accent: #628069;
+}
+
 * {
   box-sizing: border-box;
 }
 
 html {
   min-width: 320px;
-  background: #f8f9f6;
+  background: var(--family-canvas);
 }
 
 body {
@@ -18,4 +32,9 @@ body {
 ::selection {
   background: #dbe8d9;
   color: #2f4935;
+}
+
+.app-shell ::selection {
+  background: var(--family-primary);
+  color: #fff;
 }

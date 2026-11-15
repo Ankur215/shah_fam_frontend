@@ -42,7 +42,7 @@ function AuthPage({ onAuthenticated, initialError = '' }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(
             isAdminSignup
-              ? { email, password }
+            ? { email, password }
               : isForgotPassword
                 ? { email }
                 : isResetPassword
@@ -77,6 +77,11 @@ function AuthPage({ onAuthenticated, initialError = '' }) {
   }
 
   function changeMode(nextMode) {
+    if (nextMode === 'admin-signup') {
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+    }
     setMode(nextMode);
     setError('');
     setNotice('');
@@ -90,10 +95,10 @@ function AuthPage({ onAuthenticated, initialError = '' }) {
   return (
     <main className="auth-page">
       <section className="auth-card" aria-labelledby="auth-heading">
-        <a className="auth-brand" href="/" aria-label="Shah Family">
-          <span className="brand-mark" aria-hidden="true">S</span>
+        <a className="auth-brand" href="/" aria-label="Family Tree">
+          <span className="brand-mark" aria-hidden="true">F</span>
           <span className="brand-name">
-            <strong>Shah Family</strong>
+            <strong>Family Tree</strong>
             <small>Our family space</small>
           </span>
         </a>

@@ -481,7 +481,14 @@ function App() {
       const workspaceId = event.detail?.workspaceId;
       if (!Number.isInteger(workspaceId)) return;
       setAuthUser((current) =>
-        current ? { ...current, currentWorkspaceId: workspaceId } : current
+        current
+          ? {
+            ...current,
+            currentWorkspaceId: workspaceId,
+            familyName: event.detail.familyName || current.familyName,
+            theme: event.detail.theme || current.theme,
+          }
+          : current
       );
       setLoadAttempt((attempt) => attempt + 1);
     }
@@ -812,15 +819,17 @@ function App() {
     );
   }
 
+  const familyName = authUser.familyName?.trim() || 'Family Tree';
+
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-theme={authUser.theme || 'sage'}>
       <aside className="sidebar">
-        <a className="brand" href="/" aria-label="Shah Family home">
+        <a className="brand" href="/" aria-label={`${familyName} home`}>
           <span className="brand-mark" aria-hidden="true">
-            S
+            {familyName.charAt(0).toUpperCase()}
           </span>
           <span className="brand-name">
-            <strong>Shah Family</strong>
+            <strong>{familyName}</strong>
             <small>Our family space</small>
           </span>
         </a>

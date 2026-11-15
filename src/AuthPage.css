@@ -82,14 +82,14 @@
   margin-top: 12px;
   border: 0;
   border-radius: 7px;
-  background: #557a61;
+  background: var(--family-primary);
   color: #fff;
   font-size: 13px;
   font-weight: 700;
 }
 
 .auth-submit:hover:not(:disabled) {
-  background: #45694f;
+  background: var(--family-primary-dark);
 }
 
 .auth-submit:disabled {
@@ -106,7 +106,7 @@
 
 .auth-notice {
   margin: 5px 0 0;
-  color: #45694f;
+  color: var(--family-primary-dark);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -128,7 +128,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: #45694f;
+  color: var(--family-primary-dark);
   font-size: inherit;
   font-weight: 700;
 }

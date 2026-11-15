@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import App from './App';
 
 const savedMember = {
@@ -87,6 +87,39 @@ test('shows the family member empty state after loading members from the API', a
     screen.getByRole('button', { name: /add your first member/i })
   ).toBeInTheDocument();
   expect(global.fetch).toHaveBeenCalledWith('/api/family-members');
+});
+
+test('shows and updates the active family name and theme', async () => {
+  const user = {
+    id: 1,
+    email: 'admin@example.com',
+    role: 'super_admin',
+    familyName: 'Shah Family',
+    theme: 'ocean',
+  };
+  global.fetch = jest.fn((url) =>
+    Promise.resolve(
+      url === '/api/auth/me' ? apiResponse({ user }) : apiResponse([])
+    )
+  );
+
+  render(<App />);
+
+  expect(await screen.findByLabelText('Shah Family home')).toBeInTheDocument();
+  expect(document.querySelector('.app-shell')).toHaveAttribute('data-theme', 'ocean');
+
+  act(() => {
+    window.dispatchEvent(new CustomEvent('family-workspace-selected', {
+      detail: {
+        workspaceId: 2,
+        familyName: 'Another Family',
+        theme: 'lavender',
+      },
+    }));
+  });
+
+  expect(await screen.findByLabelText('Another Family home')).toBeInTheDocument();
+  expect(document.querySelector('.app-shell')).toHaveAttribute('data-theme', 'lavender');
 });
 
 test('lets admins view family information without edit controls', async () => {

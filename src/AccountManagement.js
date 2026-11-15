@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import './AccountManagement.css';
 import { API_URL, apiFetch, readApiResponse } from './api';
+import FAMILY_THEMES from './familyThemes';
 
 const ACCESS_MODULES = {
   family: 'Family members and family tree',
@@ -78,7 +79,10 @@ function AccountManagement({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [accountRole, setAccountRole] = useState('user');
+  const [accountSection, setAccountSection] = useState('accounts');
   const [workspaceId, setWorkspaceId] = useState(authUser.currentWorkspaceId || '');
+  const [familyName, setFamilyName] = useState(authUser.familyName || '');
+  const [familyTheme, setFamilyTheme] = useState(authUser.theme || 'sage');
   const [familyMembers, setFamilyMembers] = useState([]);
   const [familyMemberIds, setFamilyMemberIds] = useState([]);
   const [accessPages, setAccessPages] = useState(DEFAULT_ACCESS_PAGES);
@@ -89,11 +93,14 @@ function AccountManagement({
   const [editFamilyMemberIds, setEditFamilyMemberIds] = useState([]);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [appearanceError, setAppearanceError] = useState('');
+  const [appearanceNotice, setAppearanceNotice] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isPromoting, setIsPromoting] = useState(false);
   const [isSelectingWorkspace, setIsSelectingWorkspace] = useState(false);
+  const [isSavingAppearance, setIsSavingAppearance] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState(null);
 
   const loadUsers = useCallback(async () => {
@@ -139,8 +146,15 @@ function AccountManagement({
   useEffect(() => {
     if (isSuperAdmin) {
       setWorkspaceId(authUser.currentWorkspaceId || '');
+      setFamilyName(authUser.familyName || '');
+      setFamilyTheme(authUser.theme || 'sage');
     }
-  }, [authUser.currentWorkspaceId, isSuperAdmin]);
+  }, [
+    authUser.currentWorkspaceId,
+    authUser.familyName,
+    authUser.theme,
+    isSuperAdmin,
+  ]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -202,16 +216,55 @@ function AccountManagement({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workspaceId: selectedWorkspaceId }),
       });
-      await readApiResponse(response);
+      const workspace = await readApiResponse(response);
       setWorkspaceId(String(selectedWorkspaceId));
       window.dispatchEvent(new CustomEvent('family-workspace-selected', {
-        detail: { workspaceId: selectedWorkspaceId },
+        detail: {
+          workspaceId: selectedWorkspaceId,
+          familyName: workspace.familyName,
+          theme: workspace.theme,
+        },
       }));
       setNotice('Active family workspace updated.');
     } catch (selectError) {
       setError(selectError.message || 'Could not select the family workspace.');
     } finally {
       setIsSelectingWorkspace(false);
+    }
+  }
+
+  async function handleAppearanceSave(event) {
+    event.preventDefault();
+    setIsSavingAppearance(true);
+    setAppearanceError('');
+    setAppearanceNotice('');
+    try {
+      const response = await apiFetch(
+        `${API_URL}/api/super-admin/workspaces/${workspaceId}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ familyName, theme: familyTheme }),
+        }
+      );
+      const workspace = await readApiResponse(response);
+      setWorkspaces((current) =>
+        current.map((item) =>
+          item.id === workspace.id
+            ? { ...item, name: workspace.familyName, theme: workspace.theme }
+            : item
+        )
+      );
+      onUserUpdated({
+        ...authUser,
+        familyName: workspace.familyName,
+        theme: workspace.theme,
+      });
+      setAppearanceNotice('Family name and theme updated.');
+    } catch (saveError) {
+      setAppearanceError(saveError.message || 'Could not update family appearance.');
+    } finally {
+      setIsSavingAppearance(false);
     }
   }
 
@@ -344,13 +397,21 @@ function AccountManagement({
     <section className="page-content account-page" aria-labelledby="accounts-heading">
       <header className="account-heading">
         <span className="eyebrow">ADMINISTRATION</span>
-        <h1 id="accounts-heading">User accounts</h1>
-        <p>Assign module and family-member access to each account. Only super admins can change family information.</p>
-        <p className="account-hint">
-          {isSuperAdmin
-            ? 'Create admins and users within your family tenant. Promoting an admin creates an independent copy of their family data.'
-            : 'You can create and manage users in your family workspace. Become a super admin to manage a separate copy of your family tree.'}
+        <h1 id="accounts-heading">
+          {isSuperAdmin && accountSection === 'settings' ? 'Settings' : 'User accounts'}
+        </h1>
+        <p>
+          {isSuperAdmin && accountSection === 'settings'
+            ? 'Changes apply only to the selected family tree. A promoted admin can customize their independent copy without changing its original.'
+            : 'Assign module and family-member access to each account. Only super admins can change family information.'}
         </p>
+        {accountSection === 'accounts' && (
+          <p className="account-hint">
+            {isSuperAdmin
+              ? 'Create admins and users within your family tenant. Promoting an admin creates an independent copy of their family data.'
+              : 'You can create and manage users in your family workspace. Become a super admin to manage a separate copy of your family tree.'}
+          </p>
+        )}
         {!isSuperAdmin && (
           <button
             className="account-submit"
@@ -364,22 +425,91 @@ function AccountManagement({
       </header>
 
       {isSuperAdmin && (
-        <section className="account-card mobile-workspace-selection">
-          <label htmlFor="active-family-workspace">Active family workspace</label>
-          <select
-            disabled={isSelectingWorkspace}
-            id="active-family-workspace"
-            onChange={handleWorkspaceSelect}
-            value={workspaceId}
+        <nav className="account-section-nav" aria-label="Account management">
+          <button
+            aria-pressed={accountSection === 'accounts'}
+            className={accountSection === 'accounts' ? 'account-section-active' : ''}
+            onClick={() => setAccountSection('accounts')}
+            type="button"
           >
-            {workspaces.map((workspace) => (
-              <option key={workspace.id} value={workspace.id}>{workspace.name}</option>
-            ))}
-          </select>
-        </section>
+            User accounts
+          </button>
+          <button
+            aria-pressed={accountSection === 'settings'}
+            className={accountSection === 'settings' ? 'account-section-active' : ''}
+            onClick={() => setAccountSection('settings')}
+            type="button"
+          >
+            Settings
+          </button>
+        </nav>
       )}
 
-      <section className="account-card" aria-labelledby="create-account-heading">
+      {isSuperAdmin && accountSection === 'settings' && (
+        <>
+          <section className="account-card account-workspace-selection">
+            <h2>Family workspace</h2>
+            <label htmlFor="active-family-workspace">Active family workspace</label>
+            <select
+              disabled={isSelectingWorkspace}
+              id="active-family-workspace"
+              onChange={handleWorkspaceSelect}
+              value={workspaceId}
+            >
+              {workspaces.map((workspace) => (
+                <option key={workspace.id} value={workspace.id}>
+                  {workspace.name}
+                  {workspace.copiedFromWorkspaceId ? ' (copy)' : ''}
+                </option>
+              ))}
+            </select>
+          </section>
+
+          <section
+            className="account-card"
+            aria-labelledby="family-appearance-heading"
+          >
+            <h2 id="family-appearance-heading">Family appearance</h2>
+            <form className="account-form" onSubmit={handleAppearanceSave}>
+              <label htmlFor="family-display-name">Family name</label>
+              <input
+                id="family-display-name"
+                maxLength={100}
+                onChange={(event) => setFamilyName(event.target.value)}
+                required
+                value={familyName}
+              />
+              <label htmlFor="family-display-theme">Color theme</label>
+              <select
+                id="family-display-theme"
+                onChange={(event) => setFamilyTheme(event.target.value)}
+                value={familyTheme}
+              >
+                {FAMILY_THEMES.map((theme) => (
+                  <option key={theme.id} value={theme.id}>{theme.label}</option>
+                ))}
+              </select>
+              {appearanceError && (
+                <p className="account-error" role="alert">{appearanceError}</p>
+              )}
+              {appearanceNotice && (
+                <p className="account-notice" role="status">{appearanceNotice}</p>
+              )}
+              <button
+                className="account-submit"
+                disabled={isSavingAppearance}
+                type="submit"
+              >
+                {isSavingAppearance ? 'Saving…' : 'Save family appearance'}
+              </button>
+            </form>
+          </section>
+        </>
+      )}
+
+      {(!isSuperAdmin || accountSection === 'accounts') && (
+        <>
+        <section className="account-card" aria-labelledby="create-account-heading">
         <h2 id="create-account-heading">Create an account</h2>
         <form className="account-form" onSubmit={handleSubmit}>
           <label htmlFor="new-user-email">Email address</label>
@@ -580,7 +710,9 @@ function AccountManagement({
         ) : (
           <p className="account-muted">No accounts found.</p>
         )}
-      </section>
+        </section>
+        </>
+      )}
     </section>
   );
 }

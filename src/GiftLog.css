@@ -1,5 +1,5 @@
 .gift-page {
-  color: #354339;
+  color: var(--family-heading);
 }
 
 .gift-page-heading {
@@ -12,7 +12,7 @@
 
 .gift-page-heading h1 {
   margin: 8px 0 6px;
-  color: #2c4133;
+  color: var(--family-heading);
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 30px;
   font-weight: 500;
@@ -32,7 +32,7 @@
   align-items: center;
   gap: 11px;
   padding: 11px 15px;
-  border: 1px solid #e8ebe4;
+  border: 1px solid var(--family-border);
   border-radius: 10px;
   background: #fff;
 }
@@ -49,7 +49,7 @@
 
 .gift-total strong,
 .gift-stat-card strong {
-  color: #344a39;
+  color: var(--family-heading);
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 23px;
   font-weight: 500;
@@ -74,7 +74,7 @@
   align-items: center;
   gap: 13px;
   padding: 12px 17px;
-  border: 1px solid #e8ebe4;
+  border: 1px solid var(--family-border);
   border-radius: 10px;
   background: #fff;
 }
@@ -86,8 +86,8 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: 10px;
-  background: #edf3ed;
-  color: #628069;
+  background: var(--family-tint);
+  color: var(--family-muted-accent);
   font-size: 20px;
 }
 
@@ -115,7 +115,7 @@
 .gift-history-card {
   min-width: 0;
   padding: 20px;
-  border: 1px solid #e8ebe4;
+  border: 1px solid var(--family-border);
   border-radius: 11px;
   background: #fff;
 }
@@ -135,15 +135,15 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: 10px;
-  background: #edf3ed;
-  color: #55775c;
+  background: var(--family-tint);
+  color: var(--family-primary);
   font-size: 20px;
 }
 
 .gift-card-heading h2,
 .gift-history-heading h2 {
   margin: 0 0 5px;
-  color: #354339;
+  color: var(--family-heading);
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 18px;
   font-weight: 500;
@@ -160,7 +160,7 @@
   min-width: 0;
   align-content: start;
   gap: 6px;
-  color: #58655b;
+  color: var(--family-text);
   font-size: 10px;
   font-weight: 600;
 }
@@ -172,11 +172,11 @@
   min-width: 0;
   min-height: 36px;
   padding: 8px 9px;
-  border: 1px solid #e2e7e1;
+  border: 1px solid var(--family-border);
   border-radius: 6px;
   outline: none;
   background: #fff;
-  color: #435047;
+  color: var(--family-text);
   font-size: 11px;
   font-weight: 400;
 }
@@ -191,7 +191,7 @@
 .gift-form-grid input:focus,
 .gift-form-grid select:focus,
 .gift-form-grid textarea:focus {
-  border-color: #77957b;
+  border-color: var(--family-focus);
   box-shadow: 0 0 0 3px rgba(110, 148, 116, 0.12);
 }
 
@@ -215,7 +215,7 @@
   gap: 10px;
   margin-top: 17px;
   padding-top: 14px;
-  border-top: 1px solid #edf0eb;
+  border-top: 1px solid var(--family-border);
 }
 
 .gift-form-actions > span {
@@ -248,8 +248,8 @@
   flex: 0 0 auto;
   padding: 5px 8px;
   border-radius: 14px;
-  background: #f2f5ef;
-  color: #718274;
+  background: var(--family-tint);
+  color: var(--family-muted-accent);
   font-size: 9px;
 }
 
@@ -260,14 +260,14 @@
   gap: 8px;
   margin-bottom: 10px;
   padding: 0 10px;
-  border: 1px solid #e7eae5;
+  border: 1px solid var(--family-border);
   border-radius: 6px;
-  background: #fdfdfc;
+  background: var(--family-soft);
   color: #89948c;
 }
 
 .gift-search:focus-within {
-  border-color: #77957b;
+  border-color: var(--family-focus);
   box-shadow: 0 0 0 3px rgba(110, 148, 116, 0.12);
 }
 
@@ -281,7 +281,7 @@
   border: 0;
   outline: 0;
   background: transparent;
-  color: #39473d;
+  color: var(--family-text);
   font: inherit;
   font-size: 10px;
 }
@@ -297,7 +297,7 @@
 
 .gift-group {
   overflow: hidden;
-  border: 1px solid #e9ede7;
+  border: 1px solid var(--family-border);
   border-radius: 8px;
   background: #fff;
 }
@@ -316,13 +316,13 @@
 }
 
 .gift-group-toggle:hover {
-  background: #fafbf8;
+  background: var(--family-soft);
 }
 
 .gift-group-toggle:focus-visible {
   position: relative;
   z-index: 1;
-  outline: 2px solid #77957b;
+  outline: 2px solid var(--family-focus);
   outline-offset: -3px;
 }
 
@@ -333,8 +333,8 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: 50%;
-  background: #edf3ed;
-  color: #55775c;
+  background: var(--family-tint);
+  color: var(--family-primary);
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 15px;
 }
@@ -348,7 +348,7 @@
 
 .gift-group-summary strong {
   overflow: hidden;
-  color: #465249;
+  color: var(--family-text);
   font-size: 11px;
   font-weight: 600;
   text-overflow: ellipsis;
@@ -365,7 +365,7 @@
   flex: 0 0 auto;
   align-items: center;
   gap: 6px;
-  color: #55775c;
+  color: var(--family-primary);
   font-size: 9px;
   font-weight: 600;
 }
@@ -376,14 +376,14 @@
   height: 20px;
   place-items: center;
   border-radius: 50%;
-  background: #edf3ed;
+  background: var(--family-tint);
   font-size: 14px;
   line-height: 1;
 }
 
 .gift-group-records {
   padding: 0 13px;
-  border-top: 1px solid #eff1ed;
+  border-top: 1px solid var(--family-border);
 }
 
 .gift-direction-group {
@@ -391,7 +391,7 @@
 }
 
 .gift-direction-group + .gift-direction-group {
-  border-top: 1px solid #eff1ed;
+  border-top: 1px solid var(--family-border);
 }
 
 .gift-direction-toggle {
@@ -409,7 +409,7 @@
 }
 
 .gift-direction-toggle:focus-visible {
-  outline: 2px solid #77957b;
+  outline: 2px solid var(--family-focus);
   outline-offset: 3px;
 }
 
@@ -430,20 +430,20 @@
 .gift-direction-count {
   padding: 3px 7px;
   border-radius: 12px;
-  background: #f2f5ef;
-  color: #718274;
+  background: var(--family-tint);
+  color: var(--family-muted-accent);
   font-size: 9px;
 }
 
 .gift-direction-total {
-  color: #718274;
+  color: var(--family-muted-accent);
   font-size: 9px;
   font-weight: 600;
   text-align: right;
 }
 
 .gift-direction-chevron {
-  color: #55775c;
+  color: var(--family-primary);
   font-size: 14px;
   line-height: 1;
 }
@@ -460,7 +460,7 @@
 }
 
 .gift-record + .gift-record {
-  border-top: 1px solid #eff1ed;
+  border-top: 1px solid var(--family-border);
 }
 
 .gift-record-top {
@@ -497,18 +497,18 @@
   width: 23px;
   height: 23px;
   padding: 0;
-  border: 1px solid #e8ede7;
+  border: 1px solid var(--family-border);
   background: #fff;
-  color: #55775c;
+  color: var(--family-primary);
   line-height: 1;
 }
 
 .gift-move-button:hover:not(:disabled) {
-  background: #edf3ed;
+  background: var(--family-tint);
 }
 
 .gift-edit-button {
-  color: #55775c;
+  color: var(--family-primary);
 }
 
 .gift-delete-button {
@@ -516,7 +516,7 @@
 }
 
 .gift-edit-button:hover {
-  background: #edf3ed;
+  background: var(--family-tint);
 }
 
 .gift-delete-button:hover {
@@ -525,12 +525,12 @@
 
 .gift-move-button:focus-visible,
 .gift-edit-button:focus-visible {
-  outline: 2px solid #77957b;
+  outline: 2px solid var(--family-focus);
   outline-offset: 2px;
 }
 
 .gift-delete-button:focus-visible {
-  outline: 2px solid #c17a68;
+  outline: 2px solid var(--family-focus);
   outline-offset: 2px;
 }
 
@@ -560,7 +560,7 @@
 
 .gift-record-details span {
   padding: 4px 7px;
-  border: 1px solid #edf0eb;
+  border: 1px solid var(--family-border);
   border-radius: 5px;
   color: #748077;
   font-size: 9px;
@@ -586,7 +586,7 @@
   align-content: center;
   justify-items: center;
   padding: 20px 10px;
-  border-top: 1px solid #eff1ed;
+  border-top: 1px solid var(--family-border);
   text-align: center;
 }
 
@@ -598,7 +598,7 @@
 
 .gift-empty-state h3 {
   margin: 3px 0 5px;
-  color: #425348;
+  color: var(--family-text);
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 16px;
   font-weight: 500;

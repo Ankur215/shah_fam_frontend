@@ -14,6 +14,59 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
+test('lets a super admin update the active family name and theme', async () => {
+  const onUserUpdated = jest.fn();
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(apiResponse([
+      { id: 1, email: 'root@example.com', role: 'super_admin' },
+    ]))
+    .mockResolvedValueOnce(apiResponse([
+      { id: 1, name: 'Old Family', theme: 'sage' },
+    ]))
+    .mockResolvedValueOnce(apiResponse([]))
+    .mockResolvedValueOnce(apiResponse({
+      id: 1,
+      familyName: 'Shah Family',
+      theme: 'ocean',
+    }));
+
+  render(
+    <AccountManagement
+      authUser={{
+        id: 1,
+        role: 'super_admin',
+        currentWorkspaceId: 1,
+        familyName: 'Old Family',
+        theme: 'sage',
+      }}
+      onUserUpdated={onUserUpdated}
+    />
+  );
+  await screen.findByText('root@example.com');
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+  expect(screen.queryByLabelText('Email address')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Active family workspace')).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Family name'), {
+    target: { value: 'Shah Family' },
+  });
+  fireEvent.change(screen.getByLabelText('Color theme'), {
+    target: { value: 'ocean' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save family appearance' }));
+
+  expect(await screen.findByRole('status')).toHaveTextContent(
+    'Family name and theme updated.'
+  );
+  expect(global.fetch).toHaveBeenLastCalledWith('/api/super-admin/workspaces/1', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ familyName: 'Shah Family', theme: 'ocean' }),
+  });
+  expect(onUserUpdated).toHaveBeenCalledWith(
+    expect.objectContaining({ familyName: 'Shah Family', theme: 'ocean' })
+  );
+});
+
 test('lists accounts and lets an administrator create a normal user', async () => {
   global.fetch = jest.fn()
     .mockResolvedValueOnce(apiResponse([

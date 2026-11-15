@@ -45,6 +45,8 @@ test('creates a super administrator through open signup', async () => {
 
   render(<AuthPage onAuthenticated={onAuthenticated} />);
   fireEvent.click(screen.getByRole('button', { name: 'Super-admin sign up' }));
+  expect(screen.queryByLabelText('Family name')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Color theme')).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Email address'), {
     target: { value: 'admin@example.com' },
   });
@@ -62,6 +64,23 @@ test('creates a super administrator through open signup', async () => {
       password: 'a-secure-admin-password',
     }),
   });
+});
+
+test('opens super-admin signup with blank email and password fields', () => {
+  render(<AuthPage onAuthenticated={jest.fn()} />);
+  fireEvent.change(screen.getByLabelText('Email address'), {
+    target: { value: 'family@example.com' },
+  });
+  fireEvent.change(screen.getByLabelText('Password'), {
+    target: { value: 'an-existing-account-password' },
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Super-admin sign up' }));
+
+  expect(screen.getByLabelText('Email address')).toHaveValue('');
+  expect(screen.getByLabelText('Password')).toHaveValue('');
+  expect(screen.queryByLabelText('Family name')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Color theme')).not.toBeInTheDocument();
 });
 
 test('shows invalid credentials errors', async () => {
