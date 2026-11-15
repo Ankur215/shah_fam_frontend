@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import App from './App';
+import App, { UpcomingEvent } from './App';
 
 const savedMember = {
   id: 1,
@@ -62,9 +62,19 @@ afterEach(() => {
   jest.resetAllMocks();
 });
 
+async function renderOnFamilyMembers() {
+  const app = render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Family members' }));
+  return app;
+}
+
 test('shows the family member empty state after loading members from the API', async () => {
   render(<App />);
 
+  expect(
+    await screen.findByRole('heading', { name: 'Your family, all in one place.' })
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Family members' }));
   expect(
     await screen.findByRole('heading', { name: /your family story starts here/i })
   ).toBeInTheDocument();
@@ -105,7 +115,7 @@ test('shows and updates the active family name and theme', async () => {
 
   render(<App />);
 
-  expect(await screen.findByLabelText('Shah Family home')).toBeInTheDocument();
+  expect(await screen.findByLabelText('Shah Family introduction')).toBeInTheDocument();
   expect(document.querySelector('.app-shell')).toHaveAttribute('data-theme', 'ocean');
 
   act(() => {
@@ -118,8 +128,65 @@ test('shows and updates the active family name and theme', async () => {
     }));
   });
 
-  expect(await screen.findByLabelText('Another Family home')).toBeInTheDocument();
+  expect(await screen.findByLabelText('Another Family introduction')).toBeInTheDocument();
   expect(document.querySelector('.app-shell')).toHaveAttribute('data-theme', 'lavender');
+});
+
+test('opens introduction from the logo and explains account module access', async () => {
+  const user = {
+    id: 2,
+    email: 'family@example.com',
+    role: 'user',
+    familyName: 'Patel Family',
+    accessPages: ['family'],
+  };
+  global.fetch = jest.fn((url) =>
+    Promise.resolve(
+      url === '/api/auth/me' ? apiResponse({ user }) : apiResponse([savedMember])
+    )
+  );
+  render(<App />);
+
+  fireEvent.click(await screen.findByLabelText('Patel Family introduction'));
+
+  expect(
+    await screen.findByRole('heading', { name: 'Your family, all in one place.' })
+  ).toBeInTheDocument();
+  expect(screen.getByText('Family members & tree')).toBeInTheDocument();
+  expect(screen.getByText('Family members & tree').parentElement)
+    .toHaveTextContent('Available');
+  expect(screen.getByText('Medical reports').parentElement)
+    .toHaveTextContent('Ask your super admin');
+  expect(screen.getByText('Gift log').parentElement)
+    .toHaveTextContent('Ask your super admin');
+  expect(screen.getByText('Charity work').parentElement)
+    .toHaveTextContent('Ask your super admin');
+  expect(screen.getByText('Family members & tree').closest('.introduction-module-column'))
+    .toHaveAttribute('aria-label', 'Available sections');
+  expect(screen.getByText('Medical reports').closest('.introduction-module-column'))
+    .toHaveAttribute('aria-label', 'Sections to request');
+  expect(screen.getByText(/Ask your super admin to enable the section you need/i))
+    .toBeInTheDocument();
+});
+
+test('shows super admins that they manage module access themselves', async () => {
+  const user = {
+    id: 1,
+    email: 'root@example.com',
+    role: 'super_admin',
+    accessPages: ['family', 'medical', 'gifts', 'charity'],
+  };
+  global.fetch = jest.fn((url) =>
+    Promise.resolve(
+      url === '/api/auth/me' ? apiResponse({ user }) : apiResponse([])
+    )
+  );
+  render(<App />);
+
+  expect(await screen.findByText('You manage module access for the accounts in your family tree.'))
+    .toBeInTheDocument();
+  expect(screen.queryByText('Ask for access')).not.toBeInTheDocument();
+  expect(screen.queryByText('Ask your super admin')).not.toBeInTheDocument();
 });
 
 test('lets admins view family information without edit controls', async () => {
@@ -139,7 +206,7 @@ test('lets admins view family information without edit controls', async () => {
     )
   );
 
-  render(<App />);
+  await renderOnFamilyMembers();
 
   expect(await screen.findByText('Asha Shah')).toBeInTheDocument();
   expect(screen.getByText('Only a super administrator can change family information.'))
@@ -189,8 +256,11 @@ test('returns to sign in when the backend session expires', async () => {
   render(<App />);
 
   expect(
-    await screen.findByRole('heading', { name: 'Your family, together.' })
+    await screen.findByRole('heading', { name: 'Your family, all in one place.' })
   ).toBeInTheDocument();
+  act(() => {
+    window.dispatchEvent(new Event('shah-family-session-expired'));
+  });
   expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
 });
 
@@ -210,8 +280,10 @@ test('shows only pages granted to a regular user', async () => {
   render(<App />);
 
   expect(
-    await screen.findByRole('heading', { name: 'Medical reports' })
+    await screen.findByRole('heading', { name: 'Your family, all in one place.' })
   ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /medical reports/i }));
+  expect(await screen.findByRole('heading', { name: 'Medical reports' })).toBeInTheDocument();
   expect(
     screen.queryByRole('button', { name: /family members/i })
   ).not.toBeInTheDocument();
@@ -266,7 +338,7 @@ test('shows the next upcoming birthday or wedding anniversary', async () => {
     )
   );
 
-  render(<App />);
+  await renderOnFamilyMembers();
 
   await screen.findByText(
     'Birthday: Asha Shah & Rohan Shah · Wedding anniversary: Rohan Shah'
@@ -281,10 +353,34 @@ test('shows the next upcoming birthday or wedding anniversary', async () => {
     timeZone: 'UTC',
   }).format(new Date(`${tomorrow}T00:00:00Z`));
   expect(upcomingCelebration).toHaveTextContent(formattedDate);
-  expect(upcomingCelebration).toHaveTextContent('Tomorrow');
+  expect(upcomingCelebration).toHaveTextContent(/\d+d \d+h \d+m \d{2}s/);
   expect(upcomingCelebration).toHaveTextContent(
     'Birthday: Asha Shah & Rohan Shah · Wedding anniversary: Rohan Shah'
   );
+});
+
+test('updates the upcoming event countdown every second', () => {
+  jest.useFakeTimers();
+  jest.setSystemTime(new Date(2026, 0, 1, 0, 0, 0));
+
+  try {
+    render(
+      <UpcomingEvent
+        members={[{ ...savedMember, dateOfBirth: '2026-01-02' }]}
+      />
+    );
+
+    const upcomingEvent = screen.getByRole('region', { name: 'Upcoming event' });
+    expect(upcomingEvent).toHaveTextContent('1d 0h 0m 00s');
+
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(upcomingEvent).toHaveTextContent('0d 23h 59m 59s');
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test('moves a family member and saves the reordered sequence', async () => {
@@ -295,7 +391,7 @@ test('moves a family member and saves the reordered sequence', async () => {
     .mockResolvedValueOnce(apiResponse([firstMember, secondMember]))
     .mockResolvedValueOnce(apiResponse([secondMember, firstMember]));
 
-  const { container } = render(<App />);
+  const { container } = await renderOnFamilyMembers();
   fireEvent.click(await screen.findByRole('button', { name: 'Move Rohan Shah up' }));
 
   await waitFor(() =>
@@ -378,7 +474,7 @@ test('shows connected family members by generation in the family graph', async (
     apiResponse([{ ...savedMember, spouseIds: [2] }, spouse, child, sibling])
   );
 
-  const { container } = render(<App />);
+  const { container } = await renderOnFamilyMembers();
   fireEvent.click(await screen.findByRole('button', { name: /family graph/i }));
 
   expect(
@@ -446,7 +542,7 @@ test('orders family graph branches and members as Binal, Ankur, Palak, Akhil', a
   global.fetch.mockResolvedValueOnce(authenticatedResponse());
   global.fetch.mockResolvedValueOnce(apiResponse(members));
 
-  const { container } = render(<App />);
+  const { container } = await renderOnFamilyMembers();
   fireEvent.click(await screen.findByRole('button', { name: /family graph/i }));
 
   const childGeneration = container.querySelectorAll('.family-graph-generation')[1];
@@ -547,7 +643,7 @@ test('keeps spouse pairs adjacent and aligns parents above their children', asyn
   global.fetch.mockResolvedValueOnce(authenticatedResponse());
   global.fetch.mockResolvedValueOnce(apiResponse(members));
 
-  const { container } = render(<App />);
+  const { container } = await renderOnFamilyMembers();
   fireEvent.click(await screen.findByRole('button', { name: /family graph/i }));
 
   const generationTwo = container.querySelectorAll('.family-graph-generation')[1];
@@ -598,7 +694,7 @@ test('saves selected parents and spouses as member connections', async () => {
       spouseIds: [spouse.id],
     }));
 
-  render(<App />);
+  await renderOnFamilyMembers();
   fireEvent.click(await screen.findByRole('button', { name: /add family member/i }));
   fireEvent.change(screen.getByLabelText(/first name/i), {
     target: { value: 'Mira' },
@@ -623,7 +719,7 @@ test('saves selected parents and spouses as member connections', async () => {
 });
 
 test('offers specific sibling, in-law, and extended-family relationships', async () => {
-  render(<App />);
+  await renderOnFamilyMembers();
   fireEvent.click(
     await screen.findByRole('button', { name: /add your first member/i })
   );
@@ -668,7 +764,7 @@ test('posts a family member to the API and displays the saved record', async () 
       })
     );
 
-  render(<App />);
+  await renderOnFamilyMembers();
 
   fireEvent.click(
     await screen.findByRole('button', { name: /add your first member/i })
@@ -816,7 +912,7 @@ test('edits an existing family member through the API', async () => {
     .mockResolvedValueOnce(apiResponse([memberWithCountryCode]))
     .mockResolvedValueOnce(apiResponse(updatedMember));
 
-  render(<App />);
+  await renderOnFamilyMembers();
 
   fireEvent.click(await screen.findByRole('button', { name: 'Edit Asha Shah' }));
   expect(screen.getByLabelText(/first name/i)).toHaveValue('Asha');
@@ -880,7 +976,7 @@ test('archives a family member through the API after confirmation', async () => 
     .mockResolvedValueOnce(apiResponse({ id: member.id }));
   jest.spyOn(window, 'confirm').mockReturnValue(true);
 
-  render(<App />);
+  await renderOnFamilyMembers();
   fireEvent.click(await screen.findByRole('button', { name: 'Delete Asha Shah' }));
 
   expect(
@@ -901,7 +997,7 @@ test('opens an edit form when the API returns a null phone number', async () => 
     apiResponse([{ ...savedMember, phone: null }])
   );
 
-  render(<App />);
+  await renderOnFamilyMembers();
   fireEvent.click(await screen.findByRole('button', { name: 'Edit Asha Shah' }));
 
   expect(screen.getByLabelText(/phone number/i)).toHaveValue('');
@@ -915,7 +1011,7 @@ test('keeps the form open and displays an API error when saving fails', async ()
       apiResponse({ error: 'Could not save family member to the database.' }, 503)
     );
 
-  render(<App />);
+  await renderOnFamilyMembers();
   fireEvent.click(
     await screen.findByRole('button', { name: /add family member/i })
   );
@@ -942,7 +1038,7 @@ test('shows the HTTP status when the API returns an empty error response', async
       text: async () => '',
     });
 
-  render(<App />);
+  await renderOnFamilyMembers();
   fireEvent.click(
     await screen.findByRole('button', { name: /add your first member/i })
   );
@@ -958,7 +1054,7 @@ test('shows the HTTP status when the API returns an empty error response', async
 });
 
 test('validates required name, email, phone, and future birthday before saving', async () => {
-  render(<App />);
+  await renderOnFamilyMembers();
   fireEvent.click(
     await screen.findByRole('button', { name: /add your first member/i })
   );
@@ -984,7 +1080,7 @@ test('validates required name, email, phone, and future birthday before saving',
 });
 
 test('requires a country when a phone number is entered', async () => {
-  render(<App />);
+  await renderOnFamilyMembers();
   fireEvent.click(
     await screen.findByRole('button', { name: /add your first member/i })
   );

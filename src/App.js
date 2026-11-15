@@ -8,6 +8,32 @@ import AuthPage from './AuthPage';
 import { API_URL, apiFetch } from './api';
 
 const FAMILY_MEMBERS_ENDPOINT = `${API_URL}/api/family-members`;
+const MODULES = [
+  {
+    id: 'family',
+    name: 'Family members & tree',
+    description: 'View family profiles, important dates, and family relationships.',
+    icon: '⌂',
+  },
+  {
+    id: 'medical',
+    name: 'Medical reports',
+    description: 'Keep track of family health information and medical reports.',
+    icon: '✚',
+  },
+  {
+    id: 'gifts',
+    name: 'Gift log',
+    description: 'Record gifts given to or received from family and friends.',
+    icon: '▤',
+  },
+  {
+    id: 'charity',
+    name: 'Charity work',
+    description: 'Keep a record of charitable activities and contributions.',
+    icon: '♡',
+  },
+];
 const PHONE_CHARACTERS_PATTERN = /^[\d\s().-]+$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DEFAULT_COUNTRY = 'IN';
@@ -336,19 +362,58 @@ function formatCelebrationEvents(events) {
     .join(' · ');
 }
 
-function formatDaysUntil(date) {
+function formatCountdown(date, now) {
   const [year, month, day] = date.split('-').map(Number);
-  const targetDay = Date.UTC(year, month - 1, day);
-  const today = new Date();
-  const currentDay = Date.UTC(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate()
+  const target = new Date(year, month - 1, day).getTime();
+  const secondsRemaining = Math.max(0, Math.floor((target - now) / 1000));
+  if (secondsRemaining === 0) return 'Today';
+
+  const days = Math.floor(secondsRemaining / 86400);
+  const hours = Math.floor((secondsRemaining % 86400) / 3600);
+  const minutes = Math.floor((secondsRemaining % 3600) / 60);
+  const seconds = secondsRemaining % 60;
+  return `${days}d ${hours}h ${minutes}m ${String(seconds).padStart(2, '0')}s`;
+}
+
+export function UpcomingEvent({ members }) {
+  const [now, setNow] = useState(() => Date.now());
+  const nextCelebration = getNextCelebration(members);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  return (
+    <section
+      className="summary-card summary-card-warm"
+      aria-label="Upcoming event"
+    >
+      <span className="summary-icon summary-icon-warm" aria-hidden="true">♡</span>
+      <div>
+        <span className="summary-label">UPCOMING EVENT</span>
+        {nextCelebration ? (
+          <>
+            <div className="summary-celebration-date">
+              <strong className="summary-number summary-date">
+                {formatDate(nextCelebration.date)}
+              </strong>
+              <span className="upcoming-countdown" aria-live="off">
+                {formatCountdown(nextCelebration.date, now)}
+              </span>
+            </div>
+            <span className="summary-caption summary-event-caption">
+              {formatCelebrationEvents(nextCelebration.events)}
+            </span>
+          </>
+        ) : (
+          <span className="summary-caption">
+            Add a birthday or wedding anniversary
+          </span>
+        )}
+      </div>
+    </section>
   );
-  const daysUntil = Math.round((targetDay - currentDay) / 86400000);
-  if (daysUntil === 0) return 'Today';
-  if (daysUntil === 1) return 'Tomorrow';
-  return `In ${daysUntil} days`;
 }
 
 function MedicalReports() {
@@ -390,7 +455,7 @@ function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authError, setAuthError] = useState('');
   const [logoutError, setLogoutError] = useState('');
-  const [activePage, setActivePage] = useState('members');
+  const [activePage, setActivePage] = useState('intro');
   const [isFamilyMenuOpen, setIsFamilyMenuOpen] = useState(true);
   const [isLogsMenuOpen, setIsLogsMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -468,7 +533,7 @@ function App() {
     function handleExpiredSession() {
       setAuthUser(null);
       setMembers([]);
-      setActivePage('members');
+      setActivePage('intro');
     }
 
     window.addEventListener('shah-family-session-expired', handleExpiredSession);
@@ -506,6 +571,7 @@ function App() {
       medical: hasMedicalPageAccess,
       gifts: hasGiftsPageAccess,
       charity: hasCharityPageAccess,
+      intro: true,
       accounts: ['admin', 'super_admin'].includes(authUser.role),
       'no-access': !hasAnyModuleAccess,
     };
@@ -612,8 +678,6 @@ function App() {
         `${second.lastName || ''}${second.firstName}`
       )
     );
-  const nextCelebration = getNextCelebration(members);
-
   async function saveMember(event) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
@@ -792,7 +856,7 @@ function App() {
       await readApiResponse(response);
       setAuthUser(null);
       setMembers([]);
-      setActivePage('members');
+      setActivePage('intro');
     } catch (error) {
       console.error('Could not sign out.', error);
       setLogoutError(`Could not sign out. ${error.message || 'Please try again.'}`);
@@ -824,7 +888,15 @@ function App() {
   return (
     <div className="app-shell" data-theme={authUser.theme || 'sage'}>
       <aside className="sidebar">
-        <a className="brand" href="/" aria-label={`${familyName} home`}>
+        <a
+          className="brand"
+          href="/"
+          aria-label={`${familyName} introduction`}
+          onClick={(event) => {
+            event.preventDefault();
+            setActivePage('intro');
+          }}
+        >
           <span className="brand-mark" aria-hidden="true">
             {familyName.charAt(0).toUpperCase()}
           </span>
@@ -957,7 +1029,9 @@ function App() {
         <header className="topbar">
           <span className="breadcrumb">
             Family space <span>/</span>{' '}
-            {activePage === 'members'
+            {activePage === 'intro'
+              ? 'Introduction'
+              : activePage === 'members'
               ? 'Members'
               : activePage === 'graph'
                 ? 'Family graph'
@@ -992,7 +1066,99 @@ function App() {
           </p>
         )}
 
-        {activePage === 'accounts' && ['admin', 'super_admin'].includes(authUser.role) ? (
+        {activePage === 'intro' ? (
+          <section className="page-content introduction-page">
+            <header className="introduction-hero">
+              <span className="eyebrow">WELCOME TO {familyName.toUpperCase()}</span>
+              <h1>Your family, all in one place.</h1>
+              <p>
+                This private space helps your family keep its story, important
+                information, and shared moments organized and easy to find.
+              </p>
+            </header>
+
+            <section aria-labelledby="modules-heading">
+              <div className="introduction-section-heading">
+                <div>
+                  <span className="eyebrow">YOUR ACCOUNT</span>
+                  <h2 id="modules-heading">Sections and access</h2>
+                </div>
+                <span className="introduction-role">
+                  {authUser.role === 'super_admin'
+                    ? 'Super admin'
+                    : authUser.role === 'admin'
+                      ? 'Admin'
+                      : 'Family user'}
+                </span>
+              </div>
+              <div className="introduction-modules">
+                {[true, false].map((hasAccess) => (
+                  <div
+                    className="introduction-module-column"
+                    key={String(hasAccess)}
+                    aria-label={
+                      hasAccess
+                        ? 'Available sections'
+                        : authUser.role === 'super_admin'
+                          ? 'Sections to manage'
+                          : 'Sections to request'
+                    }
+                  >
+                    {MODULES.filter((module) => accessPages.includes(module.id) === hasAccess)
+                      .map((module) => (
+                        <article
+                          className={`introduction-module ${
+                            hasAccess
+                              ? 'introduction-module-enabled'
+                              : 'introduction-module-locked'
+                          }`}
+                          key={module.id}
+                        >
+                          <span className="introduction-module-icon" aria-hidden="true">
+                            {module.icon}
+                          </span>
+                          <div>
+                            <div className="introduction-module-title">
+                              <h3>{module.name}</h3>
+                              <span className="introduction-access-status">
+                                {hasAccess
+                                  ? 'Available'
+                                  : authUser.role === 'super_admin'
+                                    ? 'Manage access'
+                                    : 'Ask your super admin'}
+                              </span>
+                            </div>
+                            <p>{module.description}</p>
+                          </div>
+                        </article>
+                      ))}
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <aside className="introduction-permission-note">
+              <span className="introduction-permission-icon" aria-hidden="true">i</span>
+              <div>
+                <h2>Need another section?</h2>
+                <p>
+                  {authUser.role === 'super_admin'
+                    ? 'You manage module access for the accounts in your family tree.'
+                    : 'Ask your super admin to enable the section you need in your account’s module access. Only your super admin can grant additional section access.'}
+                </p>
+              </div>
+            </aside>
+            {hasAnyModuleAccess && (
+              <button
+                className="introduction-continue"
+                onClick={() => setActivePage(firstAccessiblePage)}
+                type="button"
+              >
+                Open your family space
+              </button>
+            )}
+          </section>
+        ) : activePage === 'accounts' && ['admin', 'super_admin'].includes(authUser.role) ? (
           <AccountManagement
             authUser={authUser}
             onUserUpdated={(user) => {
@@ -1036,34 +1202,7 @@ function App() {
                 </span>
               </div>
             </section>
-            <section
-              className="summary-card summary-card-warm"
-              aria-label="Upcoming event"
-            >
-              <span className="summary-icon summary-icon-warm" aria-hidden="true">♡</span>
-              <div>
-                <span className="summary-label">UPCOMING EVENT</span>
-                {nextCelebration ? (
-                  <>
-                    <div className="summary-celebration-date">
-                      <strong className="summary-number summary-date">
-                        {formatDate(nextCelebration.date)}
-                      </strong>
-                      <span className="upcoming-countdown">
-                        {formatDaysUntil(nextCelebration.date)}
-                      </span>
-                    </div>
-                    <span className="summary-caption summary-event-caption">
-                      {formatCelebrationEvents(nextCelebration.events)}
-                    </span>
-                  </>
-                ) : (
-                  <span className="summary-caption">
-                    Add a birthday or wedding anniversary
-                  </span>
-                )}
-              </div>
-            </section>
+            <UpcomingEvent members={members} />
           </div>
 
           <section className="members-panel" aria-labelledby="members-heading">

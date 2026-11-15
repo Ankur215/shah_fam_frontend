@@ -371,6 +371,196 @@ button {
   margin: 31px auto 52px;
 }
 
+.introduction-page {
+  display: grid;
+  gap: 28px;
+}
+
+.introduction-hero {
+  padding: 34px 38px;
+  border: 1px solid var(--family-border);
+  border-radius: 14px;
+  background: linear-gradient(125deg, var(--family-tint), var(--family-soft));
+}
+
+.introduction-hero h1 {
+  margin: 11px 0 9px;
+  color: var(--family-heading);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(27px, 4vw, 38px);
+  font-weight: 500;
+  letter-spacing: -0.8px;
+}
+
+.introduction-hero p {
+  max-width: 650px;
+  margin: 0;
+  color: var(--family-muted-accent);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.introduction-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.introduction-section-heading h2 {
+  margin: 6px 0 0;
+  color: var(--family-heading);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.introduction-role {
+  padding: 6px 10px;
+  border-radius: 20px;
+  background: var(--family-tint);
+  color: var(--family-primary-strong);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.introduction-modules {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+
+.introduction-module-column {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 12px;
+}
+
+.introduction-module {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 17px;
+  border: 1px solid var(--family-border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.introduction-module-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--family-tint);
+  color: var(--family-primary);
+  font-size: 18px;
+}
+
+.introduction-module > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.introduction-module-title {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: start;
+  gap: 7px;
+}
+
+.introduction-module-title h3 {
+  min-width: 0;
+  margin: 0;
+  color: var(--family-heading);
+  font-size: 13px;
+}
+
+.introduction-access-status {
+  white-space: nowrap;
+  color: var(--family-primary-strong);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.introduction-module-locked .introduction-module-icon {
+  background: var(--family-soft);
+  color: var(--family-muted-accent);
+}
+
+.introduction-module-locked .introduction-access-status {
+  color: var(--family-muted-accent);
+}
+
+.introduction-module p {
+  margin: 7px 0 0;
+  color: #7a877c;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.introduction-permission-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 17px;
+  border: 1px solid var(--family-border);
+  border-radius: 10px;
+  background: var(--family-tint);
+}
+
+.introduction-permission-icon {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--family-primary);
+  color: #fff;
+  font-family: Georgia, serif;
+  font-size: 14px;
+}
+
+.introduction-permission-note h2 {
+  margin: 1px 0 5px;
+  color: var(--family-heading);
+  font-size: 13px;
+}
+
+.introduction-permission-note p {
+  margin: 0;
+  color: var(--family-muted-accent);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.introduction-continue {
+  justify-self: start;
+  min-height: 40px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--family-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.introduction-continue:hover {
+  background: var(--family-primary-dark);
+}
+
+.introduction-continue:focus-visible {
+  outline: 3px solid var(--family-focus);
+  outline-offset: 2px;
+}
+
 .welcome-banner {
   position: relative;
   display: flex;
@@ -560,6 +750,8 @@ button {
   color: #966c52;
   font-size: 9px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .summary-caption {
@@ -1272,6 +1464,14 @@ button {
 }
 
 @media (max-width: 740px) {
+  .introduction-hero {
+    padding: 25px 22px;
+  }
+
+  .introduction-modules {
+    grid-template-columns: 1fr;
+  }
+
   .sidebar {
     position: static;
     width: auto;
