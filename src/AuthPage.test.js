@@ -38,23 +38,20 @@ test('signs in with an email and password', async () => {
   });
 });
 
-test('creates an administrator using an invitation code', async () => {
-  const user = { id: 1, email: 'admin@example.com', role: 'admin' };
+test('creates a super administrator through open signup', async () => {
+  const user = { id: 1, email: 'admin@example.com', role: 'super_admin' };
   const onAuthenticated = jest.fn();
   global.fetch = jest.fn().mockResolvedValue(apiResponse({ user }, 201));
 
   render(<AuthPage onAuthenticated={onAuthenticated} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Admin sign up' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Super-admin sign up' }));
   fireEvent.change(screen.getByLabelText('Email address'), {
     target: { value: 'admin@example.com' },
   });
   fireEvent.change(screen.getByLabelText('Password'), {
     target: { value: 'a-secure-admin-password' },
   });
-  fireEvent.change(screen.getByLabelText('Admin invitation code'), {
-    target: { value: 'private-invitation-code' },
-  });
-  fireEvent.click(screen.getByRole('button', { name: 'Create admin account' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Create super admin' }));
 
   await waitFor(() => expect(onAuthenticated).toHaveBeenCalledWith(user));
   expect(global.fetch).toHaveBeenCalledWith('/api/auth/admin-signup', {
@@ -63,7 +60,6 @@ test('creates an administrator using an invitation code', async () => {
     body: JSON.stringify({
       email: 'admin@example.com',
       password: 'a-secure-admin-password',
-      signupCode: 'private-invitation-code',
     }),
   });
 });

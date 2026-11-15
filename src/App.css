@@ -38,6 +38,10 @@ button {
   text-decoration: none;
 }
 
+.mobile-workspace-selection {
+  display: none;
+}
+
 .brand-mark {
   display: grid;
   width: 39px;
@@ -558,6 +562,12 @@ button {
   font-size: 10px;
 }
 
+.family-readonly-note {
+  margin: 0 0 14px;
+  color: #687467;
+  font-size: 12px;
+}
+
 .primary-button,
 .secondary-button {
   display: inline-flex;
@@ -751,6 +761,12 @@ button {
   color: #55775c;
   font-size: 10px;
   font-weight: 600;
+}
+
+.api-notice {
+  margin: 8px 0;
+  color: #3f694d;
+  font-size: 12px;
 }
 
 .member-actions {
@@ -1216,6 +1232,10 @@ button {
 }
 
 @media (max-width: 740px) {
+  .mobile-workspace-selection {
+    display: block;
+  }
+
   .sidebar {
     position: static;
     width: auto;

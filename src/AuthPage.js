@@ -12,7 +12,6 @@ function AuthPage({ onAuthenticated, initialError = '' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [signupCode, setSignupCode] = useState('');
   const [error, setError] = useState(initialError);
   const [notice, setNotice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,7 +42,7 @@ function AuthPage({ onAuthenticated, initialError = '' }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(
             isAdminSignup
-              ? { email, password, signupCode }
+              ? { email, password }
               : isForgotPassword
                 ? { email }
                 : isResetPassword
@@ -66,7 +65,7 @@ function AuthPage({ onAuthenticated, initialError = '' }) {
         setNotice(data.message);
         return;
       }
-      if (!data.user || !['admin', 'user'].includes(data.user.role)) {
+      if (!data.user || !['super_admin', 'admin', 'user'].includes(data.user.role)) {
         throw new Error('The server returned an invalid account response.');
       }
       onAuthenticated(data.user);
@@ -110,7 +109,7 @@ function AuthPage({ onAuthenticated, initialError = '' }) {
           {mode === 'login'
             ? 'Your family, together.'
             : mode === 'admin-signup'
-              ? 'Create an admin account'
+              ? 'Create a super admin'
               : isForgotPassword
                 ? 'Forgot your password?'
                 : 'Choose a new password'}
@@ -119,7 +118,7 @@ function AuthPage({ onAuthenticated, initialError = '' }) {
           {mode === 'login'
             ? 'Sign in to continue to your private family space.'
             : mode === 'admin-signup'
-              ? 'Find ADMIN_SIGNUP_CODE in shah_fam_backend/.env and enter it below. Keep this code private.'
+              ? 'Create a super-admin account with a new, independent family workspace.'
               : isForgotPassword
                 ? 'Enter your email address and we will send a password reset link if an account exists.'
                 : 'Your new password must be at least 12 characters.'}
@@ -177,22 +176,9 @@ function AuthPage({ onAuthenticated, initialError = '' }) {
           )}
 
           {mode === 'admin-signup' && (
-            <>
-              <label htmlFor="admin-signup-code">Admin invitation code</label>
-              <input
-                autoComplete="off"
-                id="admin-signup-code"
-                onChange={(event) => setSignupCode(event.target.value)}
-                required
-                type="password"
-                value={signupCode}
-              />
-              <p className="auth-hint">
-                On macOS, get the code from the backend folder with{' '}
-                <code>grep ADMIN_SIGNUP_CODE .env</code>. Keep it private.
-                Passwords must be at least 12 characters.
-              </p>
-            </>
+            <p className="auth-hint">
+              This creates a separate family tenant. Passwords must be at least 12 characters.
+            </p>
           )}
 
           {error && (
@@ -212,7 +198,7 @@ function AuthPage({ onAuthenticated, initialError = '' }) {
               : mode === 'login'
                 ? 'Sign in'
                 : mode === 'admin-signup'
-                  ? 'Create admin account'
+                  ? 'Create super admin'
                   : isForgotPassword
                     ? 'Send reset link'
                     : 'Reset password'}
@@ -226,9 +212,9 @@ function AuthPage({ onAuthenticated, initialError = '' }) {
                 Forgot password?
               </button>
               <br />
-              Need to set up an administrator?{' '}
+              Create a super-admin account:{' '}
               <button type="button" onClick={() => changeMode('admin-signup')}>
-                Admin sign up
+                Super-admin sign up
               </button>
               <br />
             </>

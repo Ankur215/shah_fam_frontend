@@ -19,12 +19,14 @@ test('lists accounts and lets an administrator create a normal user', async () =
     .mockResolvedValueOnce(apiResponse([
       { id: 1, email: 'admin@example.com', role: 'admin' },
     ]))
+    .mockResolvedValueOnce(apiResponse([]))
     .mockResolvedValueOnce(
       apiResponse({
         id: 2,
         email: 'family@example.com',
         role: 'user',
         accessPages: ['family', 'medical', 'gifts', 'charity'],
+        familyMemberIds: [],
       }, 201)
     );
 
@@ -60,14 +62,16 @@ test('lists accounts and lets an administrator create a normal user', async () =
   expect(await screen.findByRole('status')).toHaveTextContent(
     /share the temporary password securely/i
   );
-  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
   expect(global.fetch).toHaveBeenLastCalledWith('/api/auth/users', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email: 'family@example.com',
       password: 'a-secure-family-password',
+      role: 'user',
       accessPages: ['family', 'medical', 'gifts', 'charity'],
+      familyMemberIds: [],
     }),
   });
 });
@@ -83,7 +87,173 @@ test('keeps admin creation out of user account management', async () => {
   expect(
     screen.getByRole('button', { name: 'Create normal user account' })
   ).toBeInTheDocument();
-  expect(screen.getByText(/Admin sign up/)).toBeInTheDocument();
+  expect(screen.getByText(/become a super admin to manage a separate copy/i)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Become a super admin' })).toBeInTheDocument();
+});
+
+test('lets a super admin create an admin in a new family workspace', async () => {
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(apiResponse([
+      { id: 1, email: 'root@example.com', role: 'super_admin', workspaceId: 1 },
+    ]))
+    .mockResolvedValueOnce(apiResponse([{ id: 1, name: 'Root family' }]))
+    .mockResolvedValueOnce(apiResponse([
+      {
+        id: 11,
+        firstName: 'Asha',
+        lastName: 'Shah',
+        workspaceId: 1,
+        workspaceName: 'Root family',
+      },
+    ]))
+    .mockResolvedValueOnce(apiResponse({
+      id: 2,
+      email: 'new-admin@example.com',
+      role: 'admin',
+      workspaceId: 2,
+      accessPages: ['family', 'medical', 'gifts', 'charity'],
+      familyMemberIds: [11],
+    }, 201))
+    .mockResolvedValueOnce(apiResponse([
+      { id: 1, name: 'Root family' },
+      { id: 2, name: 'new-admin@example.com' },
+    ]));
+
+  render(
+    <AccountManagement
+      authUser={{
+        id: 1,
+        role: 'super_admin',
+        currentWorkspaceId: 1,
+      }}
+    />
+  );
+  await screen.findByText('root@example.com');
+  expect(screen.queryByLabelText('Family workspace', { selector: '#new-account-workspace' }))
+    .not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Email address'), {
+    target: { value: 'new-admin@example.com' },
+  });
+  fireEvent.change(screen.getByLabelText('Account type'), {
+    target: { value: 'admin' },
+  });
+  fireEvent.change(screen.getByLabelText('Temporary password'), {
+    target: { value: 'a-secure-admin-password' },
+  });
+  expect(screen.getByLabelText('Asha Shah (Root family)')).toBeChecked();
+  fireEvent.click(screen.getByRole('button', { name: 'Create admin account' }));
+
+  expect(
+    await screen.findByText('new-admin@example.com', { selector: '.account-email' })
+  ).toBeInTheDocument();
+  expect(global.fetch).toHaveBeenCalledWith('/api/auth/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: 'new-admin@example.com',
+      password: 'a-secure-admin-password',
+      role: 'admin',
+      accessPages: ['family', 'medical'],
+      familyMemberIds: [11],
+    }),
+  });
+});
+
+test('creates a super-admin user in the active workspace without a workspace field', async () => {
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(apiResponse([
+      { id: 1, email: 'root@example.com', role: 'super_admin', workspaceId: 1 },
+    ]))
+    .mockResolvedValueOnce(apiResponse([{ id: 1, name: 'Root family' }]))
+    .mockResolvedValueOnce(apiResponse([
+      {
+        id: 11,
+        firstName: 'Asha',
+        lastName: 'Shah',
+        workspaceId: 1,
+        workspaceName: 'Root family',
+      },
+    ]))
+    .mockResolvedValueOnce(apiResponse({
+      id: 3,
+      email: 'family-user@example.com',
+      role: 'user',
+      workspaceId: 1,
+      accessPages: ['family', 'medical'],
+      familyMemberIds: [11],
+    }, 201));
+
+  render(
+    <AccountManagement
+      authUser={{
+        id: 1,
+        role: 'super_admin',
+        currentWorkspaceId: 1,
+      }}
+    />
+  );
+  await screen.findByText('root@example.com');
+  fireEvent.change(screen.getByLabelText('Email address'), {
+    target: { value: 'family-user@example.com' },
+  });
+  fireEvent.change(screen.getByLabelText('Temporary password'), {
+    target: { value: 'a-secure-family-password' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Create user account' }));
+
+  await screen.findByText('family-user@example.com', { selector: '.account-email' });
+  expect(global.fetch).toHaveBeenLastCalledWith('/api/auth/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: 'family-user@example.com',
+      password: 'a-secure-family-password',
+      role: 'user',
+      accessPages: ['family', 'medical'],
+      familyMemberIds: [11],
+    }),
+  });
+});
+
+test('lets an admin become a super admin with a copied family workspace', async () => {
+  const updatedUser = {
+    id: 7,
+    email: 'admin@example.com',
+    role: 'super_admin',
+    workspaceId: 3,
+    currentWorkspaceId: 3,
+    workspaces: [{ id: 3, name: 'Family (copy)' }],
+  };
+  const onUserUpdated = jest.fn();
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(apiResponse([
+      { id: 7, email: 'admin@example.com', role: 'admin', workspaceId: 2 },
+    ]))
+    .mockResolvedValueOnce(apiResponse([]))
+    .mockResolvedValueOnce(apiResponse({
+      message: 'Admin promoted with an independent family copy.',
+      user: updatedUser,
+      workspace: { id: 3, name: 'Family (copy)' },
+    }));
+  jest.spyOn(window, 'confirm').mockReturnValue(true);
+
+  render(
+    <AccountManagement
+      authUser={{ id: 7, email: 'admin@example.com', role: 'admin' }}
+      onUserUpdated={onUserUpdated}
+    />
+  );
+  await screen.findByText('admin@example.com');
+  fireEvent.click(screen.getByRole('button', { name: 'Become a super admin' }));
+
+  await waitFor(() => expect(onUserUpdated).toHaveBeenCalledWith(updatedUser));
+  expect(window.confirm).toHaveBeenCalledWith(
+    'Become a super admin? Your family workspace will be copied into a separate tree, and the original workspace will remain unchanged.'
+  );
+  expect(global.fetch).toHaveBeenLastCalledWith(
+    '/api/super-admin/users/7/promote',
+    { method: 'POST' }
+  );
 });
 
 test('lets an administrator update a normal user account', async () => {
@@ -94,6 +264,16 @@ test('lets an administrator update a normal user account', async () => {
         email: 'family@example.com',
         role: 'user',
         accessPages: ['family', 'medical'],
+        familyMemberIds: [9],
+      },
+    ]))
+    .mockResolvedValueOnce(apiResponse([
+      {
+        id: 9,
+        firstName: 'Asha',
+        lastName: 'Shah',
+        workspaceId: 1,
+        workspaceName: 'Family',
       },
     ]))
     .mockResolvedValueOnce(apiResponse({
@@ -101,6 +281,7 @@ test('lets an administrator update a normal user account', async () => {
       email: 'updated-family@example.com',
       role: 'user',
       accessPages: ['medical', 'gifts'],
+      familyMemberIds: [],
     }));
 
   render(<AccountManagement />);
@@ -115,6 +296,8 @@ test('lets an administrator update a normal user account', async () => {
     within(editForm).getByLabelText('Family members and family tree')
   );
   fireEvent.click(within(editForm).getByLabelText('Gift log'));
+  expect(within(editForm).getByLabelText('Asha Shah (Family)')).toBeChecked();
+  fireEvent.click(within(editForm).getByLabelText('Asha Shah (Family)'));
   fireEvent.change(
     within(editForm).getByLabelText(
       'New password (leave blank to keep current password)'
@@ -133,6 +316,7 @@ test('lets an administrator update a normal user account', async () => {
     body: JSON.stringify({
       email: 'updated-family@example.com',
       accessPages: ['medical', 'gifts'],
+      familyMemberIds: [],
       password: 'updated-secure-password',
     }),
   });
@@ -146,8 +330,10 @@ test('lets an administrator delete a normal user account after confirmation', as
         email: 'family@example.com',
         role: 'user',
         accessPages: ['family'],
+        familyMemberIds: [],
       },
     ]))
+    .mockResolvedValueOnce(apiResponse([]))
     .mockResolvedValueOnce(apiResponse({ message: 'Normal user account deleted.' }));
   jest.spyOn(window, 'confirm').mockReturnValue(true);
 
@@ -159,7 +345,7 @@ test('lets an administrator delete a normal user account after confirmation', as
 
   expect(await screen.findByText('No accounts found.')).toBeInTheDocument();
   expect(window.confirm).toHaveBeenCalledWith(
-    'Delete the normal user account for family@example.com?'
+    'Delete the normal user account for family@example.com? It will be deactivated and retained.'
   );
   expect(global.fetch).toHaveBeenLastCalledWith('/api/auth/users/2', {
     method: 'DELETE',

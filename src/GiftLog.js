@@ -141,8 +141,10 @@ function GiftEntry({
   );
 }
 
-function GiftLog() {
+function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
   const [gifts, setGifts] = useState([]);
+  const [assignedFamilyMembers, setAssignedFamilyMembers] = useState([]);
+  const [familyMemberError, setFamilyMemberError] = useState('');
   const [editingGift, setEditingGift] = useState(null);
   const [giftDirection, setGiftDirection] = useState('Given');
   const [expandedGroups, setExpandedGroups] = useState({});
@@ -155,6 +157,37 @@ function GiftLog() {
   const [error, setError] = useState('');
   const [isLoadError, setIsLoadError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const giftFamilyMembers = loadFamilyMembers
+    ? assignedFamilyMembers
+    : familyMembers;
+
+  useEffect(() => {
+    if (!loadFamilyMembers) return undefined;
+    let isCurrent = true;
+
+    async function loadAssignedFamilyMembers() {
+      setFamilyMemberError('');
+      try {
+        const response = await apiFetch(`${GIFTS_ENDPOINT}/family-members`);
+        const data = await readApiResponse(response);
+        if (!Array.isArray(data)) {
+          throw new Error('The server returned an invalid family member list.');
+        }
+        if (isCurrent) setAssignedFamilyMembers(data);
+      } catch (loadError) {
+        if (isCurrent) {
+          setFamilyMemberError(
+            `Could not load family members for gift records. ${loadError.message || 'Please try again.'}`
+          );
+        }
+      }
+    }
+
+    loadAssignedFamilyMembers();
+    return () => {
+      isCurrent = false;
+    };
+  }, [loadFamilyMembers]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -204,6 +237,14 @@ function GiftLog() {
       currency: String(formData.get('currency') || '').trim().toUpperCase(),
       notes: String(formData.get('notes') || '').trim(),
     };
+    const selectedMemberId = Number(formData.get('familyMemberId'));
+    const selectedMember = giftFamilyMembers.find(
+      (member) => member.id === selectedMemberId
+    );
+    if (gift.recipientType === 'Family' && selectedMember) {
+      gift.familyMemberId = selectedMember.id;
+      gift.recipientName = `${selectedMember.firstName} ${selectedMember.lastName || ''}`.trim();
+    }
 
     setIsSaving(true);
     setError('');
@@ -384,6 +425,9 @@ function GiftLog() {
           key={editingGift?.id || 'new-gift'}
           onSubmit={saveGift}
         >
+          {familyMemberError && (
+            <p className="gift-error" role="alert">{familyMemberError}</p>
+          )}
           <div className="gift-card-heading">
             <span className="gift-card-icon" aria-hidden="true">
               {editingGift ? '✎' : '＋'}
@@ -430,8 +474,33 @@ function GiftLog() {
                 maxLength="100"
                 autoComplete="name"
                 placeholder="Person’s name"
+                list={giftFamilyMembers.length ? 'gift-family-members' : undefined}
                 defaultValue={editingGift?.recipientName || ''}
               />
+              {giftFamilyMembers.length > 0 && (
+                <>
+                  <datalist id="gift-family-members">
+                    {giftFamilyMembers.map((member) => (
+                      <option
+                        key={member.id}
+                        value={`${member.firstName} ${member.lastName || ''}`.trim()}
+                      />
+                    ))}
+                  </datalist>
+                  <select
+                    aria-label="Family member"
+                    defaultValue={editingGift?.familyMemberId || ''}
+                    name="familyMemberId"
+                  >
+                    <option value="">Link to a family member</option>
+                    {giftFamilyMembers.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.firstName} {member.lastName || ''}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
             </label>
             <label className="gift-form-full">
               Occasion

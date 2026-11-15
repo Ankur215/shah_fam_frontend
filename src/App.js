@@ -320,6 +320,7 @@ function getNextCelebration(members) {
     eventGroup.memberNames.push(celebration.memberName);
     return groupedEvents;
   }, []);
+
   return { date, events };
 }
 
@@ -404,13 +405,15 @@ function App() {
   const [selectedAnniversaryPaksha, setSelectedAnniversaryPaksha] = useState('');
   const [selectedAnniversaryTithi, setSelectedAnniversaryTithi] = useState('');
   const [apiError, setApiError] = useState('');
+  const [apiNotice, setApiNotice] = useState('');
   const [isLoadError, setIsLoadError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isReorderingMembers, setIsReorderingMembers] = useState(false);
+  const [deletingMemberId, setDeletingMemberId] = useState(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [validationErrors, setValidationErrors] = useState({});
-  const accessPages = authUser?.role === 'admin'
+  const accessPages = authUser?.role === 'super_admin'
     ? ['family', 'medical', 'gifts', 'charity']
     : authUser?.accessPages || ['family', 'medical'];
   const hasFamilyPageAccess = accessPages.includes('family');
@@ -437,10 +440,12 @@ function App() {
         if (response.status === 401) return;
         const data = await readApiResponse(response);
         if (!data.user) return;
-        if (!['admin', 'user'].includes(data.user.role)) {
+        if (!['super_admin', 'admin', 'user'].includes(data.user.role)) {
           throw new Error('The server returned an invalid session response.');
         }
-        if (isCurrent) setAuthUser(data.user);
+        if (isCurrent) {
+          setAuthUser(data.user);
+        }
       } catch (error) {
         console.error('Could not restore the signed-in session.', error);
         if (isCurrent) {
@@ -472,6 +477,21 @@ function App() {
   }, []);
 
   useEffect(() => {
+    function handleWorkspaceSelected(event) {
+      const workspaceId = event.detail?.workspaceId;
+      if (!Number.isInteger(workspaceId)) return;
+      setAuthUser((current) =>
+        current ? { ...current, currentWorkspaceId: workspaceId } : current
+      );
+      setLoadAttempt((attempt) => attempt + 1);
+    }
+
+    window.addEventListener('family-workspace-selected', handleWorkspaceSelected);
+    return () =>
+      window.removeEventListener('family-workspace-selected', handleWorkspaceSelected);
+  }, []);
+
+  useEffect(() => {
     if (!authUser) return;
     const pageAccess = {
       members: hasFamilyPageAccess,
@@ -479,7 +499,7 @@ function App() {
       medical: hasMedicalPageAccess,
       gifts: hasGiftsPageAccess,
       charity: hasCharityPageAccess,
-      accounts: authUser.role === 'admin',
+      accounts: ['admin', 'super_admin'].includes(authUser.role),
       'no-access': !hasAnyModuleAccess,
     };
     if (
@@ -718,6 +738,44 @@ function App() {
     }
   }
 
+  async function deleteMember(member) {
+    const fullName = `${member.firstName} ${member.lastName || ''}`.trim();
+    if (!window.confirm(`Archive ${fullName} and remove them from the family list?`)) {
+      return;
+    }
+
+    setDeletingMemberId(member.id);
+    setApiError('');
+    setApiNotice('');
+    try {
+      const response = await apiFetch(`${FAMILY_MEMBERS_ENDPOINT}/${member.id}`, {
+        method: 'DELETE',
+      });
+      await readApiResponse(response);
+      setMembers((currentMembers) =>
+        currentMembers
+          .filter((currentMember) => currentMember.id !== member.id)
+          .map((currentMember) => ({
+            ...currentMember,
+            parentIds: (currentMember.parentIds || []).filter(
+              (id) => id !== member.id
+            ),
+            spouseIds: (currentMember.spouseIds || []).filter(
+              (id) => id !== member.id
+            ),
+          }))
+      );
+      setApiNotice(`${fullName} was archived.`);
+    } catch (error) {
+      console.error('Could not archive family member through the API.', error);
+      setApiError(
+        `Could not archive family member. ${error.message || 'Check that the API and database are available.'}`
+      );
+    } finally {
+      setDeletingMemberId(null);
+    }
+  }
+
   async function signOut() {
     setLogoutError('');
     try {
@@ -766,9 +824,8 @@ function App() {
             <small>Our family space</small>
           </span>
         </a>
-
         <nav aria-label="Main navigation">
-          {authUser.role === 'admin' && (
+          {['admin', 'super_admin'].includes(authUser.role) && (
             <button
               className={`nav-item ${activePage === 'accounts' ? 'nav-item-active' : ''}`}
               type="button"
@@ -779,7 +836,7 @@ function App() {
               User accounts
             </button>
           )}
-          {(authUser.role === 'admin' || hasFamilyPageAccess || hasMedicalPageAccess) && (
+          {(['admin', 'super_admin'].includes(authUser.role) || hasFamilyPageAccess || hasMedicalPageAccess) && (
             <div className="sidebar-label">FAMILY</div>
           )}
           {hasFamilyPageAccess && (
@@ -909,7 +966,11 @@ function App() {
               {authUser.email}
             </span>
             <span className={`account-role-label account-role-label-${authUser.role}`}>
-              {authUser.role === 'admin' ? 'Admin user' : 'Normal user'}
+              {authUser.role === 'super_admin'
+                ? 'Super admin'
+                : authUser.role === 'admin'
+                  ? 'Admin'
+                  : 'Normal user'}
             </span>
             <button className="sign-out-button" type="button" onClick={signOut}>
               Sign out
@@ -922,8 +983,14 @@ function App() {
           </p>
         )}
 
-        {activePage === 'accounts' && authUser.role === 'admin' ? (
-          <AccountManagement />
+        {activePage === 'accounts' && ['admin', 'super_admin'].includes(authUser.role) ? (
+          <AccountManagement
+            authUser={authUser}
+            onUserUpdated={(user) => {
+              setAuthUser(user);
+              setLoadAttempt((attempt) => attempt + 1);
+            }}
+          />
         ) : activePage === 'medical' && hasMedicalPageAccess ? (
           <MedicalReports />
         ) : activePage === 'no-access' || !hasAnyModuleAccess ? (
@@ -996,15 +1063,20 @@ function App() {
                 <h2 id="members-heading">Your people</h2>
                 <p>All the wonderful people in your family.</p>
               </div>
-              <button
+              {authUser.role === 'super_admin' && <button
                 className="primary-button"
                 type="button"
                 disabled={isReorderingMembers}
                 onClick={() => openMemberForm()}
               >
                 <span aria-hidden="true">＋</span> Add family member
-              </button>
+              </button>}
             </div>
+            {authUser.role !== 'super_admin' && (
+              <p className="family-readonly-note">
+                Only a super administrator can change family information.
+              </p>
+            )}
 
             <div className="member-toolbar">
               <label className="search-box">
@@ -1037,6 +1109,7 @@ function App() {
                 )}
               </div>
             )}
+            {apiNotice && <p className="api-notice" role="status">{apiNotice}</p>}
 
             {isLoading ? (
               <div className="empty-state" role="status">
@@ -1133,7 +1206,7 @@ function App() {
                       <span className="detail-label">CONTACT</span>
                       <span>{member.phone || member.email || '—'}</span>
                     </div>
-                    <div className="member-actions">
+                    {authUser.role === 'super_admin' && <div className="member-actions">
                       <button
                         className="member-move-button"
                         type="button"
@@ -1167,13 +1240,22 @@ function App() {
                       <button
                         className="member-edit-button"
                         type="button"
-                        disabled={isReorderingMembers}
+                        disabled={isReorderingMembers || deletingMemberId !== null}
                         aria-label={`Edit ${member.firstName} ${member.lastName || ''}`.trim()}
                         onClick={() => openMemberForm(member)}
                       >
                         Edit
                       </button>
-                    </div>
+                      <button
+                        className="member-edit-button"
+                        type="button"
+                        disabled={isReorderingMembers || deletingMemberId !== null}
+                        aria-label={`Delete ${member.firstName} ${member.lastName || ''}`.trim()}
+                        onClick={() => deleteMember(member)}
+                      >
+                        {deletingMemberId === member.id ? 'Archiving…' : 'Delete'}
+                      </button>
+                    </div>}
                   </article>
                 ))}
               </div>
@@ -1192,7 +1274,7 @@ function App() {
                     ? 'Try another name or relationship.'
                     : 'Add someone special to start building your family space.'}
                 </p>
-                {!search && (
+                {!search && authUser.role === 'super_admin' && (
                   <button
                     className="secondary-button"
                     type="button"
@@ -1216,12 +1298,20 @@ function App() {
             isLoading={isLoading}
             isLoadError={isLoadError}
             onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
-            onManageMembers={() => setActivePage('members')}
+            onManageMembers={
+              authUser.role === 'super_admin'
+                ? () => setActivePage('members')
+                : undefined
+            }
           />
         ) : activePage === 'gifts' && hasGiftsPageAccess ? (
-          <GiftLog />
+          <GiftLog
+            familyMembers={members}
+            key={authUser.currentWorkspaceId || authUser.workspaceId}
+            loadFamilyMembers={!hasFamilyPageAccess}
+          />
         ) : activePage === 'charity' && hasCharityPageAccess ? (
-          <CharityLog />
+          <CharityLog key={authUser.currentWorkspaceId || authUser.workspaceId} />
         ) : (
           <section className="page-content">
             <h1>This page is not available</h1>
@@ -1229,7 +1319,7 @@ function App() {
         )}
       </main>
 
-      {isFormOpen && (
+      {isFormOpen && authUser.role === 'super_admin' && (
         <div
           className="modal-backdrop"
           onMouseDown={(event) => {

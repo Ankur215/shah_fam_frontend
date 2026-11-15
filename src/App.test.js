@@ -36,7 +36,7 @@ function apiResponse(data, status = 200) {
 }
 
 function authenticatedResponse() {
-  return apiResponse({ user: { id: 1, email: 'admin@example.com', role: 'admin' } });
+  return apiResponse({ user: { id: 1, email: 'admin@example.com', role: 'super_admin' } });
 }
 
 function dateFromToday(days) {
@@ -68,7 +68,8 @@ test('shows the family member empty state after loading members from the API', a
   expect(
     await screen.findByRole('heading', { name: /your family story starts here/i })
   ).toBeInTheDocument();
-  expect(screen.getByText('Admin user')).toBeInTheDocument();
+  expect(screen.queryByLabelText('Select family workspace')).not.toBeInTheDocument();
+  expect(screen.getByText('Super admin')).toBeInTheDocument();
   const userAccountsButton = screen.getByRole('button', { name: 'User accounts' });
   const familyMenuButton = screen.getByRole('button', { name: 'Family', exact: true });
   expect(
@@ -86,6 +87,33 @@ test('shows the family member empty state after loading members from the API', a
     screen.getByRole('button', { name: /add your first member/i })
   ).toBeInTheDocument();
   expect(global.fetch).toHaveBeenCalledWith('/api/family-members');
+});
+
+test('lets admins view family information without edit controls', async () => {
+  const adminUser = {
+    id: 8,
+    email: 'admin@example.com',
+    role: 'admin',
+    accessPages: ['family'],
+  };
+  global.fetch = jest.fn((url) =>
+    Promise.resolve(
+      url === '/api/auth/me'
+        ? apiResponse({ user: adminUser })
+        : url === '/api/family-members'
+          ? apiResponse([savedMember])
+          : apiResponse([])
+    )
+  );
+
+  render(<App />);
+
+  expect(await screen.findByText('Asha Shah')).toBeInTheDocument();
+  expect(screen.getByText('Only a super administrator can change family information.'))
+    .toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /add family member/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Edit Asha Shah' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Delete Asha Shah' })).not.toBeInTheDocument();
 });
 
 test('requires a login before opening the family space', async () => {
@@ -809,6 +837,29 @@ test('edits an existing family member through the API', async () => {
   expect(dateBlocks[0]).toHaveTextContent('Vaishakh · Vad Amas');
   expect(dateBlocks[1]).toBeEmptyDOMElement();
   expect(dateBlocks[2]).toBeEmptyDOMElement();
+});
+
+test('archives a family member through the API after confirmation', async () => {
+  const member = { ...savedMember };
+  global.fetch
+    .mockResolvedValueOnce(authenticatedResponse())
+    .mockResolvedValueOnce(apiResponse([member]))
+    .mockResolvedValueOnce(apiResponse({ id: member.id }));
+  jest.spyOn(window, 'confirm').mockReturnValue(true);
+
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Delete Asha Shah' }));
+
+  expect(
+    await screen.findByRole('heading', { name: /your family story starts here/i })
+  ).toBeInTheDocument();
+  expect(screen.getByRole('status')).toHaveTextContent('Asha Shah was archived.');
+  expect(window.confirm).toHaveBeenCalledWith(
+    'Archive Asha Shah and remove them from the family list?'
+  );
+  expect(global.fetch).toHaveBeenLastCalledWith('/api/family-members/1', {
+    method: 'DELETE',
+  });
 });
 
 test('opens an edit form when the API returns a null phone number', async () => {

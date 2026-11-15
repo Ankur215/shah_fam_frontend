@@ -36,7 +36,7 @@ test('loads gift history from the API', async () => {
   const recipientGroup = await screen.findByRole('button', { name: /Maya Patel/ });
   expect(recipientGroup).toHaveAttribute('aria-expanded', 'false');
   fireEvent.click(recipientGroup);
-  expect(await screen.findByText('Handmade photo album')).toBeInTheDocument();
+  expect(await screen.findByText(/Handmade photo album/)).toBeInTheDocument();
   expect(screen.getByText('Maya Patel')).toBeInTheDocument();
   expect(screen.getByText('A memory from our trip.')).toBeInTheDocument();
   expect(container.querySelector('.gift-record h4')).toHaveTextContent('Birthday');
@@ -59,12 +59,23 @@ test('saves a gift and displays the saved entry', async () => {
     amount: '',
     currency: '',
     notes: '',
+    familyMemberId: 5,
   };
   global.fetch = jest.fn()
     .mockResolvedValueOnce(apiResponse([]))
     .mockResolvedValueOnce(apiResponse(savedGift, 201));
 
-  render(<GiftLog />);
+  render(
+    <GiftLog
+      familyMembers={[
+        {
+          id: 5,
+          firstName: 'Asha',
+          lastName: 'Shah',
+        },
+      ]}
+    />
+  );
 
   fireEvent.change(screen.getByPlaceholderText('Person’s name'), {
     target: { value: 'Asha Shah' },
@@ -77,6 +88,9 @@ test('saves a gift and displays the saved entry', async () => {
   });
   fireEvent.change(screen.getByPlaceholderText('Birthday, wedding, just because…'), {
     target: { value: 'Just because' },
+  });
+  fireEvent.change(screen.getByLabelText('Family member'), {
+    target: { value: '5' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Save gift' }));
 
@@ -94,10 +108,11 @@ test('saves a gift and displays the saved entry', async () => {
       amount: '',
       currency: '',
       notes: '',
+      familyMemberId: 5,
     }),
   });
-  expect(await screen.findByText('A book')).toBeInTheDocument();
-  expect(screen.getByText('Asha Shah')).toBeInTheDocument();
+  expect(await screen.findByText(/A book/)).toBeInTheDocument();
+  expect(screen.getByText('Asha Shah', { selector: 'strong' })).toBeInTheDocument();
 });
 
 test('records a received gift from the recipient group', async () => {
@@ -161,7 +176,7 @@ test('records a received gift from the recipient group', async () => {
       notes: '',
     }),
   });
-  expect(await screen.findByText('Wine bottle')).toBeInTheDocument();
+  expect(await screen.findByText(/Wine bottle/)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /Friend · 1 received/ }))
     .toHaveTextContent('Friend · 1 received');
   expect(screen.getByRole('heading', { name: 'Received' })).toBeInTheDocument();
@@ -212,12 +227,12 @@ test('groups gifts by recipient and reveals all of their entries', async () => {
   expect(document.getElementById('gift-group-21')).not.toHaveAttribute('hidden');
   const givenSection = screen.getByRole('region', { name: 'Given' });
   const receivedSection = screen.getByRole('region', { name: 'Received' });
-  expect(within(givenSection).getByText('Tummy time toy')).toBeInTheDocument();
-  expect(within(givenSection).getByText('Siya born')).toBeInTheDocument();
-  expect(within(givenSection).getByText('Family meal')).toBeInTheDocument();
-  expect(within(givenSection).queryByText('Writing board')).not.toBeInTheDocument();
-  expect(within(receivedSection).getByText('Writing board')).toBeInTheDocument();
-  expect(within(receivedSection).getByText('Siya - 2 year bday')).toBeInTheDocument();
+  expect(within(givenSection).getByText(/Tummy time toy/)).toBeInTheDocument();
+  expect(within(givenSection).getByText(/Siya born/)).toBeInTheDocument();
+  expect(within(givenSection).getByText(/Family meal/)).toBeInTheDocument();
+  expect(within(givenSection).queryByText(/Writing board/)).not.toBeInTheDocument();
+  expect(within(receivedSection).getByText(/Writing board/)).toBeInTheDocument();
+  expect(within(receivedSection).getByText(/Siya - 2 year bday/)).toBeInTheDocument();
   expect(within(givenSection).getByText('Total: 12.50 CAD · 40.00 USD')).toBeInTheDocument();
   expect(within(receivedSection).getByText('Total: 50.00 USD')).toBeInTheDocument();
 
@@ -226,9 +241,9 @@ test('groups gifts by recipient and reveals all of their entries', async () => {
   });
   fireEvent.click(givenAccordion);
   expect(givenAccordion).toHaveAttribute('aria-expanded', 'false');
-  expect(within(givenSection).getByText('Tummy time toy')).not.toBeVisible();
+  expect(within(givenSection).getByText(/Tummy time toy/)).not.toBeVisible();
   fireEvent.click(givenAccordion);
-  expect(within(givenSection).getByText('Tummy time toy')).toBeVisible();
+  expect(within(givenSection).getByText(/Tummy time toy/)).toBeVisible();
 });
 
 test('edits a saved gift and displays the updated entry', async () => {
@@ -294,7 +309,7 @@ test('edits a saved gift and displays the updated entry', async () => {
       notes: 'Updated note',
     }),
   });
-  expect(await screen.findByText('Framed photo')).toBeInTheDocument();
+  expect(await screen.findByText(/Framed photo/)).toBeInTheDocument();
   expect(screen.getByText('Updated note')).toBeInTheDocument();
   expect(screen.queryByText('Photo album')).not.toBeInTheDocument();
 });
@@ -358,7 +373,7 @@ test('keeps a gift when deletion is canceled', async () => {
   }));
 
   expect(global.fetch).toHaveBeenCalledTimes(1);
-  expect(await screen.findByText('Flowers')).toBeInTheDocument();
+  expect(await screen.findByText(/Flowers/)).toBeInTheDocument();
 });
 
 test('shows an API error when gift history cannot be loaded', async () => {
