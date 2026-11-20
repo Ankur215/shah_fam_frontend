@@ -108,6 +108,67 @@
   outline: 3px solid var(--family-tint);
 }
 
+.account-theme-picker {
+  display: grid;
+  gap: 9px;
+  margin: 4px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.account-theme-picker legend {
+  margin-bottom: 9px;
+  color: #46564b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.account-theme-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.account-theme-option {
+  position: relative;
+  display: block;
+  width: 42px;
+  height: 42px;
+  margin: 0 !important;
+  cursor: pointer;
+}
+
+.account-theme-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.account-theme-swatch {
+  display: block;
+  width: 42px;
+  height: 42px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--theme-swatch);
+  box-shadow: 0 0 0 1px var(--family-border);
+  transition: box-shadow 120ms ease, transform 120ms ease;
+}
+
+.account-theme-option:hover .account-theme-swatch {
+  transform: scale(1.06);
+  box-shadow: 0 0 0 2px var(--family-focus);
+}
+
+.account-theme-option input:focus-visible + .account-theme-swatch {
+  box-shadow: 0 0 0 3px var(--family-tint), 0 0 0 5px var(--family-focus);
+}
+
+.account-theme-option input:checked + .account-theme-swatch {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--theme-swatch);
+}
+
 .account-page-permissions {
   display: grid;
   gap: 8px;

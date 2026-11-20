@@ -27,7 +27,7 @@ test('lets a super admin update the active family name and theme', async () => {
     .mockResolvedValueOnce(apiResponse({
       id: 1,
       familyName: 'Shah Family',
-      theme: 'ocean',
+      theme: 'rose',
     }));
 
   render(
@@ -46,12 +46,14 @@ test('lets a super admin update the active family name and theme', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
   expect(screen.queryByLabelText('Email address')).not.toBeInTheDocument();
   expect(screen.getByLabelText('Active family workspace')).toBeInTheDocument();
+  expect(screen.getByRole('radio', { name: 'Rose' })).toBeInTheDocument();
+  expect(screen.getByRole('radio', { name: 'Slate' })).toBeInTheDocument();
+  expect(screen.getByRole('radio', { name: 'Amber' })).toBeInTheDocument();
+  expect(screen.getByRole('radio', { name: 'Indigo' })).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Family name'), {
     target: { value: 'Shah Family' },
   });
-  fireEvent.change(screen.getByLabelText('Color theme'), {
-    target: { value: 'ocean' },
-  });
+  fireEvent.click(screen.getByRole('radio', { name: 'Rose' }));
   fireEvent.click(screen.getByRole('button', { name: 'Save family appearance' }));
 
   expect(await screen.findByRole('status')).toHaveTextContent(
@@ -60,10 +62,10 @@ test('lets a super admin update the active family name and theme', async () => {
   expect(global.fetch).toHaveBeenLastCalledWith('/api/super-admin/workspaces/1', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ familyName: 'Shah Family', theme: 'ocean' }),
+    body: JSON.stringify({ familyName: 'Shah Family', theme: 'rose' }),
   });
   expect(onUserUpdated).toHaveBeenCalledWith(
-    expect.objectContaining({ familyName: 'Shah Family', theme: 'ocean' })
+    expect.objectContaining({ familyName: 'Shah Family', theme: 'rose' })
   );
 });
 

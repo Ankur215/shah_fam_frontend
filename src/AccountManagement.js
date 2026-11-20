@@ -479,16 +479,32 @@ function AccountManagement({
                 required
                 value={familyName}
               />
-              <label htmlFor="family-display-theme">Color theme</label>
-              <select
-                id="family-display-theme"
-                onChange={(event) => setFamilyTheme(event.target.value)}
-                value={familyTheme}
-              >
-                {FAMILY_THEMES.map((theme) => (
-                  <option key={theme.id} value={theme.id}>{theme.label}</option>
-                ))}
-              </select>
+              <fieldset className="account-theme-picker">
+                <legend>Color theme</legend>
+                <div className="account-theme-options">
+                  {FAMILY_THEMES.map((theme) => (
+                    <label
+                      key={theme.id}
+                      className="account-theme-option"
+                      title={theme.label}
+                    >
+                      <input
+                        type="radio"
+                        name="family-display-theme"
+                        value={theme.id}
+                        checked={familyTheme === theme.id}
+                        onChange={(event) => setFamilyTheme(event.target.value)}
+                        aria-label={theme.label}
+                      />
+                      <span
+                        className="account-theme-swatch"
+                        style={{ '--theme-swatch': theme.color }}
+                        aria-hidden="true"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
               {appearanceError && (
                 <p className="account-error" role="alert">{appearanceError}</p>
               )}

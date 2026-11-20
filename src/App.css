@@ -60,6 +60,62 @@ button {
   --family-muted-accent: #78689a;
 }
 
+.app-shell[data-theme='rose'] {
+  --family-primary: #a85568;
+  --family-primary-dark: #884454;
+  --family-primary-strong: #783949;
+  --family-tint: #faedf1;
+  --family-soft: #f6e4e9;
+  --family-focus: #c77a8b;
+  --family-canvas: #fcf7f8;
+  --family-border: #efdee3;
+  --family-heading: #663744;
+  --family-text: #4b3038;
+  --family-muted-accent: #9a6170;
+}
+
+.app-shell[data-theme='slate'] {
+  --family-primary: #607681;
+  --family-primary-dark: #4d626c;
+  --family-primary-strong: #40545e;
+  --family-tint: #edf2f4;
+  --family-soft: #e5ecef;
+  --family-focus: #839aa5;
+  --family-canvas: #f5f7f8;
+  --family-border: #dde5e8;
+  --family-heading: #40515a;
+  --family-text: #34424a;
+  --family-muted-accent: #66808b;
+}
+
+.app-shell[data-theme='amber'] {
+  --family-primary: #a66f2a;
+  --family-primary-dark: #865820;
+  --family-primary-strong: #744b1b;
+  --family-tint: #faf2e4;
+  --family-soft: #f5ead5;
+  --family-focus: #c69250;
+  --family-canvas: #fcf9f2;
+  --family-border: #eee3cd;
+  --family-heading: #65471f;
+  --family-text: #4d3a25;
+  --family-muted-accent: #98784e;
+}
+
+.app-shell[data-theme='indigo'] {
+  --family-primary: #596ba8;
+  --family-primary-dark: #47578a;
+  --family-primary-strong: #3d4b78;
+  --family-tint: #edf0f8;
+  --family-soft: #e3e8f4;
+  --family-focus: #8392c1;
+  --family-canvas: #f6f7fb;
+  --family-border: #dfe4ef;
+  --family-heading: #3d496d;
+  --family-text: #343d58;
+  --family-muted-accent: #6878a4;
+}
+
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
