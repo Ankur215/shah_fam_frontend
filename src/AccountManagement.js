@@ -9,6 +9,7 @@ const ACCESS_MODULES = {
   medical: 'Medical reports',
   gifts: 'Gift log',
   charity: 'Charity work',
+  notes: 'Notes & Reminders',
 };
 const DEFAULT_ACCESS_PAGES = ['family', 'medical'];
 
@@ -75,6 +76,8 @@ function AccountManagement({
   onUserUpdated = () => {},
 }) {
   const isSuperAdmin = authUser.role === 'super_admin';
+  const isPrimaryWorkspace = Boolean(authUser.workspaceId)
+    && Number(authUser.workspaceId) === Number(authUser.currentWorkspaceId);
   const [users, setUsers] = useState([]);
   const [workspaces, setWorkspaces] = useState([]);
   const [email, setEmail] = useState('');
@@ -82,7 +85,6 @@ function AccountManagement({
   const [accountRole, setAccountRole] = useState('user');
   const [accountSection, setAccountSection] = useState('accounts');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
   const [workspaceId, setWorkspaceId] = useState(authUser.currentWorkspaceId || '');
   const [familyName, setFamilyName] = useState(authUser.familyName || '');
   const [familyTheme, setFamilyTheme] = useState(authUser.theme || 'sage');
@@ -102,7 +104,6 @@ function AccountManagement({
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isPromoting, setIsPromoting] = useState(false);
-  const [isSelectingWorkspace, setIsSelectingWorkspace] = useState(false);
   const [isSavingAppearance, setIsSavingAppearance] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState(null);
 
@@ -159,6 +160,11 @@ function AccountManagement({
     isSuperAdmin,
   ]);
 
+  useEffect(() => {
+    setAppearanceError('');
+    setAppearanceNotice('');
+  }, [authUser.currentWorkspaceId]);
+
   async function handleSubmit(event) {
     event.preventDefault();
     setIsSaving(true);
@@ -209,34 +215,6 @@ function AccountManagement({
     }
   }
 
-  async function handleWorkspaceSelect(event) {
-    const selectedWorkspaceId = Number(event.target.value);
-    setIsSelectingWorkspace(true);
-    setError('');
-    setNotice('');
-    try {
-      const response = await apiFetch(`${API_URL}/api/super-admin/workspaces/active`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspaceId: selectedWorkspaceId }),
-      });
-      const workspace = await readApiResponse(response);
-      setWorkspaceId(String(selectedWorkspaceId));
-      window.dispatchEvent(new CustomEvent('family-workspace-selected', {
-        detail: {
-          workspaceId: selectedWorkspaceId,
-          familyName: workspace.familyName,
-          theme: workspace.theme,
-        },
-      }));
-      setNotice('Active family workspace updated.');
-    } catch (selectError) {
-      setError(selectError.message || 'Could not select the family workspace.');
-    } finally {
-      setIsSelectingWorkspace(false);
-    }
-  }
-
   async function handleAppearanceSave(event) {
     event.preventDefault();
     setIsSavingAppearance(true);
@@ -244,7 +222,7 @@ function AccountManagement({
     setAppearanceNotice('');
     try {
       const response = await apiFetch(
-        `${API_URL}/api/super-admin/workspaces/${workspaceId}`,
+        `${API_URL}/api/super-admin/workspaces/${authUser.workspaceId}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -252,6 +230,8 @@ function AccountManagement({
         }
       );
       const workspace = await readApiResponse(response);
+      setFamilyName(workspace.familyName);
+      setFamilyTheme(workspace.theme);
       setWorkspaces((current) =>
         current.map((item) =>
           item.id === workspace.id
@@ -265,7 +245,6 @@ function AccountManagement({
         theme: workspace.theme,
       });
       setAppearanceNotice('Family name and theme updated.');
-      setIsAppearanceOpen(false);
     } catch (saveError) {
       setAppearanceError(saveError.message || 'Could not update family appearance.');
     } finally {
@@ -297,13 +276,6 @@ function AccountManagement({
         .map((member) => member.id)
     );
     setError('');
-  }
-
-  function closeAppearanceForm() {
-    setIsAppearanceOpen(false);
-    setFamilyName(authUser.familyName || '');
-    setFamilyTheme(authUser.theme || 'sage');
-    setAppearanceError('');
   }
 
   function cancelEditing() {
@@ -404,23 +376,6 @@ function AccountManagement({
     }
   }
 
-  async function handleCopyWorkspace(user) {
-    setError('');
-    setNotice('');
-    try {
-      const response = await apiFetch(
-        `${API_URL}/api/super-admin/workspaces/${user.workspaceId}/copy`,
-        { method: 'POST' }
-      );
-      const workspace = await readApiResponse(response);
-      setWorkspaces((current) => [...current, workspace]);
-      window.dispatchEvent(new Event('family-workspaces-updated'));
-      setNotice(`Independent family copy created: ${workspace.name}.`);
-    } catch (copyError) {
-      setError(copyError.message || 'Could not copy the family workspace.');
-    }
-  }
-
   return (
     <section className="page-content account-page" aria-labelledby="accounts-heading">
       <header className="account-heading">
@@ -430,7 +385,7 @@ function AccountManagement({
         </h1>
         <p>
           {isSuperAdmin && accountSection === 'settings'
-            ? 'Changes apply only to the selected family tree. A promoted admin can customize their independent copy without changing its original.'
+            ? 'Changes apply only to your primary family workspace.'
             : 'Assign module and family-member access to each account. Only super admins can change family information.'}
         </p>
         {accountSection === 'accounts' && (
@@ -479,60 +434,31 @@ function AccountManagement({
       {notice && <p className="account-notice" role="status">{notice}</p>}
 
       {isSuperAdmin && accountSection === 'settings' && (
-        <>
-          <section className="account-card account-workspace-selection">
-            <h2>Family workspace</h2>
-            <label htmlFor="active-family-workspace">Active family workspace</label>
-            <select
-              disabled={isSelectingWorkspace}
-              id="active-family-workspace"
-              onChange={handleWorkspaceSelect}
-              value={workspaceId}
-            >
-              {workspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                  {workspace.copiedFromWorkspaceId ? ' (copy)' : ''}
-                </option>
-              ))}
-            </select>
-          </section>
-
           <section
             className="account-card"
             aria-labelledby="family-appearance-heading"
           >
             <h2 id="family-appearance-heading">Family appearance</h2>
-            <button
-              className="account-submit"
-              type="button"
-              onClick={() => {
-                setAppearanceError('');
-                setAppearanceNotice('');
-                setIsAppearanceOpen(true);
-              }}
-            >
-              Edit family appearance
-            </button>
-            {appearanceNotice && (
-              <p className="account-notice" role="status">{appearanceNotice}</p>
+            {!isPrimaryWorkspace && (
+              <p className="account-muted">Refresh the page to access your primary family workspace.</p>
             )}
-            {isAppearanceOpen && (
-            <FormDialog
-              title="Edit family appearance"
-              onClose={closeAppearanceForm}
-              isBusy={isSavingAppearance}
-            >
             <form className="account-form" onSubmit={handleAppearanceSave}>
               <label htmlFor="family-display-name">Family name</label>
               <input
+                disabled={!isPrimaryWorkspace || isSavingAppearance}
                 id="family-display-name"
                 maxLength={100}
-                onChange={(event) => setFamilyName(event.target.value)}
+                onChange={(event) => {
+                  setFamilyName(event.target.value);
+                  setAppearanceNotice('');
+                }}
                 required
                 value={familyName}
               />
-              <fieldset className="account-theme-picker">
+              <fieldset
+                className="account-theme-picker"
+                disabled={!isPrimaryWorkspace || isSavingAppearance}
+              >
                 <legend>Color theme</legend>
                 <div className="account-theme-options">
                   {FAMILY_THEMES.map((theme) => (
@@ -546,7 +472,10 @@ function AccountManagement({
                         name="family-display-theme"
                         value={theme.id}
                         checked={familyTheme === theme.id}
-                        onChange={(event) => setFamilyTheme(event.target.value)}
+                        onChange={(event) => {
+                          setFamilyTheme(event.target.value);
+                          setAppearanceNotice('');
+                        }}
                         aria-label={theme.label}
                       />
                       <span
@@ -561,18 +490,18 @@ function AccountManagement({
               {appearanceError && (
                 <p className="account-error" role="alert">{appearanceError}</p>
               )}
+              {appearanceNotice && (
+                <p className="account-notice" role="status">{appearanceNotice}</p>
+              )}
               <button
                 className="account-submit"
-                disabled={isSavingAppearance}
+                disabled={!isPrimaryWorkspace || isSavingAppearance}
                 type="submit"
               >
                 {isSavingAppearance ? 'Saving…' : 'Save family appearance'}
               </button>
             </form>
-            </FormDialog>
-            )}
           </section>
-        </>
       )}
 
       {(!isSuperAdmin || accountSection === 'accounts') && (
@@ -750,7 +679,7 @@ function AccountManagement({
                     <span className="account-email">{user.email}</span>
                     {isSuperAdmin && user.role !== 'super_admin' && (
                       <small className="account-access">
-                        Workspace: {workspaces.find((item) => item.id === user.workspaceId)?.name || 'Unknown'}
+                        Workspace: {user.familyName || workspaces.find((item) => item.id === user.workspaceId)?.name || 'Unknown'}
                       </small>
                     )}
                     {(user.role === 'user' || user.role === 'admin') && (
@@ -782,17 +711,6 @@ function AccountManagement({
                                 type="button"
                               >
                                 {deletingUserId === user.id ? 'Deleting…' : 'Delete'}
-                              </button>
-                            </>
-                          )}
-                          {isSuperAdmin && user.role === 'admin' && (
-                            <>
-                              <button
-                                disabled={deletingUserId !== null}
-                                onClick={() => handleCopyWorkspace(user)}
-                                type="button"
-                              >
-                                Copy family
                               </button>
                             </>
                           )}

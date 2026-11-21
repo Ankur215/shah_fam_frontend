@@ -8,6 +8,11 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^13.5.0",
+    "@tiptap/extension-task-item": "^3.35.0",
+    "@tiptap/extension-task-list": "^3.35.0",
+    "@tiptap/markdown": "^3.35.0",
+    "@tiptap/react": "^3.35.0",
+    "@tiptap/starter-kit": "^3.35.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-scripts": "5.0.1"
@@ -17,6 +22,15 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
+  },
+  "jest": {
+    "transformIgnorePatterns": [
+      "[/\\\\]node_modules[/\\\\](?!marked[/\\\\]).+\\.(js|mjs|jsx|ts|tsx)$"
+    ],
+    "moduleNameMapper": {
+      "^@tiptap/pm/(.*)$": "prosemirror-$1",
+      "^@tiptap/core/jsx-runtime$": "<rootDir>/node_modules/@tiptap/core/dist/jsx-runtime/jsx-runtime.cjs"
+    }
   },
   "eslintConfig": {
     "extends": [

@@ -288,7 +288,80 @@ test('shows only pages granted to a regular user', async () => {
     screen.queryByRole('button', { name: /family members/i })
   ).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Gifts & Giving' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Notes & Reminders' })).not.toBeInTheDocument();
   expect(global.fetch).not.toHaveBeenCalledWith('/api/family-members');
+});
+
+test('opens notes for a super admin and loads its data', async () => {
+  global.fetch = jest.fn((url) =>
+    Promise.resolve(
+      url === '/api/auth/me'
+        ? authenticatedResponse()
+        : url === '/api/notes'
+          ? apiResponse([{ id: 1, title: 'Family plans', content: 'Hello', tags: [], is_pinned: false, updated_at: '2026-01-01' }])
+          : apiResponse([])
+    )
+  );
+  render(<App />);
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Notes & Reminders' }));
+  expect(await screen.findByRole('heading', { name: 'Family plans' })).toBeInTheDocument();
+});
+
+test('shows notes navigation only when granted and opens it for a notes-only user', async () => {
+  const user = { id: 2, email: 'family@example.com', role: 'user', accessPages: ['notes'] };
+  global.fetch = jest.fn((url) =>
+    Promise.resolve(url === '/api/auth/me' ? apiResponse({ user }) : apiResponse([]))
+  );
+  render(<App />);
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Open your family space' }));
+  expect(await screen.findByRole('heading', { name: 'Notes & Reminders' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Notes & Reminders' })).toBeInTheDocument();
+  expect(await screen.findByText('No notes yet. Create one to get started!')).toBeInTheDocument();
+});
+
+test('reports a failed note save instead of closing the form', async () => {
+  global.fetch = jest.fn((url, options) =>
+    Promise.resolve(
+      url === '/api/auth/me' ? authenticatedResponse()
+        : url === '/api/notes' && options?.method === 'POST'
+          ? apiResponse({ error: 'Could not save note.' }, 503)
+          : apiResponse([])
+    )
+  );
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Notes & Reminders' }));
+  await screen.findByText('No notes yet. Create one to get started!');
+  fireEvent.click(screen.getByRole('button', { name: '+ New Note' }));
+  fireEvent.change(screen.getByPlaceholderText('Note title'), { target: { value: 'Plans' } });
+  expect(await screen.findByText('Failed to save note: Could not save note.', {}, { timeout: 3000 })).toBeInTheDocument();
+  expect(screen.getByPlaceholderText('Note title')).toHaveValue('Plans');
+  expect(global.fetch).toHaveBeenCalledWith('/api/notes', expect.objectContaining({
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  }));
+});
+
+test('keeps unsaved note edits when navigating away fails', async () => {
+  const note = { id: 1, title: 'Plans', content: 'Before', tags: [], is_pinned: false, updated_at: '2026-01-01' };
+  global.fetch = jest.fn((url, options) => Promise.resolve(
+    url === '/api/auth/me' ? authenticatedResponse()
+      : url === '/api/notes/1' && options?.method === 'PUT'
+        ? apiResponse({ error: 'Could not save note.' }, 503)
+        : url === '/api/notes' ? apiResponse([note]) : apiResponse([])
+  ));
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Notes & Reminders' }));
+  await screen.findByRole('heading', { name: 'Plans' });
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  fireEvent.click(content);
+  fireEvent.click(screen.getByLabelText('Text formatting'));
+  fireEvent.click(screen.getByRole('button', { name: 'Heading' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Family members' }));
+  expect(await screen.findByText('Failed to save note: Could not save note.')).toBeInTheDocument();
+  expect(within(content).getByRole('heading', { name: 'Before' })).toBeInTheDocument();
 });
 
 test('shows only the gifts and charity modules granted to a regular user', async () => {

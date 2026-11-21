@@ -61,24 +61,6 @@
   font-size: 15px;
 }
 
-.account-workspace-selection label {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--family-primary-strong);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.account-workspace-selection select {
-  width: min(100%, 420px);
-  min-height: 42px;
-  padding: 0 11px;
-  border: 1px solid var(--family-border);
-  border-radius: 7px;
-  background: #fff;
-  color: var(--family-text);
-}
-
 .account-form {
   display: grid;
   max-width: 420px;

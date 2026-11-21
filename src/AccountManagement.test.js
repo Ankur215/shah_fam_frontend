@@ -35,6 +35,7 @@ test('lets a super admin update the active family name and theme', async () => {
       authUser={{
         id: 1,
         role: 'super_admin',
+        workspaceId: 1,
         currentWorkspaceId: 1,
         familyName: 'Old Family',
         theme: 'sage',
@@ -45,8 +46,8 @@ test('lets a super admin update the active family name and theme', async () => {
   await screen.findByText('root@example.com');
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
   expect(screen.queryByLabelText('Email address')).not.toBeInTheDocument();
-  expect(screen.getByLabelText('Active family workspace')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Edit family appearance' }));
+  expect(screen.queryByLabelText('Active family workspace')).not.toBeInTheDocument();
+  expect(screen.getByRole('textbox', { name: 'Family name' })).toHaveValue('Old Family');
   expect(screen.getByRole('radio', { name: 'Rose' })).toBeInTheDocument();
   expect(screen.getByRole('radio', { name: 'Slate' })).toBeInTheDocument();
   expect(screen.getByRole('radio', { name: 'Amber' })).toBeInTheDocument();
@@ -68,6 +69,78 @@ test('lets a super admin update the active family name and theme', async () => {
   expect(onUserUpdated).toHaveBeenCalledWith(
     expect.objectContaining({ familyName: 'Shah Family', theme: 'rose' })
   );
+});
+
+test('allows appearance editing only in the primary family workspace', async () => {
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(apiResponse([{ id: 1, email: 'root@example.com', role: 'super_admin' }]))
+    .mockResolvedValueOnce(apiResponse([
+      { id: 1, name: 'Primary Family', theme: 'sage' },
+      { id: 2, name: 'Family copy', theme: 'ocean' },
+    ]))
+    .mockResolvedValueOnce(apiResponse([]))
+    .mockResolvedValueOnce(apiResponse([]))
+    .mockResolvedValueOnce(apiResponse([
+      { id: 1, name: 'Primary Family', theme: 'sage' },
+      { id: 2, name: 'Family copy', theme: 'ocean' },
+    ]))
+    .mockResolvedValueOnce(apiResponse([]));
+
+  const primaryUser = {
+    id: 1,
+    role: 'super_admin',
+    workspaceId: 1,
+    currentWorkspaceId: 1,
+    familyName: 'Primary Family',
+    theme: 'sage',
+  };
+  const { rerender } = render(<AccountManagement authUser={primaryUser} />);
+  await screen.findByText('root@example.com');
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+  expect(screen.getByLabelText('Family name')).toBeEnabled();
+  expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+
+  rerender(<AccountManagement authUser={{
+    ...primaryUser,
+    currentWorkspaceId: 2,
+    familyName: 'Family copy',
+    theme: 'ocean',
+  }} />);
+  expect(screen.getByLabelText('Family name')).toBeDisabled();
+  expect(screen.getByRole('radio', { name: 'Ocean' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Save family appearance' })).toBeDisabled();
+  expect(screen.getByText(/refresh the page to access your primary family workspace/i)).toBeInTheDocument();
+  expect(global.fetch).not.toHaveBeenCalledWith(
+    expect.stringMatching(/\/api\/super-admin\/workspaces\/\d+$/),
+    expect.objectContaining({ method: 'PUT' })
+  );
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(6));
+});
+
+test('keeps the edited family name when saving fails', async () => {
+  const onUserUpdated = jest.fn();
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(apiResponse([{ id: 1, email: 'root@example.com', role: 'super_admin' }]))
+    .mockResolvedValueOnce(apiResponse([{ id: 1, name: 'Old Family', theme: 'sage' }]))
+    .mockResolvedValueOnce(apiResponse([]))
+    .mockResolvedValueOnce(apiResponse({ error: 'Could not update family appearance.' }, 503));
+
+  render(<AccountManagement authUser={{
+    id: 1,
+    role: 'super_admin',
+    workspaceId: 1,
+    currentWorkspaceId: 1,
+    familyName: 'Old Family',
+    theme: 'sage',
+  }} onUserUpdated={onUserUpdated} />);
+  await screen.findByText('root@example.com');
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+  fireEvent.change(screen.getByLabelText('Family name'), { target: { value: 'New Family' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save family appearance' }));
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not update family appearance.');
+  expect(screen.getByLabelText('Family name')).toHaveValue('New Family');
+  expect(onUserUpdated).not.toHaveBeenCalled();
 });
 
 test('lists accounts and lets an administrator create a normal user', async () => {
@@ -96,6 +169,7 @@ test('lists accounts and lets an administrator create a normal user', async () =
   ).toBeTruthy();
 
   fireEvent.click(screen.getByRole('button', { name: /create an account/i }));
+  expect(screen.getByLabelText('Notes & Reminders')).not.toBeChecked();
   fireEvent.change(screen.getByLabelText('Email address'), {
     target: { value: 'family@example.com' },
   });
@@ -186,12 +260,12 @@ test('lets a super admin create an admin in a new family workspace', async () =>
       email: 'new-admin@example.com',
       role: 'admin',
       workspaceId: 2,
+      familyName: 'New admin family',
       accessPages: ['family', 'medical', 'gifts', 'charity'],
       familyMemberIds: [11],
     }, 201))
     .mockResolvedValueOnce(apiResponse([
       { id: 1, name: 'Root family' },
-      { id: 2, name: 'new-admin@example.com' },
     ]));
 
   render(
@@ -222,6 +296,7 @@ test('lets a super admin create an admin in a new family workspace', async () =>
   expect(
     await screen.findByText('new-admin@example.com', { selector: '.account-email' })
   ).toBeInTheDocument();
+  expect(screen.getByText('Workspace: New admin family')).toBeInTheDocument();
   expect(global.fetch).toHaveBeenCalledWith('/api/auth/users', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

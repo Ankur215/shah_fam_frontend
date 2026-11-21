@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import CharityLog from './CharityLog';
 import FamilyGraph from './FamilyGraph';
 import GiftLog from './GiftLog';
+import NotesReminders from './NotesReminders';
 import AccountManagement from './AccountManagement';
 import AuthPage from './AuthPage';
 import { API_URL, apiFetch } from './api';
@@ -32,6 +33,12 @@ const MODULES = [
     name: 'Charity work',
     description: 'Keep a record of charitable activities and contributions.',
     icon: '♡',
+  },
+  {
+    id: 'notes',
+    name: 'Notes & Reminders',
+    description: 'Create notes, set reminders, and organize your tasks.',
+    icon: '📝',
   },
 ];
 const PHONE_CHARACTERS_PATTERN = /^[\d\s().-]+$/;
@@ -456,6 +463,7 @@ function App() {
   const [authError, setAuthError] = useState('');
   const [logoutError, setLogoutError] = useState('');
   const [activePage, setActivePage] = useState('intro');
+  const notesModuleRef = useRef(null);
   const [isFamilyMenuOpen, setIsFamilyMenuOpen] = useState(true);
   const [isLogsMenuOpen, setIsLogsMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -479,12 +487,13 @@ function App() {
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [validationErrors, setValidationErrors] = useState({});
   const accessPages = authUser?.role === 'super_admin'
-    ? ['family', 'medical', 'gifts', 'charity']
+    ? ['family', 'medical', 'gifts', 'charity', 'notes']
     : authUser?.accessPages || ['family', 'medical'];
   const hasFamilyPageAccess = accessPages.includes('family');
   const hasMedicalPageAccess = accessPages.includes('medical');
   const hasGiftsPageAccess = accessPages.includes('gifts');
   const hasCharityPageAccess = accessPages.includes('charity');
+  const hasNotesPageAccess = accessPages.includes('notes');
   const hasAnyModuleAccess = accessPages.length > 0;
   const firstAccessiblePage = hasFamilyPageAccess
     ? 'members'
@@ -494,7 +503,9 @@ function App() {
         ? 'gifts'
         : hasCharityPageAccess
           ? 'charity'
-          : 'no-access';
+          : hasNotesPageAccess
+            ? 'notes'
+            : 'no-access';
 
   useEffect(() => {
     let isCurrent = true;
@@ -571,6 +582,7 @@ function App() {
       medical: hasMedicalPageAccess,
       gifts: hasGiftsPageAccess,
       charity: hasCharityPageAccess,
+      notes: hasNotesPageAccess,
       intro: true,
       accounts: ['admin', 'super_admin'].includes(authUser.role),
       'no-access': !hasAnyModuleAccess,
@@ -590,6 +602,7 @@ function App() {
     hasFamilyPageAccess,
     hasGiftsPageAccess,
     hasMedicalPageAccess,
+    hasNotesPageAccess,
   ]);
 
   function openMemberForm(member = null) {
@@ -847,7 +860,15 @@ function App() {
     }
   }
 
+  async function navigateTo(page) {
+    if (activePage === 'notes' && page !== 'notes' &&
+        notesModuleRef.current && !(await notesModuleRef.current.flush())) return;
+    setActivePage(page);
+  }
+
   async function signOut() {
+    if (activePage === 'notes' && notesModuleRef.current &&
+        !(await notesModuleRef.current.flush())) return;
     setLogoutError('');
     try {
       const response = await apiFetch(`${API_URL}/api/auth/logout`, {
@@ -894,7 +915,7 @@ function App() {
           aria-label={`${familyName} introduction`}
           onClick={(event) => {
             event.preventDefault();
-            setActivePage('intro');
+            navigateTo('intro');
           }}
         >
           <span className="brand-mark" aria-hidden="true">
@@ -911,7 +932,7 @@ function App() {
               className={`nav-item ${activePage === 'accounts' ? 'nav-item-active' : ''}`}
               type="button"
               aria-current={activePage === 'accounts' ? 'page' : undefined}
-              onClick={() => setActivePage('accounts')}
+              onClick={() => navigateTo('accounts')}
             >
               <span className="nav-icon" aria-hidden="true">♙</span>
               User accounts
@@ -947,7 +968,7 @@ function App() {
                     }`}
                     type="button"
                     aria-current={activePage === 'members' ? 'page' : undefined}
-                    onClick={() => setActivePage('members')}
+                    onClick={() => navigateTo('members')}
                   >
                     Family members
                   </button>
@@ -957,7 +978,7 @@ function App() {
                     }`}
                     type="button"
                     aria-current={activePage === 'graph' ? 'page' : undefined}
-                    onClick={() => setActivePage('graph')}
+                    onClick={() => navigateTo('graph')}
                   >
                     Family graph
                   </button>
@@ -969,7 +990,7 @@ function App() {
             className={`nav-item ${activePage === 'medical' ? 'nav-item-active' : ''}`}
             type="button"
             aria-current={activePage === 'medical' ? 'page' : undefined}
-            onClick={() => setActivePage('medical')}
+            onClick={() => navigateTo('medical')}
           >
             <span className="nav-icon" aria-hidden="true">✚</span>
             Medical reports
@@ -998,7 +1019,7 @@ function App() {
                   }`}
                   type="button"
                   aria-current={activePage === 'gifts' ? 'page' : undefined}
-                  onClick={() => setActivePage('gifts')}
+                  onClick={() => navigateTo('gifts')}
                 >
                   Gift log
                 </button>}
@@ -1008,13 +1029,24 @@ function App() {
                   }`}
                   type="button"
                   aria-current={activePage === 'charity' ? 'page' : undefined}
-                  onClick={() => setActivePage('charity')}
+                  onClick={() => navigateTo('charity')}
                 >
                   Charity work
                 </button>}
               </div>
             )}
           </div>}
+          {hasNotesPageAccess && (
+            <button
+              className={`nav-item ${activePage === 'notes' ? 'nav-item-active' : ''}`}
+              type="button"
+              aria-current={activePage === 'notes' ? 'page' : undefined}
+              onClick={() => navigateTo('notes')}
+            >
+              <span className="nav-icon" aria-hidden="true">📝</span>
+              Notes &amp; Reminders
+            </button>
+          )}
         </nav>
 
         <div className="sidebar-note">
@@ -1039,6 +1071,8 @@ function App() {
                   ? 'Gift log'
                   : activePage === 'charity'
                     ? 'Charity work'
+                    : activePage === 'notes'
+                      ? 'Notes & Reminders'
                     : activePage === 'accounts'
                       ? 'User accounts'
                       : 'Medical reports'}
@@ -1463,6 +1497,11 @@ function App() {
             familyMembers={members}
             key={authUser.currentWorkspaceId || authUser.workspaceId}
             loadFamilyMembers={!hasFamilyPageAccess}
+          />
+        ) : activePage === 'notes' && hasNotesPageAccess ? (
+          <NotesReminders
+            ref={notesModuleRef}
+            key={authUser.currentWorkspaceId || authUser.workspaceId}
           />
         ) : (
           <section className="page-content">
