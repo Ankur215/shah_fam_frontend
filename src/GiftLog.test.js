@@ -65,7 +65,7 @@ test('saves a gift and displays the saved entry', async () => {
     .mockResolvedValueOnce(apiResponse([]))
     .mockResolvedValueOnce(apiResponse(savedGift, 201));
 
-  render(
+  const { container } = render(
     <GiftLog
       familyMembers={[
         {
@@ -76,6 +76,14 @@ test('saves a gift and displays the saved entry', async () => {
       ]}
     />
   );
+
+  expect(
+    [...container.querySelectorAll('.gift-form-grid input, .gift-form-grid select, .gift-form-grid textarea')]
+      .map((field) => field.name)
+  ).toEqual([
+    'direction', 'recipientType', 'recipientName', 'giftName', 'dateGiven',
+    'occasion', 'amount', 'currency', 'notes', '',
+  ]);
 
   fireEvent.change(screen.getByPlaceholderText('Person’s name'), {
     target: { value: 'Asha Shah' },
@@ -89,9 +97,7 @@ test('saves a gift and displays the saved entry', async () => {
   fireEvent.change(screen.getByPlaceholderText('Birthday, wedding, just because…'), {
     target: { value: 'Just because' },
   });
-  fireEvent.change(screen.getByLabelText('Family member'), {
-    target: { value: '5' },
-  });
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Asha Shah' }));
   fireEvent.click(screen.getByRole('button', { name: 'Save gift' }));
 
   await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
@@ -108,11 +114,45 @@ test('saves a gift and displays the saved entry', async () => {
       amount: '',
       currency: '',
       notes: '',
-      familyMemberId: 5,
+      familyMemberIds: [5],
     }),
   });
   expect(await screen.findByText(/A book/)).toBeInTheDocument();
   expect(screen.getByText('Asha Shah', { selector: 'strong' })).toBeInTheDocument();
+});
+
+test('shares a gift with multiple family members and edits the selection', async () => {
+  const members = [
+    { id: 5, firstName: 'Asha', lastName: 'Shah' },
+    { id: 6, firstName: 'Maya', lastName: 'Shah' },
+  ];
+  const gift = {
+    id: 9, recipientName: 'A friend', recipientType: 'Friend', direction: 'Given',
+    giftName: 'A book', occasion: '', dateGiven: '2025-01-01',
+    amount: '', currency: '', notes: '', familyMemberIds: [5, 6],
+  };
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(apiResponse([]))
+    .mockResolvedValueOnce(apiResponse(gift, 201))
+    .mockResolvedValueOnce(apiResponse({ ...gift, familyMemberIds: [6] }));
+  render(<GiftLog familyMembers={members} />);
+  fireEvent.change(screen.getByLabelText('They’re my'), { target: { value: 'Friend' } });
+  fireEvent.change(screen.getByLabelText('To *'), { target: { value: 'A friend' } });
+  fireEvent.change(screen.getByLabelText('Gift *'), { target: { value: 'A book' } });
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Asha Shah' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Maya Shah' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save gift' }));
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+  expect(JSON.parse(global.fetch.mock.calls[1][1].body)).toMatchObject({
+    recipientName: 'A friend', familyMemberIds: [5, 6],
+  });
+  fireEvent.click(await screen.findByRole('button', { name: 'Edit A book gift for A friend' }));
+  expect(screen.getByRole('checkbox', { name: 'Asha Shah' })).toBeChecked();
+  expect(screen.getByRole('checkbox', { name: 'Maya Shah' })).toBeChecked();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Asha Shah' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
+  expect(JSON.parse(global.fetch.mock.calls[2][1].body).familyMemberIds).toEqual([6]);
 });
 
 test('records a received gift from the recipient group', async () => {
@@ -127,6 +167,7 @@ test('records a received gift from the recipient group', async () => {
     amount: '20.00',
     currency: 'USD',
     notes: '',
+    familyMemberIds: [],
   };
   global.fetch = jest.fn()
     .mockResolvedValueOnce(apiResponse([]))
@@ -174,6 +215,7 @@ test('records a received gift from the recipient group', async () => {
       amount: '20.00',
       currency: 'USD',
       notes: '',
+      familyMemberIds: [],
     }),
   });
   expect(await screen.findByText(/Wine bottle/)).toBeInTheDocument();
@@ -307,6 +349,7 @@ test('edits a saved gift and displays the updated entry', async () => {
       amount: '45.00',
       currency: 'USD',
       notes: 'Updated note',
+      familyMemberIds: [],
     }),
   });
   expect(await screen.findByText(/Framed photo/)).toBeInTheDocument();

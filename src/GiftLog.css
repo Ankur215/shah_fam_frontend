@@ -106,9 +106,20 @@
 
 .gift-layout {
   display: grid;
-  grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 15px;
+}
+
+.gift-page-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 15px;
+}
+
+.form-dialog-panel .gift-form-card {
+  padding: 0;
+  border: 0;
 }
 
 .gift-form-card,
@@ -206,6 +217,77 @@
 
 .gift-form-full {
   grid-column: 1 / -1;
+}
+
+.gift-form-section-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--family-border);
+  color: var(--family-heading);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gift-form-section-heading:first-child {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.gift-form-section-heading span {
+  color: #748077;
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.gift-member-link {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid var(--family-border);
+  border-radius: 8px;
+  background: var(--family-soft);
+}
+
+.gift-member-link legend {
+  padding: 0 4px;
+  color: var(--family-text);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.gift-member-options {
+  display: grid;
+  gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.gift-member-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.gift-member-options input[type='checkbox'] {
+  width: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  margin: 0;
+  accent-color: var(--family-primary);
+}
+
+.gift-member-link p {
+  margin: 0;
+  color: var(--family-text);
+  font-size: 10px;
+  line-height: 1.5;
 }
 
 .gift-form-actions {

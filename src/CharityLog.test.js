@@ -89,6 +89,16 @@ test('saves a charity record with amount, activity, and notes in order', async (
 
   const { container } = render(<CharityLog />);
 
+  expect(
+    [...container.querySelectorAll('.charity-form-grid input:not([type="checkbox"]), .charity-form-grid select, .charity-form-grid textarea')]
+      .map((field) => field.name)
+  ).toEqual([
+    'organization', 'activity', 'workType', 'datePerformed',
+    'amount', 'currency', 'volunteerHours', 'notes',
+  ]);
+  expect(screen.getByRole('group', { name: /family members for this charity record/i }))
+    .toBeInTheDocument();
+
   fireEvent.change(screen.getByLabelText(/organization \/ charity/i), {
     target: { value: 'Community Food Bank' },
   });
@@ -158,6 +168,49 @@ test('saves a charity record with amount, activity, and notes in order', async (
     'charity-record-notes',
     'charity-record-metrics',
   ]);
+});
+
+test('selects multiple family members and preserves selections when editing', async () => {
+  const members = [
+    { id: 5, firstName: 'Asha', lastName: 'Shah' },
+    { id: 6, firstName: 'Maya', lastName: 'Shah' },
+  ];
+  const record = {
+    id: 7,
+    organization: 'Food Bank',
+    workType: 'Donation',
+    activity: 'Donated meals',
+    datePerformed: '2025-01-01',
+    amount: '',
+    currency: '',
+    volunteerHours: '',
+    notes: '',
+    familyMemberIds: [5, 6],
+  };
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(apiResponse([]))
+    .mockResolvedValueOnce(apiResponse(record, 201))
+    .mockResolvedValueOnce(apiResponse({ ...record, familyMemberIds: [6] }));
+  render(<CharityLog familyMembers={members} />);
+
+  fireEvent.change(screen.getByLabelText(/organization \/ charity/i), {
+    target: { value: 'Food Bank' },
+  });
+  fireEvent.change(screen.getByLabelText(/activity \/ work done/i), {
+    target: { value: 'Donated meals' },
+  });
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Asha Shah' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Maya Shah' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save record' }));
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+  expect(JSON.parse(global.fetch.mock.calls[1][1].body).familyMemberIds).toEqual([5, 6]);
+  fireEvent.click(await screen.findByRole('button', { name: 'Edit Donated meals at Food Bank' }));
+  expect(screen.getByRole('checkbox', { name: 'Asha Shah' })).toBeChecked();
+  expect(screen.getByRole('checkbox', { name: 'Maya Shah' })).toBeChecked();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Asha Shah' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
+  expect(JSON.parse(global.fetch.mock.calls[2][1].body).familyMemberIds).toEqual([6]);
 });
 
 test('moves a charity record and saves the new sequence', async () => {

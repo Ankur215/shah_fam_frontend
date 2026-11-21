@@ -1459,7 +1459,11 @@ function App() {
             loadFamilyMembers={!hasFamilyPageAccess}
           />
         ) : activePage === 'charity' && hasCharityPageAccess ? (
-          <CharityLog key={authUser.currentWorkspaceId || authUser.workspaceId} />
+          <CharityLog
+            familyMembers={members}
+            key={authUser.currentWorkspaceId || authUser.workspaceId}
+            loadFamilyMembers={!hasFamilyPageAccess}
+          />
         ) : (
           <section className="page-content">
             <h1>This page is not available</h1>

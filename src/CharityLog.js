@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import './CharityLog.css';
 import { apiFetch } from './api';
+import FormDialog from './FormDialog';
 
 const CHARITY_ENDPOINT = `${process.env.REACT_APP_API_URL || ''}/api/charity-records`;
 const DATE_FORMATTER = new Intl.DateTimeFormat('en', {
@@ -89,6 +90,7 @@ async function readApiResponse(response) {
 
 function CharityRecordEntry({
   record,
+  familyMembers,
   index,
   recordCount,
   onMoveUp,
@@ -150,6 +152,17 @@ function CharityRecordEntry({
       <p className="charity-record-activity">
         <strong>Activity:</strong> {record.activity}
       </p>
+      {(record.familyMemberIds || []).length > 0 && (
+        <p className="charity-record-member">
+          <strong>Family members:</strong>{' '}
+          {record.familyMemberIds.map((id) => {
+            const member = familyMembers.find((item) => item.id === id);
+            return member
+              ? `${member.firstName} ${member.lastName || ''}`.trim()
+              : 'Linked family member';
+          }).join(', ')}
+        </p>
+      )}
       {record.notes && (
         <p className="charity-record-notes">
           <strong>Notes:</strong> {record.notes}
@@ -177,9 +190,13 @@ function CharityRecordEntry({
   );
 }
 
-function CharityLog() {
+function CharityLog({ familyMembers = [], loadFamilyMembers = false }) {
   const [records, setRecords] = useState([]);
+  const [assignedFamilyMembers, setAssignedFamilyMembers] = useState([]);
+  const [familyMemberError, setFamilyMemberError] = useState('');
   const [editingRecord, setEditingRecord] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedFamilyMemberIds, setSelectedFamilyMemberIds] = useState([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -188,6 +205,42 @@ function CharityLog() {
   const [error, setError] = useState('');
   const [isLoadError, setIsLoadError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const charityFamilyMembers = loadFamilyMembers ? assignedFamilyMembers : familyMembers;
+
+  function closeCharityForm() {
+    setIsFormOpen(false);
+    setEditingRecord(null);
+    setSelectedFamilyMemberIds([]);
+    if (!isLoadError) setError('');
+  }
+
+  useEffect(() => {
+    if (!loadFamilyMembers) return undefined;
+    let isCurrent = true;
+
+    async function loadAssignedFamilyMembers() {
+      setFamilyMemberError('');
+      try {
+        const response = await apiFetch(`${CHARITY_ENDPOINT}/family-members`);
+        const data = await readApiResponse(response);
+        if (!Array.isArray(data)) {
+          throw new Error('The server returned an invalid family member list.');
+        }
+        if (isCurrent) setAssignedFamilyMembers(data);
+      } catch (loadError) {
+        if (isCurrent) {
+          setFamilyMemberError(
+            `Could not load family members for charity records. ${loadError.message || 'Please try again.'}`
+          );
+        }
+      }
+    }
+
+    loadAssignedFamilyMembers();
+    return () => {
+      isCurrent = false;
+    };
+  }, [loadFamilyMembers]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -236,6 +289,12 @@ function CharityLog() {
       volunteerHours: formData.get('volunteerHours') || '',
       notes: String(formData.get('notes') || '').trim(),
     };
+    if (
+      selectedFamilyMemberIds.length !== (editingRecord?.familyMemberIds || []).length ||
+      selectedFamilyMemberIds.some((id) => !(editingRecord?.familyMemberIds || []).includes(id))
+    ) {
+      record.familyMemberIds = selectedFamilyMemberIds;
+    }
 
     setIsSaving(true);
     setError('');
@@ -266,6 +325,8 @@ function CharityLog() {
       });
       if (!editingRecord) form.reset();
       setEditingRecord(null);
+      setSelectedFamilyMemberIds([]);
+      setIsFormOpen(false);
     } catch (saveError) {
       console.error('Could not save charity work through the API.', saveError);
       setError(
@@ -393,21 +454,37 @@ function CharityLog() {
         </div>
       </div>
 
+      <div className="charity-page-actions">
+        <button
+          className="primary-button"
+          type="button"
+          disabled={isSaving || isReordering || deletingRecordId !== null}
+          onClick={() => {
+            closeCharityForm();
+            setIsFormOpen(true);
+          }}
+        >
+          + Record charity work
+        </button>
+      </div>
       <div className="charity-layout">
+        {isFormOpen && (
+        <FormDialog
+          title={editingRecord ? 'Edit charity record' : 'Record charity work'}
+          description="Capture donations, goods, volunteering, and other contributions."
+          onClose={closeCharityForm}
+          isBusy={isSaving}
+        >
         <form
           className="charity-form-card"
           key={editingRecord?.id || 'new-charity-record'}
           onSubmit={saveRecord}
         >
-          <div className="charity-card-heading">
-            <span aria-hidden="true">{editingRecord ? '✎' : '＋'}</span>
-            <div>
-              <h2>{editingRecord ? 'Edit charity record' : 'Record charity work'}</h2>
-              <p>Capture donations, goods, volunteering, and other contributions.</p>
-            </div>
-          </div>
-
+          {familyMemberError && (
+            <p className="error-message" role="alert">{familyMemberError}</p>
+          )}
           <div className="charity-form-grid">
+            <h3 className="charity-form-section-heading charity-form-full">Contribution details</h3>
             <label className="charity-form-full">
               Organization / charity <span className="required-mark">*</span>
               <input
@@ -416,6 +493,16 @@ function CharityLog() {
                 maxLength="150"
                 placeholder="Who did your family support?"
                 defaultValue={editingRecord?.organization || ''}
+              />
+            </label>
+            <label className="charity-form-full">
+              Activity / work done <span className="required-mark">*</span>
+              <input
+                name="activity"
+                required
+                maxLength="200"
+                placeholder="Describe the charity work"
+                defaultValue={editingRecord?.activity || ''}
               />
             </label>
             <label>
@@ -438,16 +525,9 @@ function CharityLog() {
                 defaultValue={editingRecord?.datePerformed || getLocalDateString()}
               />
             </label>
-            <label className="charity-form-full">
-              Activity / work done <span className="required-mark">*</span>
-              <input
-                name="activity"
-                required
-                maxLength="200"
-                placeholder="Describe the charity work"
-                defaultValue={editingRecord?.activity || ''}
-              />
-            </label>
+            <h3 className="charity-form-section-heading charity-form-full">
+              Additional details <span>Optional</span>
+            </h3>
             <label>
               Amount
               <input
@@ -492,6 +572,34 @@ function CharityLog() {
                 defaultValue={editingRecord?.notes || ''}
               />
             </label>
+            <fieldset className="charity-member-link charity-form-full">
+              <legend>Family members for this charity record</legend>
+              <p id="charity-family-member-help">
+                Select family members to share this record with people who have
+                Charity work access and access to any selected member. When no
+                members are linked, people with Charity work access in this workspace
+                can see it.
+              </p>
+              {editingRecord?.hasOtherFamilyMembers && (
+                <p>Additional family members you cannot access will remain selected.</p>
+              )}
+              <div className="charity-member-options" aria-describedby="charity-family-member-help">
+                {charityFamilyMembers.length ? charityFamilyMembers.map((member) => (
+                  <label key={member.id}>
+                    <input
+                      type="checkbox"
+                      checked={selectedFamilyMemberIds.includes(member.id)}
+                      onChange={(event) => setSelectedFamilyMemberIds((current) =>
+                        event.target.checked
+                          ? [...current, member.id]
+                          : current.filter((id) => id !== member.id)
+                      )}
+                    />
+                    {member.firstName} {member.lastName || ''}
+                  </label>
+                )) : <p>No family members available to select.</p>}
+              </div>
+            </fieldset>
           </div>
 
           {error && !isLoadError && (
@@ -501,19 +609,14 @@ function CharityLog() {
           <div className="charity-form-actions">
             <span>Fields marked * are required.</span>
             <div>
-              {editingRecord && (
                 <button
                   className="cancel-button"
                   type="button"
                   disabled={isSaving || isReordering || deletingRecordId !== null}
-                  onClick={() => {
-                    setEditingRecord(null);
-                    setError('');
-                  }}
+                  onClick={closeCharityForm}
                 >
                   Cancel
                 </button>
-              )}
               <button
                 className="primary-button"
                 type="submit"
@@ -528,6 +631,8 @@ function CharityLog() {
             </div>
           </div>
         </form>
+        </FormDialog>
+        )}
 
         <section className="charity-history-card" aria-labelledby="charity-history-heading">
           <div className="charity-history-heading">
@@ -580,6 +685,7 @@ function CharityLog() {
                     <CharityRecordEntry
                       key={record.id}
                       record={record}
+                      familyMembers={charityFamilyMembers}
                       index={index}
                       recordCount={visibleRecords.length}
                       canReorder={!search.trim()}
@@ -588,7 +694,9 @@ function CharityLog() {
                       onMoveDown={() => moveRecord(index, 1)}
                       onEdit={() => {
                         setEditingRecord(record);
+                        setSelectedFamilyMemberIds(record.familyMemberIds || []);
                         setError('');
+                        setIsFormOpen(true);
                       }}
                       onDelete={() => deleteRecord(record)}
                     />

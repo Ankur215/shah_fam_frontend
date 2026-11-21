@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import './GiftLog.css';
 import { apiFetch } from './api';
+import FormDialog from './FormDialog';
 
 const GIFTS_ENDPOINT = `${process.env.REACT_APP_API_URL || ''}/api/gifts`;
 const GIFT_DATE_FORMATTER = new Intl.DateTimeFormat('en', {
@@ -146,6 +147,8 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
   const [assignedFamilyMembers, setAssignedFamilyMembers] = useState([]);
   const [familyMemberError, setFamilyMemberError] = useState('');
   const [editingGift, setEditingGift] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedFamilyMemberIds, setSelectedFamilyMemberIds] = useState([]);
   const [giftDirection, setGiftDirection] = useState('Given');
   const [expandedGroups, setExpandedGroups] = useState({});
   const [expandedCategories, setExpandedCategories] = useState({});
@@ -160,6 +163,14 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
   const giftFamilyMembers = loadFamilyMembers
     ? assignedFamilyMembers
     : familyMembers;
+
+  function closeGiftForm() {
+    setIsFormOpen(false);
+    setEditingGift(null);
+    setSelectedFamilyMemberIds([]);
+    setGiftDirection('Given');
+    if (!isLoadError) setError('');
+  }
 
   useEffect(() => {
     if (!loadFamilyMembers) return undefined;
@@ -236,15 +247,8 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
       amount: formData.get('amount') || '',
       currency: String(formData.get('currency') || '').trim().toUpperCase(),
       notes: String(formData.get('notes') || '').trim(),
+      familyMemberIds: selectedFamilyMemberIds,
     };
-    const selectedMemberId = Number(formData.get('familyMemberId'));
-    const selectedMember = giftFamilyMembers.find(
-      (member) => member.id === selectedMemberId
-    );
-    if (gift.recipientType === 'Family' && selectedMember) {
-      gift.familyMemberId = selectedMember.id;
-      gift.recipientName = `${selectedMember.firstName} ${selectedMember.lastName || ''}`.trim();
-    }
 
     setIsSaving(true);
     setError('');
@@ -272,7 +276,9 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
       );
       if (!editingGift) form.reset();
       setEditingGift(null);
+      setSelectedFamilyMemberIds([]);
       setGiftDirection('Given');
+      setIsFormOpen(false);
     } catch (saveError) {
       console.error(
         `Could not ${editingGift ? 'update' : 'save'} a gift through the API.`,
@@ -304,6 +310,7 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
       );
       if (editingGift?.id === gift.id) {
         setEditingGift(null);
+        setSelectedFamilyMemberIds([]);
         setGiftDirection('Given');
       }
     } catch (deleteError) {
@@ -419,7 +426,29 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
         </div>
       </div>
 
+      <div className="gift-page-actions">
+        <button
+          className="primary-button"
+          type="button"
+          disabled={isSaving || isReordering || deletingGiftId !== null}
+          onClick={() => {
+            closeGiftForm();
+            setIsFormOpen(true);
+          }}
+        >
+          + Record a gift
+        </button>
+      </div>
       <div className="gift-layout">
+        {isFormOpen && (
+        <FormDialog
+          title={editingGift ? 'Edit gift' : 'Record a gift'}
+          description={editingGift
+            ? 'Update the details and save your changes.'
+            : 'Capture who it was for and the occasion.'}
+          onClose={closeGiftForm}
+          isBusy={isSaving}
+        >
         <form
           className="gift-form-card"
           key={editingGift?.id || 'new-gift'}
@@ -428,21 +457,8 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
           {familyMemberError && (
             <p className="gift-error" role="alert">{familyMemberError}</p>
           )}
-          <div className="gift-card-heading">
-            <span className="gift-card-icon" aria-hidden="true">
-              {editingGift ? '✎' : '＋'}
-            </span>
-            <div>
-              <h2>{editingGift ? 'Edit gift' : 'Record a gift'}</h2>
-              <p>
-                {editingGift
-                  ? 'Update the details and save your changes.'
-                  : 'Capture who it was for and the occasion.'}
-              </p>
-            </div>
-          </div>
-
           <div className="gift-form-grid">
+            <h3 className="gift-form-section-heading gift-form-full">Gift details</h3>
             <label>
               Direction
               <select
@@ -478,38 +494,15 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
                 defaultValue={editingGift?.recipientName || ''}
               />
               {giftFamilyMembers.length > 0 && (
-                <>
-                  <datalist id="gift-family-members">
-                    {giftFamilyMembers.map((member) => (
-                      <option
-                        key={member.id}
-                        value={`${member.firstName} ${member.lastName || ''}`.trim()}
-                      />
-                    ))}
-                  </datalist>
-                  <select
-                    aria-label="Family member"
-                    defaultValue={editingGift?.familyMemberId || ''}
-                    name="familyMemberId"
-                  >
-                    <option value="">Link to a family member</option>
-                    {giftFamilyMembers.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.firstName} {member.lastName || ''}
-                      </option>
-                    ))}
-                  </select>
-                </>
+                <datalist id="gift-family-members">
+                  {giftFamilyMembers.map((member) => (
+                    <option
+                      key={member.id}
+                      value={`${member.firstName} ${member.lastName || ''}`.trim()}
+                    />
+                  ))}
+                </datalist>
               )}
-            </label>
-            <label className="gift-form-full">
-              Occasion
-              <input
-                name="occasion"
-                maxLength="100"
-                placeholder="Birthday, wedding, just because…"
-                defaultValue={editingGift?.occasion || ''}
-              />
             </label>
             <label>
               Gift <span className="required-mark">*</span>
@@ -529,6 +522,18 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
                 required
                 max={getLocalDateString()}
                 defaultValue={editingGift?.dateGiven || getLocalDateString()}
+              />
+            </label>
+            <h3 className="gift-form-section-heading gift-form-full">
+              Additional details <span>Optional</span>
+            </h3>
+            <label className="gift-form-full">
+              Occasion
+              <input
+                name="occasion"
+                maxLength="100"
+                placeholder="Birthday, wedding, just because…"
+                defaultValue={editingGift?.occasion || ''}
               />
             </label>
             <label>
@@ -563,6 +568,37 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
                 defaultValue={editingGift?.notes || ''}
               />
             </label>
+            <fieldset className="gift-member-link gift-form-full">
+              <legend>Family members for this gift</legend>
+              <p id="gift-family-member-help">
+                Select family members to share this gift with people who have Gift log
+                access and access to any selected member.
+                {editingGift?.workspaceVisible === false &&
+                  !(editingGift.familyMemberIds || []).length &&
+                  !editingGift.hasOtherFamilyMembers
+                  ? ' This older unlinked family gift remains visible only to the workspace super admin.'
+                  : ' When no members are linked, people with Gift log access in this workspace can see it.'}
+              </p>
+              {editingGift?.hasOtherFamilyMembers && (
+                <p>Additional family members you cannot access will remain selected.</p>
+              )}
+              <div className="gift-member-options" aria-describedby="gift-family-member-help">
+                {giftFamilyMembers.length ? giftFamilyMembers.map((member) => (
+                  <label key={member.id}>
+                    <input
+                      type="checkbox"
+                      checked={selectedFamilyMemberIds.includes(member.id)}
+                      onChange={(event) => setSelectedFamilyMemberIds((current) =>
+                        event.target.checked
+                          ? [...current, member.id]
+                          : current.filter((id) => id !== member.id)
+                      )}
+                    />
+                    {member.firstName} {member.lastName || ''}
+                  </label>
+                )) : <p>No family members available to select.</p>}
+              </div>
+            </fieldset>
           </div>
 
           {error && !isLoadError && (
@@ -574,20 +610,14 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
               {editingGift ? 'Editing a saved entry.' : 'Fields marked * are required.'}
             </span>
             <div className="gift-form-buttons">
-              {editingGift && (
                 <button
                   className="cancel-button"
                   type="button"
                   disabled={isSaving || isReordering || deletingGiftId !== null}
-                  onClick={() => {
-                    setEditingGift(null);
-                    setGiftDirection('Given');
-                    setError('');
-                  }}
+                  onClick={closeGiftForm}
                 >
                   Cancel
                 </button>
-              )}
               <button
                 className="primary-button"
                 type="submit"
@@ -602,6 +632,8 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
             </div>
           </div>
         </form>
+        </FormDialog>
+        )}
 
         <section className="gift-history-card" aria-labelledby="gift-history-heading">
           <div className="gift-history-heading">
@@ -772,7 +804,10 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
                                         }
                                         onEdit={() => {
                                           setEditingGift(gift);
+                                          setSelectedFamilyMemberIds(gift.familyMemberIds || []);
                                           setGiftDirection(gift.direction || 'Given');
+                                          setError('');
+                                          setIsFormOpen(true);
                                         }}
                                         onDelete={() => deleteGift(gift)}
                                       />
