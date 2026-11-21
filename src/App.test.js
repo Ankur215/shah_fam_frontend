@@ -99,35 +99,40 @@ test('shows the family member empty state after loading members from the API', a
   expect(global.fetch).toHaveBeenCalledWith('/api/family-members');
 });
 
-test('shows and updates the active family name and theme', async () => {
+test('shows and updates the family name and theme from settings', async () => {
   const user = {
     id: 1,
     email: 'admin@example.com',
     role: 'super_admin',
+    workspaceId: 1,
+    currentWorkspaceId: 1,
     familyName: 'Shah Family',
     theme: 'ocean',
   };
-  global.fetch = jest.fn((url) =>
-    Promise.resolve(
-      url === '/api/auth/me' ? apiResponse({ user }) : apiResponse([])
-    )
-  );
+  global.fetch = jest.fn((url, options) => {
+    if (url === '/api/auth/me') return Promise.resolve(apiResponse({ user }));
+    if (url === '/api/super-admin/workspaces/1' && options?.method === 'PUT') {
+      return Promise.resolve(apiResponse({
+        id: 1,
+        familyName: 'Another Family',
+        theme: 'lavender',
+      }));
+    }
+    return Promise.resolve(apiResponse([]));
+  });
 
   render(<App />);
 
   expect(await screen.findByLabelText('Shah Family introduction')).toBeInTheDocument();
   expect(document.querySelector('.app-shell')).toHaveAttribute('data-theme', 'ocean');
 
-  act(() => {
-    window.dispatchEvent(new CustomEvent('family-workspace-selected', {
-      detail: {
-        workspaceId: 2,
-        familyName: 'Another Family',
-        theme: 'lavender',
-      },
-    }));
+  fireEvent.click(screen.getByRole('button', { name: 'User accounts' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+  fireEvent.change(screen.getByLabelText('Family name'), {
+    target: { value: 'Another Family' },
   });
-
+  fireEvent.click(screen.getByRole('radio', { name: 'Lavender' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save family appearance' }));
   expect(await screen.findByLabelText('Another Family introduction')).toBeInTheDocument();
   expect(document.querySelector('.app-shell')).toHaveAttribute('data-theme', 'lavender');
 });

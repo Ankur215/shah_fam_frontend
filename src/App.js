@@ -553,28 +553,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    function handleWorkspaceSelected(event) {
-      const workspaceId = event.detail?.workspaceId;
-      if (!Number.isInteger(workspaceId)) return;
-      setAuthUser((current) =>
-        current
-          ? {
-            ...current,
-            currentWorkspaceId: workspaceId,
-            familyName: event.detail.familyName || current.familyName,
-            theme: event.detail.theme || current.theme,
-          }
-          : current
-      );
-      setLoadAttempt((attempt) => attempt + 1);
-    }
-
-    window.addEventListener('family-workspace-selected', handleWorkspaceSelected);
-    return () =>
-      window.removeEventListener('family-workspace-selected', handleWorkspaceSelected);
-  }, []);
-
-  useEffect(() => {
     if (!authUser) return;
     const pageAccess = {
       members: hasFamilyPageAccess,

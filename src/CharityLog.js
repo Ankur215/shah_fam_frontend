@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import './CharityLog.css';
-import { apiFetch } from './api';
+import { API_URL, apiFetch, readApiResponse } from './api';
 import FormDialog from './FormDialog';
 
-const CHARITY_ENDPOINT = `${process.env.REACT_APP_API_URL || ''}/api/charity-records`;
+const CHARITY_ENDPOINT = `${API_URL}/api/charity-records`;
 const DATE_FORMATTER = new Intl.DateTimeFormat('en', {
   month: 'short',
   day: 'numeric',
@@ -62,30 +62,6 @@ function summarizeAmounts(records) {
         `${(cents / 100).toFixed(2)}${currency ? ` ${currency}` : ''}`
     );
   return totals.length ? totals.join(' · ') : 'No amounts recorded';
-}
-
-async function readApiResponse(response) {
-  const body = await response.text();
-  let data = null;
-  if (body) {
-    try {
-      data = JSON.parse(body);
-    } catch {
-      data = null;
-    }
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      typeof data?.error === 'string'
-        ? data.error
-        : `The server returned HTTP ${response.status}.`
-    );
-  }
-  if (data === null) {
-    throw new Error('The API returned an empty or invalid JSON response.');
-  }
-  return data;
 }
 
 function CharityRecordEntry({

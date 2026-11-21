@@ -78,6 +78,7 @@ function AccountManagement({
   const isSuperAdmin = authUser.role === 'super_admin';
   const isPrimaryWorkspace = Boolean(authUser.workspaceId)
     && Number(authUser.workspaceId) === Number(authUser.currentWorkspaceId);
+  const workspaceId = authUser.currentWorkspaceId || '';
   const [users, setUsers] = useState([]);
   const [workspaces, setWorkspaces] = useState([]);
   const [email, setEmail] = useState('');
@@ -85,7 +86,6 @@ function AccountManagement({
   const [accountRole, setAccountRole] = useState('user');
   const [accountSection, setAccountSection] = useState('accounts');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [workspaceId, setWorkspaceId] = useState(authUser.currentWorkspaceId || '');
   const [familyName, setFamilyName] = useState(authUser.familyName || '');
   const [familyTheme, setFamilyTheme] = useState(authUser.theme || 'sage');
   const [familyMembers, setFamilyMembers] = useState([]);
@@ -149,7 +149,6 @@ function AccountManagement({
 
   useEffect(() => {
     if (isSuperAdmin) {
-      setWorkspaceId(authUser.currentWorkspaceId || '');
       setFamilyName(authUser.familyName || '');
       setFamilyTheme(authUser.theme || 'sage');
     }
@@ -202,7 +201,6 @@ function AccountManagement({
       if (user.role === 'admin') {
         const response = await apiFetch(`${API_URL}/api/super-admin/workspaces`);
         setWorkspaces(await readApiResponse(response));
-        window.dispatchEvent(new Event('family-workspaces-updated'));
       }
       setNotice(
         `${user.role === 'admin' ? 'Admin' : 'Normal user'} account created for ${user.email}. Share the temporary password securely.`
