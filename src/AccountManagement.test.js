@@ -46,6 +46,7 @@ test('lets a super admin update the active family name and theme', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
   expect(screen.queryByLabelText('Email address')).not.toBeInTheDocument();
   expect(screen.getByLabelText('Active family workspace')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Edit family appearance' }));
   expect(screen.getByRole('radio', { name: 'Rose' })).toBeInTheDocument();
   expect(screen.getByRole('radio', { name: 'Slate' })).toBeInTheDocument();
   expect(screen.getByRole('radio', { name: 'Amber' })).toBeInTheDocument();
@@ -94,6 +95,7 @@ test('lists accounts and lets an administrator create a normal user', async () =
       Node.DOCUMENT_POSITION_FOLLOWING
   ).toBeTruthy();
 
+  fireEvent.click(screen.getByRole('button', { name: /create an account/i }));
   fireEvent.change(screen.getByLabelText('Email address'), {
     target: { value: 'family@example.com' },
   });
@@ -137,6 +139,7 @@ test('keeps admin creation out of user account management', async () => {
   );
   render(<AccountManagement />);
   await screen.findByText('admin@example.com');
+  fireEvent.click(screen.getByRole('button', { name: /create an account/i }));
   expect(screen.queryByLabelText('Account type')).not.toBeInTheDocument();
   expect(screen.queryByRole('option', { name: 'Admin user' })).not.toBeInTheDocument();
   expect(
@@ -144,6 +147,23 @@ test('keeps admin creation out of user account management', async () => {
   ).toBeInTheDocument();
   expect(screen.getByText(/become a super admin to manage a separate copy/i)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Become a super admin' })).toBeInTheDocument();
+});
+
+test('closing account creation clears the temporary password', async () => {
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(apiResponse([{ id: 1, email: 'admin@example.com', role: 'admin' }]))
+    .mockResolvedValueOnce(apiResponse([]));
+  render(<AccountManagement />);
+  await screen.findByText('admin@example.com');
+  const openButton = screen.getByRole('button', { name: /create an account/i });
+  fireEvent.click(openButton);
+  fireEvent.change(screen.getByLabelText('Temporary password'), {
+    target: { value: 'temporary-password' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Close form' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  fireEvent.click(openButton);
+  expect(screen.getByLabelText('Temporary password')).toHaveValue('');
 });
 
 test('lets a super admin create an admin in a new family workspace', async () => {
@@ -186,6 +206,7 @@ test('lets a super admin create an admin in a new family workspace', async () =>
   await screen.findByText('root@example.com');
   expect(screen.queryByLabelText('Family workspace', { selector: '#new-account-workspace' }))
     .not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /create an account/i }));
   fireEvent.change(screen.getByLabelText('Email address'), {
     target: { value: 'new-admin@example.com' },
   });
@@ -248,6 +269,7 @@ test('creates a super-admin user in the active workspace without a workspace fie
     />
   );
   await screen.findByText('root@example.com');
+  fireEvent.click(screen.getByRole('button', { name: /create an account/i }));
   fireEvent.change(screen.getByLabelText('Email address'), {
     target: { value: 'family-user@example.com' },
   });

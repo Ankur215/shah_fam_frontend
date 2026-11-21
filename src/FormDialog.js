@@ -51,7 +51,7 @@ function FormDialog({ title, description, onClose, isBusy = false, children }) {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEvent('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = previousOverflow;
       if (previousFocus?.isConnected) previousFocus.focus();
     };

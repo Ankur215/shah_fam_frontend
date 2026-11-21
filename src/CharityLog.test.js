@@ -89,6 +89,9 @@ test('saves a charity record with amount, activity, and notes in order', async (
 
   const { container } = render(<CharityLog />);
 
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /record charity work/i }));
+  expect(screen.getByRole('dialog', { name: 'Record charity work' })).toBeInTheDocument();
   expect(
     [...container.querySelectorAll('.charity-form-grid input:not([type="checkbox"]), .charity-form-grid select, .charity-form-grid textarea')]
       .map((field) => field.name)
@@ -193,6 +196,7 @@ test('selects multiple family members and preserves selections when editing', as
     .mockResolvedValueOnce(apiResponse({ ...record, familyMemberIds: [6] }));
   render(<CharityLog familyMembers={members} />);
 
+  fireEvent.click(screen.getByRole('button', { name: /record charity work/i }));
   fireEvent.change(screen.getByLabelText(/organization \/ charity/i), {
     target: { value: 'Food Bank' },
   });

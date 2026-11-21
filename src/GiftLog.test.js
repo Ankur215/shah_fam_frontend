@@ -47,6 +47,20 @@ test('loads gift history from the API', async () => {
   expect(global.fetch).toHaveBeenCalledWith('/api/gifts');
 });
 
+test('opens the gift dialog and returns focus on Escape', async () => {
+  global.fetch = jest.fn().mockResolvedValue(apiResponse([]));
+  render(<GiftLog />);
+  await screen.findByText('No gifts logged yet');
+  const openButton = screen.getByRole('button', { name: /record a gift/i });
+  openButton.focus();
+  fireEvent.click(openButton);
+  expect(screen.getByRole('dialog', { name: 'Record a gift' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Direction')).toHaveFocus();
+  fireEvent.keyDown(document, { key: 'Escape' });
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(openButton).toHaveFocus();
+});
+
 test('saves a gift and displays the saved entry', async () => {
   const savedGift = {
     id: 9,
@@ -77,6 +91,9 @@ test('saves a gift and displays the saved entry', async () => {
     />
   );
 
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /record a gift/i }));
+  expect(screen.getByRole('dialog', { name: 'Record a gift' })).toBeInTheDocument();
   expect(
     [...container.querySelectorAll('.gift-form-grid input, .gift-form-grid select, .gift-form-grid textarea')]
       .map((field) => field.name)
@@ -136,6 +153,7 @@ test('shares a gift with multiple family members and edits the selection', async
     .mockResolvedValueOnce(apiResponse(gift, 201))
     .mockResolvedValueOnce(apiResponse({ ...gift, familyMemberIds: [6] }));
   render(<GiftLog familyMembers={members} />);
+  fireEvent.click(screen.getByRole('button', { name: /record a gift/i }));
   fireEvent.change(screen.getByLabelText('They’re my'), { target: { value: 'Friend' } });
   fireEvent.change(screen.getByLabelText('To *'), { target: { value: 'A friend' } });
   fireEvent.change(screen.getByLabelText('Gift *'), { target: { value: 'A book' } });
@@ -175,6 +193,7 @@ test('records a received gift from the recipient group', async () => {
 
   render(<GiftLog />);
 
+  fireEvent.click(screen.getByRole('button', { name: /record a gift/i }));
   fireEvent.change(screen.getByLabelText('Direction'), {
     target: { value: 'Received' },
   });
@@ -417,6 +436,24 @@ test('keeps a gift when deletion is canceled', async () => {
 
   expect(global.fetch).toHaveBeenCalledTimes(1);
   expect(await screen.findByText(/Flowers/)).toBeInTheDocument();
+});
+
+test('shows deletion errors when the gift form is closed', async () => {
+  const gift = {
+    id: 32, recipientName: 'Maya Patel', recipientType: 'Friend',
+    direction: 'Received', giftName: 'Flowers', occasion: '',
+    dateGiven: '2025-11-12', amount: '', currency: '', notes: '',
+  };
+  jest.spyOn(window, 'confirm').mockReturnValue(true);
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(apiResponse([gift]))
+    .mockResolvedValueOnce(apiResponse({ error: 'Could not delete gift.' }, 503));
+  render(<GiftLog />);
+  fireEvent.click(await screen.findByRole('button', { name: /Maya Patel/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete Flowers gift for Maya Patel' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not delete gift.');
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 
 test('shows an API error when gift history cannot be loaded', async () => {

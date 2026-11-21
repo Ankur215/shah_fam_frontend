@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import './AccountManagement.css';
 import { API_URL, apiFetch, readApiResponse } from './api';
 import FAMILY_THEMES from './familyThemes';
+import FormDialog from './FormDialog';
 
 const ACCESS_MODULES = {
   family: 'Family members and family tree',
@@ -80,6 +81,8 @@ function AccountManagement({
   const [password, setPassword] = useState('');
   const [accountRole, setAccountRole] = useState('user');
   const [accountSection, setAccountSection] = useState('accounts');
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
   const [workspaceId, setWorkspaceId] = useState(authUser.currentWorkspaceId || '');
   const [familyName, setFamilyName] = useState(authUser.familyName || '');
   const [familyTheme, setFamilyTheme] = useState(authUser.theme || 'sage');
@@ -198,6 +201,7 @@ function AccountManagement({
       setNotice(
         `${user.role === 'admin' ? 'Admin' : 'Normal user'} account created for ${user.email}. Share the temporary password securely.`
       );
+      setIsCreateOpen(false);
     } catch (createError) {
       setError(createError.message || 'Could not create the account.');
     } finally {
@@ -261,6 +265,7 @@ function AccountManagement({
         theme: workspace.theme,
       });
       setAppearanceNotice('Family name and theme updated.');
+      setIsAppearanceOpen(false);
     } catch (saveError) {
       setAppearanceError(saveError.message || 'Could not update family appearance.');
     } finally {
@@ -276,6 +281,29 @@ function AccountManagement({
     setEditFamilyMemberIds(user.familyMemberIds || []);
     setError('');
     setNotice('');
+  }
+
+  function closeCreateForm() {
+    setIsCreateOpen(false);
+    setEmail('');
+    setPassword('');
+    setAccountRole('user');
+    setAccessPages([...DEFAULT_ACCESS_PAGES]);
+    setFamilyMemberIds(
+      familyMembers
+        .filter((member) =>
+          !isSuperAdmin || Number(member.workspaceId) === Number(workspaceId)
+        )
+        .map((member) => member.id)
+    );
+    setError('');
+  }
+
+  function closeAppearanceForm() {
+    setIsAppearanceOpen(false);
+    setFamilyName(authUser.familyName || '');
+    setFamilyTheme(authUser.theme || 'sage');
+    setAppearanceError('');
   }
 
   function cancelEditing() {
@@ -445,6 +473,11 @@ function AccountManagement({
         </nav>
       )}
 
+      {error && !isCreateOpen && editingUserId === null && (
+        <p className="account-error" role="alert">{error}</p>
+      )}
+      {notice && <p className="account-notice" role="status">{notice}</p>}
+
       {isSuperAdmin && accountSection === 'settings' && (
         <>
           <section className="account-card account-workspace-selection">
@@ -470,6 +503,26 @@ function AccountManagement({
             aria-labelledby="family-appearance-heading"
           >
             <h2 id="family-appearance-heading">Family appearance</h2>
+            <button
+              className="account-submit"
+              type="button"
+              onClick={() => {
+                setAppearanceError('');
+                setAppearanceNotice('');
+                setIsAppearanceOpen(true);
+              }}
+            >
+              Edit family appearance
+            </button>
+            {appearanceNotice && (
+              <p className="account-notice" role="status">{appearanceNotice}</p>
+            )}
+            {isAppearanceOpen && (
+            <FormDialog
+              title="Edit family appearance"
+              onClose={closeAppearanceForm}
+              isBusy={isSavingAppearance}
+            >
             <form className="account-form" onSubmit={handleAppearanceSave}>
               <label htmlFor="family-display-name">Family name</label>
               <input
@@ -508,9 +561,6 @@ function AccountManagement({
               {appearanceError && (
                 <p className="account-error" role="alert">{appearanceError}</p>
               )}
-              {appearanceNotice && (
-                <p className="account-notice" role="status">{appearanceNotice}</p>
-              )}
               <button
                 className="account-submit"
                 disabled={isSavingAppearance}
@@ -519,6 +569,8 @@ function AccountManagement({
                 {isSavingAppearance ? 'Saving…' : 'Save family appearance'}
               </button>
             </form>
+            </FormDialog>
+            )}
           </section>
         </>
       )}
@@ -527,6 +579,24 @@ function AccountManagement({
         <>
         <section className="account-card" aria-labelledby="create-account-heading">
         <h2 id="create-account-heading">Create an account</h2>
+        <button
+          className="account-submit"
+          type="button"
+          disabled={isLoading}
+          onClick={() => {
+            setError('');
+            setNotice('');
+            setIsCreateOpen(true);
+          }}
+        >
+          + Create an account
+        </button>
+        {isCreateOpen && (
+        <FormDialog
+          title="Create an account"
+          onClose={closeCreateForm}
+          isBusy={isSaving}
+        >
         <form className="account-form" onSubmit={handleSubmit}>
           <label htmlFor="new-user-email">Email address</label>
           <input
@@ -582,7 +652,6 @@ function AccountManagement({
           />
           <p className="account-hint">Use at least 12 characters, then share it securely.</p>
           {error && <p className="account-error" role="alert">{error}</p>}
-          {notice && <p className="account-notice" role="status">{notice}</p>}
           <button
             className="account-submit"
             disabled={isSaving || isLoading}
@@ -597,6 +666,8 @@ function AccountManagement({
                   : 'Create normal user account'}
           </button>
         </form>
+        </FormDialog>
+        )}
       </section>
 
       <section className="account-card" aria-labelledby="existing-accounts-heading">
@@ -607,7 +678,15 @@ function AccountManagement({
           <ul className="account-list">
             {users.map((user) => (
               <li key={user.id}>
-                {editingUserId === user.id ? (
+                {editingUserId === user.id && (
+                  <FormDialog
+                    title={`Edit ${user.email}`}
+                    onClose={() => {
+                      cancelEditing();
+                      setError('');
+                    }}
+                    isBusy={isUpdating}
+                  >
                   <form
                     className="account-edit-form"
                     aria-label={`Edit ${user.email}`}
@@ -644,6 +723,7 @@ function AccountManagement({
                       type="password"
                       value={editPassword}
                     />
+                    {error && <p className="account-error" role="alert">{error}</p>}
                     <div className="account-actions">
                       <button disabled={isUpdating} type="submit">
                         {isUpdating ? 'Saving…' : 'Save changes'}
@@ -657,7 +737,8 @@ function AccountManagement({
                       </button>
                     </div>
                   </form>
-                ) : (
+                  </FormDialog>
+                )}
                   <>
                     <span className={`account-role account-role-${user.role}`}>
                       {user.role === 'super_admin'
@@ -719,7 +800,6 @@ function AccountManagement({
                       </>
                     )}
                   </>
-                )}
               </li>
             ))}
           </ul>

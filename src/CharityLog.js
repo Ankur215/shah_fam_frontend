@@ -467,6 +467,9 @@ function CharityLog({ familyMembers = [], loadFamilyMembers = false }) {
           + Record charity work
         </button>
       </div>
+      {error && !isLoadError && !isFormOpen && (
+        <div className="error-message" role="alert">{error}</div>
+      )}
       <div className="charity-layout">
         {isFormOpen && (
         <FormDialog

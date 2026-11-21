@@ -439,6 +439,9 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
           + Record a gift
         </button>
       </div>
+      {error && !isLoadError && !isFormOpen && (
+        <div className="error-message" role="alert">{error}</div>
+      )}
       <div className="gift-layout">
         {isFormOpen && (
         <FormDialog
