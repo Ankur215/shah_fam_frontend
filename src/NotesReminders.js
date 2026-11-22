@@ -10,6 +10,7 @@ import './NotesReminders.css';
 
 const NOTES_ENDPOINT = `${API_URL}/api/notes`;
 const REMINDERS_ENDPOINT = `${API_URL}/api/reminders`;
+const REMINDER_LISTS_ENDPOINT = `${API_URL}/api/reminder-lists`;
 const MAIN_VIEWS = ['Dashboard', 'Notes', 'Reminders', 'Trash'];
 const SUB_VIEWS = {
   Notes: ['Notes', 'Pinned'],
@@ -31,6 +32,7 @@ function reminderDate(reminder) {
   if (reminder.snoozed_until) {
     return new Date(reminder.snoozed_until);
   }
+  if (!reminder.due_date) return null;
   return new Date(`${reminder.due_date}T${reminder.due_time || '23:59:59'}`);
 }
 
@@ -69,6 +71,10 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
   const [view, setView] = useState('Dashboard');
   const [notes, setNotes] = useState([]);
   const [reminders, setReminders] = useState([]);
+  const [reminderLists, setReminderLists] = useState([]);
+  const [trashReminderLists, setTrashReminderLists] = useState([]);
+  const [selectedListId, setSelectedListId] = useState(null);
+  const [listEditor, setListEditor] = useState(null);
   const [trashNotes, setTrashNotes] = useState([]);
   const [trashReminders, setTrashReminders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -83,13 +89,13 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
   const [metadataEdit, setMetadataEdit] = useState(null);
   const inlineEditor = useRef(null);
   const dialogEditor = useRef(null);
+  const reminderWorkspace = useRef(null);
   const noteMenu = useRef(null);
   const noteMenuButton = useRef(null);
   const selectionCounter = useRef(0);
   const switching = useRef(false);
   const [reminderEditor, setReminderEditor] = useState(null);
   const [search, setSearch] = useState('');
-  const [priority, setPriority] = useState('All');
   const [dashboardCategory, setDashboardCategory] = useState('Overdue');
   const [selectedDate, setSelectedDate] = useState(localDate());
   const [month, setMonth] = useState(() => {
@@ -114,16 +120,20 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
   }));
 
   const loadData = useCallback(async () => {
-    const [nextNotes, nextReminders, nextTrashNotes, nextTrashReminders] = await Promise.all([
+    const [nextNotes, nextReminders, nextTrashNotes, nextTrashReminders, nextLists, nextTrashLists] = await Promise.all([
       requestJson(NOTES_ENDPOINT),
       requestJson(REMINDERS_ENDPOINT),
       requestJson(`${NOTES_ENDPOINT}?trash=true`),
       requestJson(`${REMINDERS_ENDPOINT}?trash=true`),
+      requestJson(REMINDER_LISTS_ENDPOINT),
+      requestJson(`${REMINDER_LISTS_ENDPOINT}?trash=true`),
     ]);
     setNotes(nextNotes);
     setReminders(nextReminders);
     setTrashNotes(nextTrashNotes);
     setTrashReminders(nextTrashReminders);
+    setReminderLists(nextLists);
+    setTrashReminderLists(nextTrashLists);
   }, []);
 
   useEffect(() => {
@@ -251,19 +261,38 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
     }
   }
 
+  async function saveReminderList(id, draft) {
+    setBusy(true);
+    setError('');
+    try {
+      const saved = await requestJson(id ? `${REMINDER_LISTS_ENDPOINT}/${id}` : REMINDER_LISTS_ENDPOINT, {
+        method: id ? 'PUT' : 'POST', body: JSON.stringify(draft),
+      });
+      await loadData();
+      setSelectedListId(saved.id);
+      setListEditor(null);
+      reminderWorkspace.current?.showDetail();
+    } catch (err) {
+      setError(`Failed to save reminder list: ${err.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function moveToTrash(type, item) {
     const endpoint = type === 'note' ? NOTES_ENDPOINT : REMINDERS_ENDPOINT;
     return mutate(`${endpoint}/${item.id}`, { method: 'DELETE' }, 'Could not move to trash');
   }
 
   function restore(type, item) {
-    const endpoint = type === 'note' ? NOTES_ENDPOINT : REMINDERS_ENDPOINT;
+    const endpoint = type === 'note' ? NOTES_ENDPOINT : type === 'list' ? REMINDER_LISTS_ENDPOINT : REMINDERS_ENDPOINT;
     mutate(`${endpoint}/${item.id}/restore`, { method: 'POST' }, 'Could not restore item');
   }
 
   function permanentlyDelete(type, item) {
-    if (!window.confirm(`Permanently delete "${item.title}"? This cannot be undone.`)) return;
-    const endpoint = type === 'note' ? NOTES_ENDPOINT : REMINDERS_ENDPOINT;
+    const contents = type === 'list' ? ' and all its items' : '';
+    if (!window.confirm(`Permanently delete "${item.title}"${contents}? This cannot be undone.`)) return;
+    const endpoint = type === 'note' ? NOTES_ENDPOINT : type === 'list' ? REMINDER_LISTS_ENDPOINT : REMINDERS_ENDPOINT;
     mutate(`${endpoint}/${item.id}?permanent=true`, { method: 'DELETE' }, 'Could not permanently delete item');
   }
 
@@ -279,7 +308,9 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
   const pinnedNotes = notes.filter((note) => note.is_pinned);
   const matchingReminders = reminders.filter((reminder) =>
     matchesSearch([reminder.title, reminder.description, reminder.priority, reminder.recurrence], query));
-  const pending = reminders.filter((item) => !item.is_completed)
+  const matchingLists = reminderLists.filter((list) =>
+    matchesSearch([list.name], query));
+  const pending = reminders.filter((item) => !item.is_completed && reminderDate(item))
     .sort((a, b) => reminderDate(a) - reminderDate(b));
   const overdue = pending.filter((item) => reminderDate(item) < now);
   const today = pending.filter((item) => reminderDate(item) >= now && localDate(reminderDate(item)) === localDate(now));
@@ -323,7 +354,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
           </button>
           <div><h3>{item.title}</h3>{item.description && <p>{item.description}</p>}
             <div className="nr-meta">
-              <span>{snoozed ? `Snoozed until ${effective.toLocaleString()}` : `Due ${formatDay(item.due_date)}${item.due_time ? ` · ${item.due_time.slice(0, 5)}` : ''}`}</span>
+              <span>{snoozed ? `Snoozed until ${effective.toLocaleString()}` : item.due_date ? `Due ${formatDay(item.due_date)}${item.due_time ? ` · ${item.due_time.slice(0, 5)}` : ''}` : 'No due date'}</span>
               <span className={`nr-priority nr-priority-${item.priority.toLowerCase()}`}>{item.priority}</span>
               {item.recurrence && <span>Repeats {item.recurrence}</span>}
             </div>
@@ -363,6 +394,12 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
   const selectedNote = notes.find((note) => note.id === selection?.note.id) || selection?.note;
 
   useEffect(() => {
+    if (!reminderLists.some((list) => list.id === selectedListId)) {
+      setSelectedListId(reminderLists[0]?.id ?? null);
+    }
+  }, [reminderLists, selectedListId]);
+
+  useEffect(() => {
     const candidates = view === 'Pinned' ? notes.filter((note) => note.is_pinned) : notes;
     if ((view === 'Notes' || view === 'Pinned') && !selection && candidates.length) {
       setSelection({ note: candidates[0], key: ++selectionCounter.current });
@@ -371,7 +408,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
 
   const firstDay = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
   const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-  const selectedReminders = reminders.filter((item) => localDate(reminderDate(item)) === selectedDate);
+  const selectedReminders = reminders.filter((item) => reminderDate(item) && localDate(reminderDate(item)) === selectedDate);
   const changeMonth = (offset) => {
     const next = new Date(month.getFullYear(), month.getMonth() + offset, 1);
     setMonth(next);
@@ -392,7 +429,8 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
             openNoteDialog({});
           }
         }}>+ New Note</button>
-        <button type="button" className="nr-button nr-button-primary" disabled={loading} onClick={() => setReminderEditor({ due_date: localDate() })}>+ New Reminder</button>
+        <button type="button" className="nr-button nr-button-primary" disabled={loading}
+          onClick={() => setReminderEditor({ list_id: selectedListId })}>+ New Reminder</button>
       </div>
     </header>
     <div className="nr-navigation">
@@ -413,6 +451,16 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
     {loading ? <p className="nr-empty">Loading notes and reminders...</p> : query ? <>
       {section('Notes', matchingNotes, noteList, 'No matching notes.')}
       {section('Reminders', matchingReminders, reminderList, 'No matching reminders.')}
+      {section('Reminder lists', matchingLists, (lists, empty) => lists.length
+        ? <div className="nr-list">{lists.map((list) => <button type="button" className="nr-search-list"
+          key={list.id} onClick={async () => {
+            if (inlineEditor.current && !(await inlineEditor.current.flush())) return;
+            setSelectedListId(list.id);
+            setView('Reminders');
+            setSearch('');
+            reminderWorkspace.current?.showDetail();
+          }}><strong>{list.name}</strong></button>)}</div>
+        : <p className="nr-empty">{empty}</p>, 'No matching reminder lists.')}
     </> : view === 'Dashboard' ? <>
       <div className="nr-dashboard-columns">
         <div className="nr-dashboard-column" aria-label="Pinned notes">
@@ -442,15 +490,8 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
           </section>
         </div>
       </div>
-    </> : view === 'Notes' || view === 'Pinned' ? null
-      : view === 'Reminders' ? <>
-        <div className="nr-filter"><label htmlFor="nr-priority">Priority</label>
-          <select id="nr-priority" value={priority} onChange={(event) => setPriority(event.target.value)}>
-            <option>All</option><option>Low</option><option>Medium</option><option>High</option>
-          </select></div>
-        {section('Overdue', overdue.filter((item) => priority === 'All' || item.priority === priority), reminderList, 'Nothing overdue.')}
-        {section('Upcoming', [...today, ...upcoming].filter((item) => priority === 'All' || item.priority === priority), reminderList, 'No upcoming reminders.')}
-      </> : view === 'Completed' ? section('Completed reminders', reminders.filter((item) => item.is_completed), reminderList, 'Completed reminders will appear here.')
+    </> : view === 'Notes' || view === 'Pinned' || view === 'Reminders' ? null
+      : view === 'Completed' ? section('Completed reminders', reminders.filter((item) => item.is_completed), reminderList, 'Completed reminders will appear here.')
       : view === 'Calendar' ? <div className="nr-calendar-layout">
         <section className="nr-calendar">
           <div className="nr-calendar-header"><button type="button" aria-label="Previous month" onClick={() => changeMonth(-1)}>‹</button>
@@ -461,7 +502,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
             {Array.from({ length: firstDay }, (_, index) => <span key={`blank-${index}`} />)}
             {Array.from({ length: daysInMonth }, (_, index) => {
               const dateValue = localDate(new Date(month.getFullYear(), month.getMonth(), index + 1));
-              const count = reminders.filter((item) => localDate(reminderDate(item)) === dateValue).length;
+              const count = reminders.filter((item) => reminderDate(item) && localDate(reminderDate(item)) === dateValue).length;
               return <button type="button" key={dateValue} aria-label={`${formatDay(dateValue)}${count ? `, ${count} reminders` : ''}`}
                 aria-pressed={selectedDate === dateValue} className={selectedDate === dateValue ? 'nr-date-selected' : ''}
                 onClick={() => setSelectedDate(dateValue)}><span>{index + 1}</span>{count > 0 && <small>{count}</small>}</button>;
@@ -473,13 +514,24 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
           {reminderList(selectedReminders, 'No reminders on this date.')}</section>
       </div> : <section className="nr-section"><div className="nr-section-heading"><h2>Trash</h2></div>
         <p className="nr-help">Restore an item or permanently delete it.</p>
-        {!trashNotes.length && !trashReminders.length ? <p className="nr-empty">Trash is empty.</p> :
+        {!trashNotes.length && !trashReminders.length && !trashReminderLists.length ? <p className="nr-empty">Trash is empty.</p> :
           <div className="nr-list">{[...trashNotes.map((item) => ({ ...item, type: 'note' })),
-            ...trashReminders.map((item) => ({ ...item, type: 'reminder' }))].map((item) =>
-            <article className="nr-reminder" key={`${item.type}-${item.id}`}><div><h3>{item.title}</h3><span className="nr-help">{item.type === 'note' ? 'Note' : 'Reminder'}</span></div>
+            ...trashReminders.map((item) => ({ ...item, type: 'reminder' })),
+            ...trashReminderLists.map((item) => ({ ...item, type: 'list', title: item.name }))].map((item) =>
+            <article className="nr-reminder" key={`${item.type}-${item.id}`}><div><h3>{item.title}</h3><span className="nr-help">{item.type === 'note' ? 'Note' : item.type === 'list' ? 'Reminder list and its items' : 'Reminder'}</span></div>
               <div className="nr-actions"><button type="button" disabled={busy} onClick={() => restore(item.type, item)}>Restore</button>
                 <button type="button" disabled={busy} onClick={() => permanentlyDelete(item.type, item)}>Delete permanently</button></div></article>)}</div>}
       </section>}
+    <ReminderWorkspace ref={reminderWorkspace}
+      hidden={loading || Boolean(query) || view !== 'Reminders'}
+      lists={reminderLists} reminders={reminders} selectedListId={selectedListId}
+      onSelect={setSelectedListId} busy={busy} onNewList={() => setListEditor({})}
+      onEditList={(list) => setListEditor(list)} onEditItem={(item) => setReminderEditor(item)}
+      onUpdateItem={updateReminder} onTrashItem={(item) => moveToTrash('reminder', item)}
+      onTrashList={(list) => mutate(`${REMINDER_LISTS_ENDPOINT}/${list.id}`, { method: 'DELETE' }, 'Could not move list to trash')}
+      onAddItem={async (title, listId) => mutate(REMINDERS_ENDPOINT, {
+        method: 'POST', body: JSON.stringify({ title, list_id: listId }),
+      }, 'Could not add reminder')} />
     <div className={`nr-note-workspace${showNoteDetail ? ' nr-note-detail-open' : ''}`}
       hidden={loading || Boolean(query) || (view !== 'Notes' && view !== 'Pinned')}>
       <aside className="nr-note-sidebar" aria-label="Note list">
@@ -553,9 +605,119 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
       </section>
     </div>
     {noteEditor && <NoteEditor ref={dialogEditor} disabled={switchingNote} note={noteEditor} groupNames={groupNames} onSave={saveNote} onRefresh={loadData} onClose={() => setNoteEditor(null)} />}
-    {reminderEditor && <ReminderEditor reminder={reminderEditor} busy={busy} error={error} onSave={saveReminder} onClose={() => setReminderEditor(null)} />}
+    {reminderEditor && <ReminderEditor reminder={reminderEditor} lists={reminderLists} busy={busy} error={error} onSave={saveReminder} onClose={() => setReminderEditor(null)} />}
+    {listEditor && <ReminderListEditor list={listEditor} busy={busy} error={error} onSave={saveReminderList} onClose={() => setListEditor(null)} />}
   </div>;
 });
+
+const ReminderWorkspace = forwardRef(function ReminderWorkspace({
+  hidden, lists, reminders, selectedListId, onSelect, busy, onNewList,
+  onEditList, onEditItem, onUpdateItem, onTrashItem, onTrashList, onAddItem,
+}, ref) {
+  const [showDetail, setShowDetail] = useState(false);
+  const selected = lists.find((list) => list.id === selectedListId);
+  const defaultId = lists.find((list) => list.is_default)?.id;
+  const items = reminders.filter((item) =>
+    (item.list_id ?? defaultId) === selectedListId
+  ).sort((first, second) => Number(first.is_completed) - Number(second.is_completed));
+
+  useImperativeHandle(ref, () => ({ showDetail: () => setShowDetail(true) }), []);
+
+  function selectList(id) {
+    onSelect(id);
+    setShowDetail(true);
+  }
+
+  return <div className={`nr-note-workspace nr-reminder-workspace${showDetail ? ' nr-note-detail-open' : ''}`} hidden={hidden}>
+    <aside className="nr-note-sidebar" aria-label="Reminder lists">
+      <div className="nr-note-sidebar-heading"><h2>Lists</h2>
+        <button type="button" className="nr-link" disabled={busy} onClick={onNewList}>+ New list</button></div>
+      {lists.map((list) => <button key={list.id} type="button"
+        className={`nr-note-list-item${selectedListId === list.id ? ' nr-note-list-selected' : ''}`}
+        aria-current={selectedListId === list.id ? 'true' : undefined}
+        onClick={() => selectList(list.id)}>
+        <strong>{list.name}</strong>
+        <span>{reminders.filter((item) => (item.list_id ?? defaultId) === list.id && !item.is_completed).length} remaining</span>
+      </button>)}
+      {!lists.length && <p className="nr-note-list-empty">No reminder lists yet.</p>}
+    </aside>
+    <section className="nr-note-detail" aria-label="Reminder list detail">
+      {selected ? <>
+        <div className="nr-note-detail-toolbar">
+          <button type="button" className="nr-note-back" onClick={() => setShowDetail(false)}>‹ Lists</button>
+          <h2 className="nr-reminder-list-title">{selected.name}</h2>
+          <div className="nr-actions">
+            <button type="button" disabled={busy} onClick={() => onEditList(selected)}>Rename</button>
+            {!selected.is_default && <button type="button" disabled={busy}
+              onClick={() => onTrashList(selected)}>Trash list</button>}
+          </div>
+        </div>
+        <ReminderListDetails key={selected.id} list={selected} items={items}
+          busy={busy} onAddItem={onAddItem}
+          onEditItem={onEditItem} onUpdateItem={onUpdateItem} onTrashItem={onTrashItem} />
+      </> : <p className="nr-note-detail-empty">Choose a list or create one to get started.</p>}
+    </section>
+  </div>;
+});
+
+function ReminderListDetails({ list, items, busy, onAddItem, onEditItem, onUpdateItem, onTrashItem }) {
+  const [newItem, setNewItem] = useState('');
+
+  return <div className="nr-reminder-list-content">
+    <form className="nr-add-reminder" onSubmit={async (event) => {
+      event.preventDefault();
+      if (!newItem.trim()) return;
+      if (await onAddItem(newItem.trim(), list.id)) setNewItem('');
+    }}>
+      <label htmlFor="nr-new-reminder-item">New reminder item</label>
+      <div><input id="nr-new-reminder-item" maxLength={255} required value={newItem}
+        placeholder="Add an item..." onChange={(event) => setNewItem(event.target.value)} />
+        <button type="submit" className="nr-button nr-button-primary" disabled={busy}>Add</button></div>
+    </form>
+    <div className="nr-reminder-items">
+      {items.map((item) => <article className="nr-reminder-item" key={item.id}>
+        <button type="button" className="nr-check" disabled={busy}
+          aria-label={`${item.is_completed ? 'Reopen' : 'Complete'} ${item.title}`}
+          onClick={() => onUpdateItem(item, { is_completed: !item.is_completed })}>
+          {item.is_completed ? '✓' : ''}
+        </button>
+        <div className="nr-reminder-item-body">
+          <h3 className={item.is_completed ? 'nr-reminder-item-completed' : ''}>{item.title}</h3>
+          {item.description && <p>{item.description}</p>}
+          <div className="nr-meta">
+            <span>{item.snoozed_until ? `Snoozed until ${reminderDate(item).toLocaleString()}` : item.due_date ? `Due ${formatDay(item.due_date)}${item.due_time ? ` · ${item.due_time.slice(0, 5)}` : ''}` : 'No due date'}</span>
+            <span className={`nr-priority nr-priority-${item.priority.toLowerCase()}`}>{item.priority}</span>
+            {item.recurrence && <span>Repeats {item.recurrence}</span>}
+          </div>
+          <div className="nr-actions">
+            {!item.is_completed && <>
+              <button type="button" disabled={busy} onClick={() => onUpdateItem(item, { snoozed_until: new Date(Date.now() + 3600000).toISOString() })}>Snooze 1h</button>
+              <button type="button" disabled={busy} onClick={() => onUpdateItem(item, { snoozed_until: new Date(Date.now() + 86400000).toISOString() })}>Snooze 1d</button>
+            </>}
+            <button type="button" onClick={() => onEditItem(item)}>Edit</button>
+            <button type="button" disabled={busy} onClick={() => onTrashItem(item)}>Trash</button>
+          </div>
+        </div>
+      </article>)}
+      {!items.length && <p className="nr-note-list-empty">No items in this list.</p>}
+    </div>
+  </div>;
+}
+
+function ReminderListEditor({ list, busy, error, onSave, onClose }) {
+  const [name, setName] = useState(list.name || '');
+  return <FormDialog title={list.id ? 'Edit reminder list' : 'New reminder list'} onClose={onClose} isBusy={busy}>
+    <form className="nr-form" onSubmit={(event) => {
+      event.preventDefault();
+      onSave(list.id, { name });
+    }}>
+      <label>List name<input required maxLength={100} value={name} onChange={(event) => setName(event.target.value)} /></label>
+      {error && <p className="nr-error" role="alert">{error}</p>}
+      <div className="nr-form-footer"><button type="button" className="nr-button nr-button-secondary" disabled={busy} onClick={onClose}>Cancel</button>
+        <button type="submit" className="nr-button nr-button-primary" disabled={busy}>Save list</button></div>
+    </form>
+  </FormDialog>;
+}
 
 const NoteEditor = forwardRef(function NoteEditor({ note, groupNames, onSave, onRefresh, onClose, onPersisted, onEditorReady, editorKey, metadataEdit, onEditTitle, onCloseMetadata, inline = false, disabled = false }, ref) {
   const [title, setTitle] = useState(note.title || '');
@@ -757,24 +919,32 @@ function NoteFormatting({ editor, disabled }) {
   </div>;
 }
 
-function ReminderEditor({ reminder, busy, error, onSave, onClose }) {
+function ReminderEditor({ reminder, lists, busy, error, onSave, onClose }) {
   const [title, setTitle] = useState(reminder.title || '');
   const [description, setDescription] = useState(reminder.description || '');
-  const [dueDate, setDueDate] = useState(reminder.due_date || localDate());
+  const [dueDate, setDueDate] = useState(reminder.due_date || '');
   const [dueTime, setDueTime] = useState(reminder.due_time?.slice(0, 5) || '');
   const [priority, setPriority] = useState(reminder.priority || 'Medium');
   const [recurrence, setRecurrence] = useState(reminder.recurrence || '');
+  const [listId, setListId] = useState(reminder.list_id ?? lists.find((list) => list.is_default)?.id ?? '');
   return <FormDialog title={reminder.id ? 'Edit reminder' : 'New reminder'} onClose={onClose} isBusy={busy}>
     <form className="nr-form" onSubmit={(event) => {
       event.preventDefault();
-      onSave(reminder.id, { title, description, due_date: dueDate, due_time: dueTime || null, priority, recurrence: recurrence || null });
+      onSave(reminder.id, {
+        title, description, due_date: dueDate || null, due_time: dueTime || null,
+        priority, recurrence: recurrence || null, ...(listId ? { list_id: Number(listId) } : {}),
+      });
     }}>
       <label>Title<input placeholder="Reminder title" required maxLength={255} value={title} onChange={(event) => setTitle(event.target.value)} /></label>
-      <label>Description<textarea placeholder="Description (optional)" rows="3" value={description} onChange={(event) => setDescription(event.target.value)} /></label>
-      <div className="nr-form-row"><label>Due date<input type="date" required value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></label>
+      {lists.length > 0 && <label>List<select value={listId} onChange={(event) => setListId(event.target.value)}>
+        {lists.map((list) => <option key={list.id} value={list.id}>{list.name}</option>)}
+      </select></label>}
+      <label>Notes <span className="nr-help">(optional)</span><textarea placeholder="Add notes for this item..." rows="3" value={description} onChange={(event) => setDescription(event.target.value)} /></label>
+      <div className="nr-form-row"><label>Due date<input type="date" required={Boolean(dueTime || recurrence)} value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></label>
         <label>Time <span className="nr-help">(optional)</span><input type="time" value={dueTime} onChange={(event) => setDueTime(event.target.value)} /></label></div>
       <div className="nr-form-row"><label>Priority<select value={priority} onChange={(event) => setPriority(event.target.value)}><option>Low</option><option>Medium</option><option>High</option></select></label>
         <label>Repeat<select value={recurrence} onChange={(event) => setRecurrence(event.target.value)}><option value="">Does not repeat</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></label></div>
+      <p className="nr-help">Date and time are optional. A date is required for a time or repeat.</p>
       <p className="nr-help">Repeating reminders create their next occurrence when completed.</p>
       {error && <p className="nr-error" role="alert">{error}</p>}
       <div className="nr-form-footer"><button type="button" className="nr-button nr-button-secondary" disabled={busy} onClick={onClose}>Cancel</button>

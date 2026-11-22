@@ -71,8 +71,8 @@
 }
 .nr-subnav button.nr-subnav-active { border-bottom-color: var(--family-primary); color: var(--family-primary-strong); }
 .nr-search { display: grid; gap: 6px; }
-.nr-search label, .nr-form label, .nr-filter label { font-size: 11px; font-weight: 700; color: var(--family-heading); }
-.nr-search input, .nr-form input, .nr-form textarea, .nr-form select, .nr-filter select {
+.nr-search label, .nr-form label { font-size: 11px; font-weight: 700; color: var(--family-heading); }
+.nr-search input, .nr-form input, .nr-form textarea, .nr-form select {
   width: 100%;
   min-width: 0;
   padding: 11px 12px;
@@ -83,6 +83,7 @@
   font: inherit;
   font-size: 13px;
 }
+.nr-search-list { display: grid; gap: 5px; width: 100%; padding: 17px; border: 1px solid var(--family-border); border-radius: 10px; background: #fff; color: var(--family-heading); text-align: left; }
 .notes-reminders-container :focus-visible { outline: 2px solid var(--family-focus); outline-offset: 2px; }
 .nr-dashboard-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; }
 .nr-dashboard-column, .nr-note-groups { display: grid; gap: 24px; min-width: 0; }
@@ -169,6 +170,31 @@
 .nr-note-detail-toolbar { display: flex; min-height: 25px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
 .nr-note-back { display: none; border: 0; background: transparent; color: var(--family-primary-strong); font-size: 13px; font-weight: 600; }
 .nr-note-detail-empty { margin: 100px 0; color: #89968c; font-size: 12px; text-align: center; }
+.nr-reminder-workspace .nr-note-list-item { width: 100%; }
+.nr-reminder-list-title { flex: 1; margin: 0; color: var(--family-heading); font: 500 21px Georgia, serif; overflow-wrap: anywhere; }
+.nr-reminder-list-content { display: grid; gap: 18px; }
+.nr-add-reminder label { display: grid; gap: 6px; color: var(--family-heading); font-size: 11px; font-weight: 700; }
+.nr-add-reminder input {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--family-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--family-text);
+  font: inherit;
+  font-size: 13px;
+}
+.nr-reminder-items { display: grid; }
+.nr-reminder-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--family-border); }
+.nr-reminder-item .nr-check { margin-top: 1px; }
+.nr-reminder-item-body { flex: 1; min-width: 0; }
+.nr-reminder-item-body h3 { margin: 0; color: var(--family-heading); font-size: 14px; overflow-wrap: anywhere; }
+.nr-reminder-item-body h3.nr-reminder-item-completed { text-decoration: line-through; color: #89968c; }
+.nr-reminder-item-body p { margin: 5px 0; color: #77857b; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.nr-reminder-item-body .nr-actions { margin-top: 9px; }
+.nr-add-reminder { display: grid; gap: 6px; }
+.nr-add-reminder > div { display: flex; gap: 8px; }
 .nr-rich-editor .tiptap { min-height: 180px; padding: 12px; border: 1px solid var(--family-border); border-radius: 8px; color: var(--family-text); font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
 .nr-inline-editor .nr-rich-editor .tiptap { min-height: max(480px, 55vh); }
 .nr-rich-editor .tiptap:focus { outline: 2px solid var(--family-focus); outline-offset: 1px; }
@@ -214,8 +240,6 @@
 .nr-priority-low { color: var(--family-primary); }
 .nr-empty { margin: 0; padding: 23px; border: 1px dashed var(--family-border); border-radius: 10px; color: #89968c; background: #fff; font-size: 12px; text-align: center; }
 .nr-error { margin: 0; padding: 12px; border-radius: 8px; background: #fff0ef; color: #a5433f; font-size: 12px; }
-.nr-filter { display: flex; align-items: center; gap: 10px; }
-.nr-filter select { width: 150px; }
 .nr-calendar-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
 .nr-calendar-header { margin-bottom: 17px; }
 .nr-calendar-header button { padding: 4px 12px; font-size: 20px; }
