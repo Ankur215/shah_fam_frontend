@@ -469,7 +469,6 @@ function App() {
   const [familyTab, setFamilyTab] = useState('members');
   const notesModuleRef = useRef(null);
   const [isFamilyMenuOpen, setIsFamilyMenuOpen] = useState(true);
-  const [isLogsMenuOpen, setIsLogsMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
@@ -977,47 +976,23 @@ function App() {
             <span className="nav-icon" aria-hidden="true">✚</span>
             Medical reports
           </button>}
-          {(hasGiftsPageAccess || hasCharityPageAccess) && <div className="nav-group">
+          {(hasGiftsPageAccess || hasCharityPageAccess) && (
             <button
               className={`nav-item ${
                 activePage === 'gifts' || activePage === 'charity' ? 'nav-item-active' : ''
               }`}
               type="button"
-              aria-expanded={isLogsMenuOpen}
-              aria-controls="logs-submenu"
-              onClick={() => setIsLogsMenuOpen((isOpen) => !isOpen)}
+              aria-current={activePage === 'gifts' || activePage === 'charity' ? 'page' : undefined}
+              onClick={() => navigateTo(
+                activePage === 'charity' && hasCharityPageAccess
+                  ? 'charity'
+                  : hasGiftsPageAccess ? 'gifts' : 'charity'
+              )}
             >
               <span className="nav-icon" aria-hidden="true">▤</span>
               Gifts & Giving
-              <span className="nav-chevron" aria-hidden="true">
-                {isLogsMenuOpen ? '⌃' : '⌄'}
-              </span>
             </button>
-            {isLogsMenuOpen && (
-              <div className="nav-submenu" id="logs-submenu">
-                {hasGiftsPageAccess && <button
-                  className={`nav-item nav-subitem ${
-                    activePage === 'gifts' ? 'nav-item-active' : ''
-                  }`}
-                  type="button"
-                  aria-current={activePage === 'gifts' ? 'page' : undefined}
-                  onClick={() => navigateTo('gifts')}
-                >
-                  Gift log
-                </button>}
-                {hasCharityPageAccess && <button
-                  className={`nav-item nav-subitem ${
-                    activePage === 'charity' ? 'nav-item-active' : ''
-                  }`}
-                  type="button"
-                  aria-current={activePage === 'charity' ? 'page' : undefined}
-                  onClick={() => navigateTo('charity')}
-                >
-                  Charity work
-                </button>}
-              </div>
-            )}
-          </div>}
+          )}
           {hasNotesPageAccess && (
             <button
               className={`nav-item ${activePage === 'notes' ? 'nav-item-active' : ''}`}
@@ -1209,7 +1184,7 @@ function App() {
             </div>
           </div>
 
-          <nav className="family-tabs" aria-label="Family sections">
+          <nav className="section-tabs" aria-label="Family sections">
             <button type="button" className={familyTab === 'members' ? 'active' : ''} aria-pressed={familyTab === 'members'} onClick={() => setFamilyTab('members')}>Members</button>
             <button type="button" className={familyTab === 'dates' ? 'active' : ''} aria-pressed={familyTab === 'dates'} onClick={() => setFamilyTab('dates')}>Important dates</button>
           </nav>
@@ -1485,18 +1460,34 @@ function App() {
                 : undefined
             }
           />
-        ) : activePage === 'gifts' && hasGiftsPageAccess ? (
-          <GiftLog
-            familyMembers={members}
-            key={authUser.currentWorkspaceId || authUser.workspaceId}
-            loadFamilyMembers={!hasFamilyPageAccess}
-          />
-        ) : activePage === 'charity' && hasCharityPageAccess ? (
-          <CharityLog
-            familyMembers={members}
-            key={authUser.currentWorkspaceId || authUser.workspaceId}
-            loadFamilyMembers={!hasFamilyPageAccess}
-          />
+        ) : (activePage === 'gifts' && hasGiftsPageAccess) ||
+            (activePage === 'charity' && hasCharityPageAccess) ? (
+          <section className="page-content" aria-labelledby="giving-heading">
+            <header className="section-header giving-header">
+              <div>
+                <span className="eyebrow">THOUGHTFULNESS, REMEMBERED</span>
+                <h1 id="giving-heading">Gifts &amp; Giving</h1>
+                <p>Keep track of thoughtful gifts and the ways your family gives back.</p>
+              </div>
+            </header>
+            <nav className="section-tabs" aria-label="Gifts and giving sections">
+              {hasGiftsPageAccess && <button type="button" className={activePage === 'gifts' ? 'active' : ''} aria-pressed={activePage === 'gifts'} onClick={() => navigateTo('gifts')}>Gift log</button>}
+              {hasCharityPageAccess && <button type="button" className={activePage === 'charity' ? 'active' : ''} aria-pressed={activePage === 'charity'} onClick={() => navigateTo('charity')}>Charity work</button>}
+            </nav>
+            {activePage === 'gifts' ? (
+              <GiftLog
+                familyMembers={members}
+                key={authUser.currentWorkspaceId || authUser.workspaceId}
+                loadFamilyMembers={!hasFamilyPageAccess}
+              />
+            ) : (
+              <CharityLog
+                familyMembers={members}
+                key={authUser.currentWorkspaceId || authUser.workspaceId}
+                loadFamilyMembers={!hasFamilyPageAccess}
+              />
+            )}
+          </section>
         ) : activePage === 'notes' && hasNotesPageAccess ? (
           <NotesReminders
             ref={notesModuleRef}

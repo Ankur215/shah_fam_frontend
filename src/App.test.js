@@ -403,9 +403,21 @@ test('shows only the gifts and charity modules granted to a regular user', async
   expect(await screen.findByRole('button', { name: 'Gift log' })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Charity work' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /family members/i })).not.toBeInTheDocument();
+  expect(await screen.findByRole('region', { name: 'Gift log' })).toBeInTheDocument();
+  expect(global.fetch).not.toHaveBeenCalledWith('/api/charity-records');
+});
 
-  fireEvent.click(screen.getByRole('button', { name: 'Gift log' }));
-  expect(await screen.findByRole('heading', { name: /gift log/i })).toBeInTheDocument();
+test('opens charity directly when it is the only giving section granted', async () => {
+  const user = { id: 2, email: 'family@example.com', role: 'user', accessPages: ['charity'] };
+  global.fetch = jest.fn((url) => Promise.resolve(
+    url === '/api/auth/me' ? apiResponse({ user }) : apiResponse([])
+  ));
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Gifts & Giving' }));
+  expect(await screen.findByRole('region', { name: 'Charity work' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Charity work' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.queryByRole('button', { name: 'Gift log' })).not.toBeInTheDocument();
+  expect(global.fetch).not.toHaveBeenCalledWith('/api/gifts');
 });
 
 test('shows the next upcoming birthday or wedding anniversary', async () => {
@@ -505,11 +517,11 @@ test('opens the gift log from the main navigation', async () => {
   render(<App />);
 
   fireEvent.click(await screen.findByRole('button', { name: /gifts & giving/i }));
-  fireEvent.click(screen.getByRole('button', { name: 'Gift log' }));
 
   expect(
     await screen.findByRole('heading', { name: 'Gifts by person' })
   ).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Gift log' })).toHaveAttribute('aria-pressed', 'true');
   expect(global.fetch).toHaveBeenCalledWith('/api/gifts');
 });
 
@@ -520,9 +532,12 @@ test('opens the charity work section from the main navigation', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Charity work' }));
 
   expect(
-    await screen.findByRole('heading', { name: 'Charity work' })
+    await screen.findByRole('heading', { name: 'All charity records' })
   ).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Charity work' })).toHaveAttribute('aria-pressed', 'true');
   expect(global.fetch).toHaveBeenCalledWith('/api/charity-records');
+  fireEvent.click(screen.getByRole('button', { name: 'Gift log' }));
+  expect(await screen.findByRole('heading', { name: 'Gifts by person' })).toBeInTheDocument();
 });
 
 test('opens medical reports and displays only the redacted summary', async () => {

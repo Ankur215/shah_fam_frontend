@@ -2,10 +2,6 @@
   color: var(--family-heading);
 }
 
-.charity-page-heading {
-  margin-bottom: 18px;
-}
-
 .charity-card-heading p,
 .charity-history-heading p {
   margin: 0;
@@ -13,40 +9,9 @@
   font-size: 11px;
 }
 
-.charity-record-count {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 11px 15px;
-  border: 1px solid var(--family-border);
-  border-radius: 10px;
-  background: #fff;
-}
-
-.charity-record-count > span {
-  color: #bd9262;
-  font-size: 22px;
-}
-
-.charity-record-count > div {
-  display: grid;
-}
-
-.charity-record-count strong {
-  color: var(--family-heading);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 23px;
-  font-weight: 500;
-}
-
-.charity-record-count small {
-  color: #929a94;
-  font-size: 9px;
-}
-
 .charity-summary {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 17px;
 }
@@ -516,18 +481,8 @@
 }
 
 @media (max-width: 480px) {
-  .charity-record-count {
-    gap: 7px;
-    padding: 8px 10px;
-  }
-
-  .charity-record-count strong {
-    font-size: 19px;
-  }
-
-  .charity-record-count small {
-    max-width: 56px;
-    font-size: 8px;
+  .charity-summary {
+    grid-template-columns: 1fr;
   }
 
   .charity-form-grid {

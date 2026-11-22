@@ -403,23 +403,12 @@ function CharityLog({ familyMembers = [], loadFamilyMembers = false }) {
   }, [records, search]);
 
   return (
-    <section className="page-content charity-page" aria-labelledby="charity-page-heading">
-      <header className="section-header charity-page-heading">
-        <div>
-          <span className="eyebrow">KINDNESS, REMEMBERED</span>
-          <h1 id="charity-page-heading">Charity work</h1>
-          <p>Keep a record of the ways your family gives back.</p>
-        </div>
-        <div className="charity-record-count" aria-label={`${records.length} records`}>
-          <span aria-hidden="true">✦</span>
-          <div>
-            <strong>{records.length}</strong>
-            <small>{records.length === 1 ? 'record saved' : 'records saved'}</small>
-          </div>
-        </div>
-      </header>
-
+    <section className="charity-page" aria-label="Charity work">
       <div className="charity-summary">
+        <div>
+          <span className="summary-label">RECORDS SAVED</span>
+          <strong>{records.length}</strong>
+        </div>
         <div>
           <span className="summary-label">FINANCIAL SUPPORT</span>
           <strong>{summarizeAmounts(records)}</strong>

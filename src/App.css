@@ -1279,7 +1279,9 @@ button {
   line-height: 1;
 }
 
-.family-tabs {
+.giving-header { margin-bottom: 18px; }
+
+.section-tabs {
   display: flex;
   gap: 4px;
   overflow-x: auto;
@@ -1290,7 +1292,7 @@ button {
   background: #fff;
 }
 
-.family-tabs button {
+.section-tabs button {
   flex: 0 0 auto;
   padding: 11px 16px;
   border: 0;
@@ -1302,8 +1304,8 @@ button {
   cursor: pointer;
 }
 
-.family-tabs button:hover,
-.family-tabs button.active {
+.section-tabs button:hover,
+.section-tabs button.active {
   background: var(--family-tint);
   color: var(--family-primary-strong);
 }

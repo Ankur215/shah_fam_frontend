@@ -2,10 +2,6 @@
   color: var(--family-heading);
 }
 
-.gift-page-heading {
-  margin-bottom: 20px;
-}
-
 .gift-card-heading p,
 .gift-history-heading p {
   margin: 0;
@@ -13,27 +9,10 @@
   font-size: 11px;
 }
 
-.gift-total {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 11px 15px;
-  border: 1px solid var(--family-border);
-  border-radius: 10px;
-  background: #fff;
-}
-
-.gift-total > span {
-  color: #bd9262;
-  font-size: 22px;
-}
-
-.gift-total > div,
 .gift-stat-card > div {
   display: grid;
 }
 
-.gift-total strong,
 .gift-stat-card strong {
   color: var(--family-heading);
   font-family: Georgia, 'Times New Roman', serif;
@@ -41,7 +20,6 @@
   font-weight: 500;
 }
 
-.gift-total small,
 .gift-stat-card small {
   color: #929a94;
   font-size: 9px;
@@ -49,7 +27,7 @@
 
 .gift-stats {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 17px;
 }
@@ -692,21 +670,8 @@
 }
 
 @media (max-width: 480px) {
-  .gift-total {
-    gap: 7px;
-    padding: 8px 10px;
-  }
-
-  .gift-total strong {
-    font-size: 19px;
-  }
-
-  .gift-total small {
-    max-width: 56px;
-    font-size: 8px;
-  }
-
   .gift-stats {
+    grid-template-columns: 1fr;
     gap: 8px;
   }
 

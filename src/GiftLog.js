@@ -367,23 +367,16 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
   );
 
   return (
-    <section className="page-content gift-page" aria-labelledby="gift-page-heading">
-      <header className="section-header gift-page-heading">
-        <div>
-          <span className="eyebrow">THOUGHTFULNESS, REMEMBERED</span>
-          <h1 id="gift-page-heading">Gift log</h1>
-          <p>Keep track of thoughtful gifts given and received.</p>
-        </div>
-        <div className="gift-total" aria-label={`${gifts.length} gifts recorded`}>
-          <span aria-hidden="true">✦</span>
+    <section className="gift-page" aria-label="Gift log">
+      <div className="gift-stats">
+        <div className="gift-stat-card">
+          <span className="gift-stat-icon" aria-hidden="true">✦</span>
           <div>
+            <span className="summary-label">ALL GIFTS</span>
             <strong>{gifts.length}</strong>
             <small>{gifts.length === 1 ? 'gift remembered' : 'gifts remembered'}</small>
           </div>
         </div>
-      </header>
-
-      <div className="gift-stats">
         <div className="gift-stat-card">
           <span className="gift-stat-icon">♧</span>
           <div>
