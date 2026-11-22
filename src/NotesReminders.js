@@ -1,21 +1,74 @@
-import { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
-import { EditorContent, useEditor } from '@tiptap/react';
+import { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
+import { Extension, getSchema } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { API_URL, apiFetch, readApiResponse } from './api';
 import FormDialog from './FormDialog';
+import { BULLET_STYLES, NoteListHierarchy, canIndentList, canOutdentList, indentList, outdentList } from './NoteListHierarchy';
+import { NoteSections, expandNoteSections } from './NoteSections';
 import './NotesReminders.css';
 
 const NOTES_ENDPOINT = `${API_URL}/api/notes`;
 const REMINDERS_ENDPOINT = `${API_URL}/api/reminders`;
 const REMINDER_LISTS_ENDPOINT = `${API_URL}/api/reminder-lists`;
+const RICH_MARKDOWN_PREFIX = '<!-- shah-family-note-format:1 -->\n';
+const RICH_DOCUMENT_PREFIX = '<!-- shah-family-note-format:2 -->\n';
+const ListStyles = Extension.create({
+  name: 'listStyles',
+  addGlobalAttributes() {
+    return [{
+      types: ['bulletList'],
+      attributes: {
+        bulletStyle: {
+          default: null,
+          parseHTML: (element) => BULLET_STYLES.includes(element.style.listStyleType) ? element.style.listStyleType : null,
+          renderHTML: ({ bulletStyle }) => BULLET_STYLES.includes(bulletStyle) ? { style: `list-style-type: ${bulletStyle}` } : {},
+        },
+        autoBulletStyle: {
+          default: false,
+          parseHTML: (element) => element.getAttribute('data-auto-bullet-style') === 'true',
+          renderHTML: ({ autoBulletStyle }) => autoBulletStyle ? { 'data-auto-bullet-style': 'true' } : {},
+        },
+      },
+    }, {
+      types: ['orderedList'],
+      attributes: {
+        autoOrderedStyle: {
+          default: false,
+          parseHTML: (element) => element.getAttribute('data-auto-ordered-style') === 'true',
+          renderHTML: ({ autoOrderedStyle }) => autoOrderedStyle ? { 'data-auto-ordered-style': 'true' } : {},
+        },
+      },
+    }];
+  },
+});
 const MAIN_VIEWS = ['Dashboard', 'Notes', 'Reminders'];
 const SUB_VIEWS = {
   Notes: ['Notes', 'Pinned', 'Notes Trash'],
   Reminders: ['Reminders', 'Calendar', 'Completed', 'Reminders Trash'],
 };
+const NOTE_EXTENSIONS = [
+  StarterKit.configure({ link: false }),
+  Markdown.configure({ markedOptions: { breaks: true } }),
+  TaskList,
+  TaskItem.configure({ nested: true }),
+  ListStyles,
+  NoteListHierarchy,
+  NoteSections,
+];
+const NOTE_SCHEMA = getSchema(NOTE_EXTENSIONS);
+
+function currentList(editor) {
+  const { $from } = editor.state.selection;
+  for (let depth = $from.depth; depth > 0; depth -= 1) {
+    const node = $from.node(depth);
+    if (['bulletList', 'orderedList', 'taskList'].includes(node.type.name)) return node;
+  }
+  return null;
+}
 
 async function requestJson(url, options = {}) {
   const response = await apiFetch(url, options.body
@@ -46,9 +99,64 @@ function matchesSearch(values, search) {
   return values.some((value) => String(value || '').toLowerCase().includes(search));
 }
 
+function richDocument(content) {
+  if (!content.startsWith(RICH_DOCUMENT_PREFIX)) return null;
+  try {
+    const data = JSON.parse(content.slice(RICH_DOCUMENT_PREFIX.length));
+    if (data && typeof data.markdown === 'string' && data.document?.type === 'doc'
+      && Array.isArray(data.document.content)) return data;
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+  }
+  return false;
+}
+
+function validDocument(document) {
+  try {
+    NOTE_SCHEMA.nodeFromJSON(document).check();
+    return true;
+  } catch (error) {
+    if (error instanceof RangeError || error instanceof TypeError) return false;
+    throw error;
+  }
+}
+
+function notePreview(content = '') {
+  const stored = richDocument(content);
+  if (stored === false) return 'Unable to display note: invalid saved format.';
+  if (stored) content = RICH_MARKDOWN_PREFIX + stored.markdown;
+  return content.startsWith(RICH_MARKDOWN_PREFIX)
+    ? content.slice(RICH_MARKDOWN_PREFIX.length).replace(/<\/?u>/gi, '')
+      .replace(/&(lt|gt|amp|quot|#39);/g, (entity) => ({
+        '&lt;': '<', '&gt;': '>', '&amp;': '&', '&quot;': '"', '&#39;': "'",
+      }[entity]))
+    : content;
+}
+
+function hasUnderline(node) {
+  return node.marks?.some((mark) => mark.type === 'underline')
+    || node.content?.some(hasUnderline);
+}
+
+function hasStyledList(node) {
+  return (node.type === 'bulletList' && BULLET_STYLES.includes(node.attrs?.bulletStyle))
+    || (node.type === 'orderedList' && ['a', 'A', 'i', 'I'].includes(node.attrs?.type))
+    || node.content?.some(hasStyledList);
+}
+
+function hasNestedList(node, insideList = false) {
+  const isList = ['bulletList', 'orderedList', 'taskList'].includes(node.type);
+  return (isList && insideList) || node.content?.some((child) => hasNestedList(child, insideList || isList));
+}
+
+function hasMixedLists(node, types = new Set()) {
+  if (['bulletList', 'orderedList', 'taskList'].includes(node.type)) types.add(node.type);
+  return types.size > 1 || node.content?.some((child) => hasMixedLists(child, types));
+}
+
 function FormattedText({ text, onChecklistToggle }) {
-  return <div className="nr-formatted">{(text || '').split('\n').map((line, index) => {
-    const heading = line.match(/^(#{1,3})\s+(.+)$/);
+  return <div className="nr-formatted">{notePreview(text).split('\n').map((line, index) => {
+    const heading = line.match(/^(#{1,6})\s+(.+)$/);
     const checklist = line.match(/^[-*]\s+\[([ xX])\]\s*(.*)$/);
     const bullet = !checklist && line.match(/^[-*]\s+(.+)$/);
     const numbered = line.match(/^(\d+)\.\s+(.+)$/);
@@ -78,6 +186,9 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
   const [trashNotes, setTrashNotes] = useState([]);
   const [trashReminders, setTrashReminders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [noteEditor, setNoteEditor] = useState(null);
@@ -137,10 +248,21 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
     setTrashReminderLists(nextTrashLists);
   }, []);
 
+  const loadNotes = useCallback(async () => {
+    try {
+      const nextNotes = await requestJson(NOTES_ENDPOINT);
+      setNotes(nextNotes);
+    } catch (err) {
+      setLoadError(`Note saved, but the list could not be refreshed: ${err.message}`);
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
-    loadData().catch((err) => {
-      if (active) setError(`Could not load notes and reminders: ${err.message}`);
+    loadData().then(() => {
+      if (active) setHasLoaded(true);
+    }).catch((err) => {
+      if (active) setLoadError(`Could not load notes and reminders: ${err.message}`);
     }).finally(() => {
       if (active) setLoading(false);
     });
@@ -167,12 +289,34 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
     };
   }, [noteMenuId]);
 
+  async function retryLoading() {
+    setRefreshing(true);
+    try {
+      await loadData();
+      setHasLoaded(true);
+      setLoadError('');
+    } catch (err) {
+      setLoadError(`Could not refresh notes and reminders: ${err.message}`);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  async function refreshAfterChange() {
+    try {
+      await loadData();
+      setLoadError('');
+    } catch (err) {
+      setLoadError(`Change saved, but the lists could not be refreshed: ${err.message}`);
+    }
+  }
+
   async function mutate(url, options, action) {
     setBusy(true);
     setError('');
     try {
       await requestJson(url, options);
-      await loadData();
+      await refreshAfterChange();
       return true;
     } catch (err) {
       setError(`${action}: ${err.message}`);
@@ -253,7 +397,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
       await requestJson(id ? `${REMINDERS_ENDPOINT}/${id}` : REMINDERS_ENDPOINT, {
         method: id ? 'PUT' : 'POST', body: JSON.stringify(draft),
       });
-      await loadData();
+      await refreshAfterChange();
       setReminderEditor(null);
     } catch (err) {
       setError(`Failed to save reminder: ${err.message}`);
@@ -269,7 +413,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
       const saved = await requestJson(id ? `${REMINDER_LISTS_ENDPOINT}/${id}` : REMINDER_LISTS_ENDPOINT, {
         method: id ? 'PUT' : 'POST', body: JSON.stringify(draft),
       });
-      await loadData();
+      await refreshAfterChange();
       setSelectedListId(saved.id);
       setListEditor(null);
       reminderWorkspace.current?.showDetail();
@@ -305,7 +449,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
 
   const query = search.trim().toLowerCase();
   const matchingNotes = notes.filter((note) =>
-    matchesSearch([note.title, note.content, note.group_name, ...(note.tags || [])], query));
+    matchesSearch([note.title, notePreview(note.content), note.group_name, ...(note.tags || [])], query));
   const pinnedNotes = notes.filter((note) => note.is_pinned);
   const matchingReminders = reminders.filter((reminder) =>
     matchesSearch([reminder.title, reminder.description, reminder.priority, reminder.recurrence], query));
@@ -439,28 +583,34 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
       <div className="member-toolbar nr-search-toolbar">
         <label className="search-box">
           <span className="search-icon" aria-hidden="true">⌕</span>
-          <input type="search" aria-label="Search notes and reminders" placeholder="Search notes and reminders..." value={search}
+          <input type="search" aria-label="Search notes and reminders" placeholder="Search notes and reminders..." value={search} disabled={!hasLoaded}
             onChange={(event) => setSearch(event.target.value)} />
         </label>
         <div className="nr-search-actions">
-          {query && !loading && <span className="member-count">
+          {query && hasLoaded && !loading && <span className="member-count">
             {matchingNotes.length + matchingReminders.length + matchingLists.length}{' '}
             {matchingNotes.length + matchingReminders.length + matchingLists.length === 1 ? 'result' : 'results'}
           </span>}
-          {activeMainView !== 'Reminders' && !isTrash && <button type="button" className="primary-button" disabled={loading || switchingNote} onClick={async () => {
+          {activeMainView !== 'Reminders' && !isTrash && <button type="button" className="primary-button" disabled={!hasLoaded || loading || switchingNote} onClick={async () => {
             if (activeMainView === 'Notes' && !query) {
               if (await changeSelection({})) { setView('Notes'); setSearch(''); setMetadataEdit('title'); }
             } else {
               openNoteDialog({});
             }
           }}>+ New Note</button>}
-          {activeMainView !== 'Notes' && !isTrash && <button type="button" className="primary-button" disabled={loading}
+          {activeMainView !== 'Notes' && !isTrash && <button type="button" className="primary-button" disabled={!hasLoaded || loading}
             onClick={() => setReminderEditor({ list_id: selectedListId })}>+ New Reminder</button>}
         </div>
       </div>
     </div>
     {error && <p className="nr-error" role="alert">{error}</p>}
-    {loading ? <p className="nr-empty">Loading notes and reminders...</p> : query ? <>
+    {loadError && <div className="nr-load-error" role="alert">
+      <span>{loadError}{hasLoaded && ' Displayed data may be out of date.'}</span>
+      <button type="button" className="secondary-button" disabled={refreshing} onClick={retryLoading}>
+        {refreshing ? 'Retrying…' : 'Retry loading'}
+      </button>
+    </div>}
+    {loading ? <p className="nr-empty">Loading notes and reminders...</p> : !hasLoaded ? null : query ? <>
       {section('Notes', matchingNotes, noteList, 'No matching notes.')}
       {section('Reminders', matchingReminders, reminderList, 'No matching reminders.')}
       {section('Reminder lists', matchingLists, (lists, empty) => lists.length
@@ -533,7 +683,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
                 <button type="button" disabled={busy} onClick={() => permanentlyDelete(item.type, item)}>Delete permanently</button></div></article>)}</div>}
       </section>}
     <ReminderWorkspace ref={reminderWorkspace}
-      hidden={loading || Boolean(query) || view !== 'Reminders'}
+      hidden={!hasLoaded || loading || Boolean(query) || view !== 'Reminders'}
       lists={reminderLists} reminders={reminders} selectedListId={selectedListId}
       onSelect={setSelectedListId} busy={busy} onNewList={() => setListEditor({})}
       onEditList={(list) => setListEditor(list)} onEditItem={(item) => setReminderEditor(item)}
@@ -543,7 +693,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
         method: 'POST', body: JSON.stringify({ title, list_id: listId }),
       }, 'Could not add reminder')} />
     <div className={`nr-note-workspace${showNoteDetail ? ' nr-note-detail-open' : ''}`}
-      hidden={loading || Boolean(query) || (view !== 'Notes' && view !== 'Pinned')}>
+      hidden={!hasLoaded || loading || Boolean(query) || (view !== 'Notes' && view !== 'Pinned')}>
       <aside className="nr-note-sidebar" aria-label="Note list">
         <div className="nr-note-sidebar-heading"><h2>{view === 'Pinned' ? 'Pinned notes' : 'Notes'}</h2><span>{visibleNotes.length} {visibleNotes.length === 1 ? 'note' : 'notes'}</span></div>
         {!loading && !query && (view === 'Notes' || view === 'Pinned') && !visibleNotes.length &&
@@ -566,7 +716,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
                   disabled={switchingNote}
                   onClick={() => { setNoteMenuId(null); changeSelection({ ...note }); }}>
                   <strong>{note.title}</strong>
-                  <span>{note.content?.replace(/\n/g, ' ') || 'No additional text'}</span>
+                  <span>{notePreview(note.content).replace(/\n/g, ' ') || 'No additional text'}</span>
                   <small>{new Date(note.updated_at).toLocaleDateString()}{note.is_pinned ? ' · Pinned' : ''}</small>
                 </button>
                 <button type="button" className="nr-note-menu-trigger" aria-label={`Options for ${note.title}`}
@@ -605,16 +755,17 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
         {selection ? <>
           <fieldset className="nr-note-editor-fields" disabled={switchingNote}>
             <NoteEditor key={selection.key} ref={inlineEditor} inline disabled={switchingNote} note={selection.note} groupNames={groupNames}
+              visible={!loading && !query && (view === 'Notes' || view === 'Pinned')}
               editorKey={selection.key} onEditorReady={setActiveEditor} metadataEdit={metadataEdit}
               onEditTitle={() => setMetadataEdit('title')}
               onCloseMetadata={() => setMetadataEdit(null)}
-              onSave={saveNote} onRefresh={loadData} onPersisted={(id) => setSelection((current) =>
+              onSave={saveNote} onRefresh={loadNotes} onPersisted={(id) => setSelection((current) =>
                 current?.key === selection.key ? { ...current, note: { ...current.note, id } } : current)} />
           </fieldset>
         </> : <p className="nr-note-detail-empty">Choose a note to read and edit it.</p>}
       </section>
     </div>
-    {noteEditor && <NoteEditor ref={dialogEditor} disabled={switchingNote} note={noteEditor} groupNames={groupNames} onSave={saveNote} onRefresh={loadData} onClose={() => setNoteEditor(null)} />}
+    {noteEditor && <NoteEditor ref={dialogEditor} disabled={switchingNote} note={noteEditor} groupNames={groupNames} onSave={saveNote} onRefresh={loadNotes} onClose={() => setNoteEditor(null)} />}
     {reminderEditor && <ReminderEditor reminder={reminderEditor} lists={reminderLists} busy={busy} error={error} onSave={saveReminder} onClose={() => setReminderEditor(null)} />}
     {listEditor && <ReminderListEditor list={listEditor} busy={busy} error={error} onSave={saveReminderList} onClose={() => setListEditor(null)} />}
   </div>;
@@ -729,7 +880,10 @@ function ReminderListEditor({ list, busy, error, onSave, onClose }) {
   </FormDialog>;
 }
 
-const NoteEditor = forwardRef(function NoteEditor({ note, groupNames, onSave, onRefresh, onClose, onPersisted, onEditorReady, editorKey, metadataEdit, onEditTitle, onCloseMetadata, inline = false, disabled = false }, ref) {
+const NoteEditor = forwardRef(function NoteEditor({ note, groupNames, onSave, onRefresh, onClose, onPersisted, onEditorReady, editorKey, metadataEdit, onEditTitle, onCloseMetadata, inline = false, disabled = false, visible = true }, ref) {
+  const storedDocument = useMemo(() => richDocument(note.content || ''), [note.content]);
+  const invalidContent = useMemo(() => storedDocument === false
+    || (storedDocument && !validDocument(storedDocument.document)), [storedDocument]);
   const [title, setTitle] = useState(note.title || '');
   const [content, setContent] = useState(note.content || '');
   const [tags, setTags] = useState(note.tags?.join(', ') || '');
@@ -800,30 +954,38 @@ const NoteEditor = forwardRef(function NoteEditor({ note, groupNames, onSave, on
   }
 
   const editor = useEditor({
-    extensions: [
-      StarterKit.configure({ link: false }),
-      Markdown.configure({ markedOptions: { breaks: true } }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-    ],
+    extensions: NOTE_EXTENSIONS,
     // Older notes treated HTML as literal text rather than markup.
-    content: (note.content || '').replace(/</g, '&lt;'),
-    contentType: 'markdown',
+    content: invalidContent ? '' : storedDocument ? storedDocument.document : (note.content || '').startsWith(RICH_MARKDOWN_PREFIX)
+      ? note.content.slice(RICH_MARKDOWN_PREFIX.length)
+      : (note.content || '').replace(/</g, '&lt;'),
+    contentType: storedDocument && !invalidContent ? 'json' : 'markdown',
+    editable: !disabled && !invalidContent,
     editorProps: {
       attributes: { id: contentId, role: 'textbox', 'aria-label': 'Note content', 'aria-multiline': 'true' },
     },
-    onUpdate: ({ editor: currentEditor }) => update('content', currentEditor.getMarkdown()),
+    onUpdate: ({ editor: currentEditor }) => {
+      const markdown = currentEditor.getMarkdown();
+      const document = currentEditor.getJSON();
+      update('content', hasStyledList(document) || hasNestedList(document) || hasMixedLists(document)
+        ? RICH_DOCUMENT_PREFIX + JSON.stringify({ document, markdown })
+        : hasUnderline(document) ? RICH_MARKDOWN_PREFIX + markdown : markdown);
+    },
   });
 
   useEffect(() => {
-    if (editor) editor.setEditable(!disabled, false);
-  }, [editor, disabled]);
+    if (editor) editor.setEditable(!disabled && !invalidContent, false);
+  }, [editor, disabled, invalidContent]);
 
   useEffect(() => {
-    if (!onEditorReady || !editor) return undefined;
+    if (editor && !visible) expandNoteSections(editor);
+  }, [editor, visible]);
+
+  useEffect(() => {
+    if (!onEditorReady || !editor || invalidContent) return undefined;
     onEditorReady({ key: editorKey, editor });
     return () => onEditorReady(null);
-  }, [editor, editorKey, onEditorReady]);
+  }, [editor, editorKey, onEditorReady, invalidContent]);
 
   useEffect(() => {
     function warnBeforeLeaving(event) {
@@ -877,9 +1039,10 @@ const NoteEditor = forwardRef(function NoteEditor({ note, groupNames, onSave, on
     <input placeholder="Tags (comma-separated)" value={tags} onChange={(event) => update('tags', event.target.value)} /></label>;
 
   const form = <form className={`nr-form${inline ? ' nr-inline-editor' : ''}`} onSubmit={(event) => event.preventDefault()}>
-      {!inline && <NoteFormatting editor={editor} disabled={disabled} />}
+      {!inline && <NoteFormatting editor={editor} disabled={disabled || invalidContent} />}
       {inline ? !title.trim() && <button className="nr-link" type="button" onClick={onEditTitle}>Add title</button> : titleField}
       {!inline && <label htmlFor={contentId}>Note</label>}
+      {invalidContent && <p className="nr-error" role="alert">This note has an invalid saved format and cannot be edited.</p>}
       <EditorContent editor={editor} className="nr-rich-editor" />
       {!inline && <>{groupField}{tagsField}</>}
       {(!inline || status !== 'Saved') && <div className="nr-form-footer"><span role="status">{status}</span>
@@ -903,29 +1066,114 @@ const NoteEditor = forwardRef(function NoteEditor({ note, groupNames, onSave, on
 });
 
 function NoteFormatting({ editor, disabled }) {
-  const menu = useRef(null);
   const unavailable = !editor || disabled;
-  return <div className="nr-format" role="toolbar" aria-label="Note formatting">
-    <details className="nr-format-menu" ref={menu}>
-      <summary aria-label="Text formatting" aria-disabled={unavailable}
-        onClick={(event) => { if (unavailable) event.preventDefault(); }}>Aa</summary>
-      <div className="nr-format-options" aria-label="Text styles">
-        {[['Title', () => editor.chain().focus().setHeading({ level: 1 }).run()],
-          ['Heading', () => editor.chain().focus().setHeading({ level: 2 }).run()],
-          ['Subheading', () => editor.chain().focus().setHeading({ level: 3 }).run()],
-          ['Body', () => editor.chain().focus().setParagraph().run()],
-          ['Bulleted list', () => editor.chain().focus().toggleBulletList().run()],
-          ['Numbered list', () => editor.chain().focus().toggleOrderedList().run()],
-          ['Checklist', () => editor.chain().focus().toggleTaskList().run()]]
-          .map(([label, action]) => <button key={label} type="button" disabled={unavailable}
-            onMouseDown={(event) => event.preventDefault()} onClick={() => {
-              action();
-              menu.current.open = false;
-            }}>{label}</button>)}
-      </div>
-    </details>
-    <button type="button" disabled={unavailable} onMouseDown={(event) => event.preventDefault()}
-      onClick={() => editor.chain().focus().toggleBold().run()}><strong>B</strong> Bold</button>
+  const toolbar = useRef(null);
+  const active = useEditorState({
+    editor,
+    selector: ({ editor: current }) => {
+      if (!current) return {};
+      const list = currentList(current);
+      const isList = (type) => list?.type.name === type && current.isActive(type);
+      const itemType = list && (list.type.name === 'taskList' ? 'taskItem' : 'listItem');
+      return {
+        ...Object.fromEntries([1, 2, 3, 4, 5, 6].map((level) =>
+          [`heading${level}`, current.isActive('heading', { level })])),
+        paragraph: current.isActive('paragraph'),
+        blockquote: current.isActive('blockquote'),
+        codeBlock: current.isActive('codeBlock'),
+        bulletList: isList('bulletList'),
+        orderedList: isList('orderedList'),
+        taskList: isList('taskList'),
+        canIndent: Boolean(itemType && canIndentList(current, itemType)),
+        canOutdent: Boolean(itemType && canOutdentList(current, itemType)),
+        bold: current.isActive('bold'),
+        italic: current.isActive('italic'),
+        underline: current.isActive('underline'),
+        strike: current.isActive('strike'),
+      };
+    },
+  });
+
+  useEffect(() => {
+    function dismiss(event) {
+      if (!toolbar.current?.contains(event.target)) {
+        toolbar.current?.querySelectorAll('details[open]').forEach((menu) => { menu.open = false; });
+      }
+    }
+    function keyDown(event) {
+      if (event.key !== 'Escape') return;
+      const menu = toolbar.current?.querySelector('details[open]');
+      if (menu) {
+        menu.open = false;
+        menu.querySelector('summary')?.focus();
+      }
+    }
+    document.addEventListener('pointerdown', dismiss);
+    document.addEventListener('keydown', keyDown);
+    return () => {
+      document.removeEventListener('pointerdown', dismiss);
+      document.removeEventListener('keydown', keyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    toolbar.current?.querySelectorAll('details[open]').forEach((menu) => { menu.open = false; });
+  }, [editor, disabled]);
+
+  const headings = [
+    ...[1, 2, 3, 4, 5, 6].map((level) =>
+      [`Heading - H${level}`, () => editor.chain().focus().setHeading({ level }).run(), `heading${level}`]),
+    ['Body', () => editor.chain().focus().setParagraph().run(), 'paragraph'],
+    ['Blockquote', () => editor.chain().focus().toggleBlockquote().run(), 'blockquote'],
+    ['Code block', () => editor.chain().focus().toggleCodeBlock().run(), 'codeBlock'],
+    ['Divider', () => editor.chain().focus().setHorizontalRule().run()],
+  ];
+  const lists = [
+    ['Bullets', () => editor.chain().focus().toggleBulletList().run(), 'bulletList'],
+    ['Numbers', () => editor.chain().focus().toggleOrderedList().run(), 'orderedList'],
+    ['Checklist', () => editor.chain().focus().toggleTaskList().run(), 'taskList'],
+  ];
+  const styles = [
+    ['Bold', () => editor.chain().focus().toggleBold().run(), 'bold'],
+    ['Italic', () => editor.chain().focus().toggleItalic().run(), 'italic'],
+    ['Underline', () => editor.chain().focus().toggleUnderline().run(), 'underline'],
+    ['Strikethrough', () => editor.chain().focus().toggleStrike().run(), 'strike'],
+  ];
+
+  return <div ref={toolbar} className="nr-format" role="toolbar" aria-label="Note formatting">
+    {[['Headings', headings], ['Lists', lists], ['Text styles', styles]].map(([label, options]) =>
+      <details className="nr-format-menu" key={label}>
+        <summary aria-disabled={unavailable} onClick={(event) => {
+          if (unavailable) {
+            event.preventDefault();
+            return;
+          }
+          const menu = event.currentTarget.parentElement;
+          if (!menu.open) {
+            menu.parentElement.querySelectorAll('.nr-format-menu').forEach((other) => {
+              if (other !== menu) other.open = false;
+            });
+          }
+        }}>{label}</summary>
+        <div className="nr-format-options" aria-label={`${label} options`}>
+          {options.map(([option, action, activeKey]) => <span key={option}>
+            {option === 'Blockquote' && <span className="nr-format-group-label">Other blocks</span>}
+            <button type="button" disabled={unavailable} aria-pressed={activeKey ? Boolean(active?.[activeKey]) : undefined}
+              onMouseDown={(event) => event.preventDefault()} onClick={(event) => {
+                action();
+                event.currentTarget.closest('details').open = false;
+              }}>{option}</button>
+          </span>)}
+        </div>
+      </details>)}
+    {['Outdent', 'Indent'].map((label) => <button key={label} type="button"
+      title={`${label} list item (${label === 'Indent' ? 'Tab' : 'Shift+Tab'})`}
+      disabled={unavailable || !(label === 'Indent' ? active?.canIndent : active?.canOutdent)}
+      onMouseDown={(event) => event.preventDefault()} onClick={() => {
+        const type = currentList(editor)?.type.name === 'taskList' ? 'taskItem' : 'listItem';
+        if (label === 'Indent') indentList(editor, type);
+        else outdentList(editor, type);
+      }}>{label}</button>)}
   </div>;
 }
 

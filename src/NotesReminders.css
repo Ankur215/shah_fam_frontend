@@ -45,6 +45,7 @@
 .nr-search-panel { padding-top: 0; padding-bottom: 0; }
 .nr-search-toolbar { border: 0; }
 .nr-search-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.nr-load-error { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 14px 16px; border: 1px solid #e8c1be; border-radius: 10px; background: #fff0ef; color: #8d3935; font-size: 13px; line-height: 1.5; }
 .nr-form label { font-size: 11px; font-weight: 700; color: var(--family-heading); }
 .nr-form input, .nr-form textarea, .nr-form select {
   width: 100%;
@@ -164,6 +165,7 @@
 .nr-reminder-items { display: grid; gap: 8px; }
 .nr-reminder-item { display: flex; align-items: flex-start; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--family-border); background: #fff; }
 .nr-reminder-item:last-child { border-bottom: 0; }
+.nr-reminder-item:hover { background: var(--family-canvas); }
 .nr-reminder-item .nr-check { margin-top: 1px; }
 .nr-reminder-item-body { flex: 1; min-width: 0; }
 .nr-reminder-item-body h3 { margin: 0; color: var(--family-heading); font-size: 14px; overflow-wrap: anywhere; }
@@ -172,15 +174,27 @@
 .nr-reminder-item-body .nr-actions { margin-top: 9px; }
 .nr-add-reminder { display: grid; gap: 8px; padding: 14px; border: 1px solid var(--family-border); border-radius: 12px; background: var(--family-canvas); }
 .nr-add-reminder > div { display: flex; gap: 8px; }
-.nr-rich-editor .tiptap { min-height: 180px; padding: 18px; border: 1px solid var(--family-border); border-radius: 12px; color: var(--family-text); font-size: 15px; line-height: 1.75; overflow-wrap: anywhere; }
+.nr-rich-editor .tiptap { position: relative; min-height: 180px; padding: 18px; border: 1px solid var(--family-border); border-radius: 12px; color: var(--family-text); font-size: 15px; line-height: 1.75; overflow-wrap: anywhere; }
 .nr-inline-editor .nr-rich-editor .tiptap { min-height: max(480px, 55vh); }
 .nr-rich-editor .tiptap:focus { outline: 2px solid var(--family-focus); outline-offset: 1px; }
 .nr-rich-editor .tiptap p { margin: 0 0 .5em; }
-.nr-rich-editor .tiptap h1, .nr-rich-editor .tiptap h2, .nr-rich-editor .tiptap h3 { margin: .4em 0; color: var(--family-heading); line-height: 1.3; }
+.nr-rich-editor .tiptap h1, .nr-rich-editor .tiptap h2, .nr-rich-editor .tiptap h3,
+.nr-rich-editor .tiptap h4, .nr-rich-editor .tiptap h5, .nr-rich-editor .tiptap h6 { margin: .4em 0; padding-left: 30px; color: var(--family-heading); line-height: 1.3; }
 .nr-rich-editor .tiptap h1 { font-size: 1.5em; }
 .nr-rich-editor .tiptap h2 { font-size: 1.25em; }
 .nr-rich-editor .tiptap h3 { font-size: 1.1em; }
+.nr-rich-editor .tiptap h4 { font-size: 1em; }
+.nr-rich-editor .tiptap h5 { font-size: .9em; }
+.nr-rich-editor .tiptap h6 { font-size: .8em; }
+.nr-rich-editor .tiptap :is(h1, h2, h3, h4, h5, h6) ~ :not(h1, h2, h3, h4, h5, h6, .nr-section-toggle) { margin-left: 54px; }
+.nr-section-toggle { position: absolute; width: 26px; height: 28px; margin-top: .35em; padding: 0; border: 0; border-radius: 5px; background: var(--family-tint); color: var(--family-primary-strong); font-size: 16px; line-height: 1; cursor: pointer; }
+.nr-section-toggle:hover { background: var(--family-soft); }
+.nr-rich-editor .tiptap .nr-folded-content { display: none; }
+.nr-rich-editor .tiptap blockquote { margin: 1em 0; padding-left: 16px; border-left: 3px solid var(--family-border); color: var(--family-muted-accent); }
+.nr-rich-editor .tiptap pre { overflow-x: auto; padding: 12px; border-radius: 8px; background: var(--family-soft); font-size: 13px; }
+.nr-rich-editor .tiptap hr { margin: 20px 0; border: 0; border-top: 1px solid var(--family-border); }
 .nr-rich-editor .tiptap ul, .nr-rich-editor .tiptap ol { margin: .4em 0; padding-left: 1.5em; }
+.nr-rich-editor .tiptap ul:not([data-type='taskList']) { list-style-type: disc; }
 .nr-rich-editor .tiptap ul[data-type='taskList'] { padding-left: 0; list-style: none; }
 .nr-rich-editor .tiptap ul[data-type='taskList'] > li { display: flex; align-items: flex-start; gap: 8px; }
 .nr-rich-editor .tiptap ul[data-type='taskList'] > li > label { display: flex; flex: 0 0 auto; padding-top: .25em; }
@@ -238,8 +252,9 @@
 .nr-format-menu summary { padding: 5px 10px; border-radius: 5px; background: var(--family-tint); color: var(--family-primary-strong); cursor: pointer; font-size: 13px; font-weight: 700; list-style: none; }
 .nr-format-menu summary::-webkit-details-marker { display: none; }
 .nr-format-menu summary[aria-disabled='true'] { opacity: .5; cursor: not-allowed; }
-.nr-format-options { position: absolute; z-index: 4; top: calc(100% + 5px); left: 0; display: grid; min-width: 150px; padding: 5px; border: 1px solid var(--family-border); border-radius: 8px; background: var(--family-canvas); box-shadow: 0 8px 22px rgba(0, 0, 0, .12); }
-.nr-format-options button { background: transparent; text-align: left; }
+.nr-format-options { position: absolute; z-index: 4; top: calc(100% + 5px); left: 0; display: grid; min-width: 150px; max-height: min(60vh, 400px); overflow-y: auto; padding: 5px; border: 1px solid var(--family-border); border-radius: 8px; background: var(--family-canvas); box-shadow: 0 8px 22px rgba(0, 0, 0, .12); }
+.nr-format-options button { width: 100%; background: transparent; text-align: left; }
+.nr-format-group-label { display: block; margin: 5px 2px 3px; padding: 8px 5px 0; border-top: 1px solid var(--family-border); color: var(--family-muted-accent); font-size: 10px; font-weight: 700; }
 .nr-format button:disabled { opacity: .5; cursor: not-allowed; }
 .nr-format button[aria-pressed='true'] { background: var(--family-primary); color: #fff; }
 .nr-form-footer { justify-content: flex-end; }
@@ -258,6 +273,11 @@
   .nr-note-back { display: block; margin-right: auto; }
   .nr-inline-editor .nr-rich-editor .tiptap { min-height: max(320px, 50vh); }
   .nr-form-row { grid-template-columns: 1fr; }
+  .nr-subnav button { min-height: 44px; }
+  .nr-note-list-item { min-height: 48px; }
+  .nr-note-menu-trigger { flex-basis: 44px; height: 44px; }
+  .nr-reminder-item .nr-check { width: 44px; height: 44px; flex-basis: 44px; }
+  .nr-reminder-item .nr-actions button { min-height: 44px; padding: 8px 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

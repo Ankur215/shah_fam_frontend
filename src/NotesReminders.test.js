@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import NotesReminders from './NotesReminders';
 
@@ -20,6 +20,71 @@ const defaultList = { id: 10, name: 'Reminders', description: '', is_default: tr
 afterEach(() => {
   jest.restoreAllMocks();
   jest.resetAllMocks();
+});
+
+test('offers retry instead of showing empty data when initial loading fails', async () => {
+  let fail = true;
+  global.fetch = jest.fn((url) => Promise.resolve(
+    fail && url === '/api/notes' ? response({ error: 'Offline' }, 503) : response([])
+  ));
+  render(<NotesReminders />);
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not load notes and reminders: Offline');
+  expect(screen.queryByText('Nothing overdue.')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '+ New Note' })).toBeDisabled();
+  fail = false;
+  fireEvent.click(screen.getByRole('button', { name: 'Retry loading' }));
+  expect(await screen.findByText('Nothing overdue.')).toBeInTheDocument();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '+ New Note' })).toBeEnabled();
+});
+
+test('reports a successful reminder save separately from a failed refresh', async () => {
+  let failRefresh = false;
+  global.fetch = jest.fn((url, options) => {
+    if (url === '/api/reminders' && options?.method === 'POST') {
+      failRefresh = true;
+      return Promise.resolve(response({ id: 8 }, 201));
+    }
+    return Promise.resolve(failRefresh && url === '/api/notes'
+      ? response({ error: 'Offline' }, 503) : response([]));
+  });
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: '+ New Reminder' }));
+  const dialog = screen.getByRole('dialog', { name: 'New reminder' });
+  fireEvent.change(within(dialog).getByLabelText('Title'), { target: { value: 'Call home' } });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save Reminder' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Change saved, but the lists could not be refreshed: Offline');
+  expect(screen.queryByRole('dialog', { name: 'New reminder' })).not.toBeInTheDocument();
+  failRefresh = false;
+  fireEvent.click(screen.getByRole('button', { name: 'Retry loading' }));
+  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+  expect(global.fetch.mock.calls.filter(([url, options]) =>
+    url === '/api/reminders' && options?.method === 'POST')).toHaveLength(1);
+});
+
+test('keeps a saved note and offers a list refresh when the follow-up request fails', async () => {
+  let failRefresh = false;
+  global.fetch = jest.fn((url, options) => {
+    if (url === '/api/notes' && options?.method === 'POST') {
+      failRefresh = true;
+      return Promise.resolve(response({ id: 11 }, 201));
+    }
+    return Promise.resolve(failRefresh && url === '/api/notes'
+      ? response({ error: 'Offline' }, 503) : response([]));
+  });
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: '+ New Note' }));
+  fireEvent.change(screen.getByPlaceholderText('Note title'), { target: { value: 'Plans' } });
+  expect(await screen.findByRole('alert', {}, { timeout: 3000 }))
+    .toHaveTextContent('Note saved, but the list could not be refreshed: Offline');
+  expect(screen.queryByText(/Failed to save note/)).not.toBeInTheDocument();
+  failRefresh = false;
+  fireEvent.click(screen.getByRole('button', { name: 'Retry loading' }));
+  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+  expect(global.fetch.mock.calls.filter(([url, options]) =>
+    url === '/api/notes' && options?.method === 'POST')).toHaveLength(1);
 });
 
 test('keeps new note and reminder actions below the tabs across views', async () => {
@@ -134,6 +199,10 @@ test('auto-saves a new note and uses its id for subsequent edits', async () => {
   await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/notes/11', expect.objectContaining({
     method: 'PUT', body: JSON.stringify({ title: 'Plans', content: 'Remember this', tags: [], group_name: null }),
   })), { timeout: 3000 });
+  await waitFor(() => expect(global.fetch.mock.calls.filter(([url, options]) =>
+    url === '/api/notes' && !options?.method)).toHaveLength(3));
+  expect(global.fetch.mock.calls.filter(([url]) => url === '/api/notes?trash=true')).toHaveLength(1);
+  expect(global.fetch.mock.calls.filter(([url]) => url === '/api/reminder-lists?trash=true')).toHaveLength(1);
 });
 
 test('displays grouped notes and lets users assign an existing or new group', async () => {
@@ -408,8 +477,8 @@ test('saves edits before switching notes and keeps the editor open on failure', 
   fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
   const content = await screen.findByRole('textbox', { name: 'Note content' });
   fireEvent.click(content);
-  fireEvent.click(screen.getByLabelText('Text formatting'));
-  fireEvent.click(screen.getByRole('button', { name: 'Heading' }));
+  fireEvent.click(screen.getByText('Headings'));
+  fireEvent.click(screen.getByRole('button', { name: 'Heading - H2' }));
   fireEvent.click(screen.getByRole('button', { name: /^Packing list/ }));
   expect(await screen.findByText('Failed to save note: Save failed')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Retry saving' })).toBeInTheDocument();
@@ -445,16 +514,102 @@ test('applies formatting in place and automatically saves it', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
   const content = await screen.findByRole('textbox', { name: 'Note content' });
   fireEvent.click(content);
-  fireEvent.click(screen.getByText('Aa'));
-  fireEvent.click(screen.getByRole('button', { name: 'Heading' }));
+  fireEvent.click(screen.getByText('Headings'));
+  fireEvent.click(screen.getByRole('button', { name: 'Heading - H2' }));
   expect(within(content).getByRole('heading', { name: 'Soup for everyone' })).toBeInTheDocument();
+  expect(within(content).getByRole('button', { name: 'Collapse section Soup for everyone' })).toBeInTheDocument();
   await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/notes/1', expect.objectContaining({
     method: 'PUT', body: expect.stringContaining('## Soup for everyone'),
   })), { timeout: 3000 });
 });
 
-test.each(['Title', 'Heading', 'Subheading', 'Body', 'Bulleted list', 'Numbered list', 'Checklist'])(
-  'closes the formatting menu after selecting %s', async (option) => {
+test('groups headings, lists, and text styles into separate menus', async () => {
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [note] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const toolbar = await screen.findByRole('toolbar', { name: 'Note formatting' });
+  const headingMenu = within(toolbar).getByText('Headings').closest('details');
+  const listMenu = within(toolbar).getByText('Lists').closest('details');
+  const styleMenu = within(toolbar).getByText('Text styles').closest('details');
+  fireEvent.click(within(toolbar).getByText('Headings'));
+  expect(within(headingMenu).getAllByRole('button').map((button) => button.textContent))
+    .toEqual(['Heading - H1', 'Heading - H2', 'Heading - H3', 'Heading - H4',
+      'Heading - H5', 'Heading - H6', 'Body', 'Blockquote', 'Code block', 'Divider']);
+  fireEvent.click(within(toolbar).getByText('Lists'));
+  await waitFor(() => expect(headingMenu).not.toHaveAttribute('open'));
+  expect(within(listMenu).getAllByRole('button').map((button) => button.textContent))
+    .toEqual(['Bullets', 'Numbers', 'Checklist']);
+  fireEvent.click(within(toolbar).getByText('Text styles'));
+  await waitFor(() => expect(listMenu).not.toHaveAttribute('open'));
+  expect(within(styleMenu).getByRole('button', { name: 'Bold' })).toBeInTheDocument();
+  expect(within(styleMenu).getByRole('button', { name: 'Underline' })).toBeInTheDocument();
+});
+
+test('highlights formatting at the current text selection', async () => {
+  const formatted = { ...note, content: '## Heading\n\nPlain and **bold**\n\n- List item' };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  const toolbar = screen.getByRole('toolbar', { name: 'Note formatting' });
+  async function selectText(element) {
+    await act(async () => {
+      content.focus();
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
+      document.dispatchEvent(new Event('selectionchange'));
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+  }
+
+  await selectText(within(content).getByRole('heading', { name: 'Heading' }));
+  fireEvent.click(within(toolbar).getByText('Headings'));
+  expect(within(toolbar).getByRole('button', { name: 'Heading - H2' })).toHaveAttribute('aria-pressed', 'true');
+  expect(within(toolbar).getByRole('button', { name: 'Heading - H1' })).toHaveAttribute('aria-pressed', 'false');
+  expect(within(toolbar).getByRole('button', { name: 'Divider' })).not.toHaveAttribute('aria-pressed');
+
+  await selectText(content.querySelector('strong'));
+  fireEvent.click(within(toolbar).getByText('Text styles'));
+  expect(within(toolbar).getByRole('button', { name: 'Bold' })).toHaveAttribute('aria-pressed', 'true');
+  expect(within(toolbar).getByRole('button', { name: 'Italic' })).toHaveAttribute('aria-pressed', 'false');
+
+  await selectText(content.querySelector('p').firstChild);
+  expect(within(toolbar).getByRole('button', { name: 'Bold' })).toHaveAttribute('aria-pressed', 'false');
+  await selectText(within(content).getByText('List item'));
+  fireEvent.click(within(toolbar).getByText('Lists'));
+  expect(within(toolbar).getByRole('button', { name: 'Bullets' })).toHaveAttribute('aria-pressed', 'true');
+  expect(within(toolbar).getByRole('button', { name: 'Numbers' })).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('dismisses formatting menus on outside pointer press or Escape', async () => {
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [note] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const toolbar = await screen.findByRole('toolbar', { name: 'Note formatting' });
+  const summary = within(toolbar).getByText('Headings');
+  const menu = summary.closest('details');
+  fireEvent.click(summary);
+  fireEvent.pointerDown(within(toolbar).getByRole('button', { name: 'Heading - H1' }));
+  expect(menu).toHaveAttribute('open');
+  fireEvent.pointerDown(screen.getByRole('textbox', { name: 'Note content' }));
+  expect(menu).not.toHaveAttribute('open');
+  fireEvent.click(summary);
+  fireEvent.keyDown(document, { key: 'Escape' });
+  expect(menu).not.toHaveAttribute('open');
+  expect(summary).toHaveFocus();
+});
+
+test.each([
+  ...['Heading - H1', 'Heading - H2', 'Heading - H3', 'Heading - H4', 'Heading - H5', 'Heading - H6', 'Body', 'Blockquote', 'Code block', 'Divider'].map((option) => ['Headings', option]),
+  ...['Bullets', 'Numbers', 'Checklist'].map((option) => ['Lists', option]),
+  ...['Bold', 'Italic', 'Underline', 'Strikethrough'].map((option) => ['Text styles', option]),
+])(
+  'closes the %s menu after selecting %s', async (group, option) => {
     global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [note] : [])));
     render(<NotesReminders />);
     await screen.findByText('Family recipes');
@@ -462,7 +617,7 @@ test.each(['Title', 'Heading', 'Subheading', 'Body', 'Bulleted list', 'Numbered 
     const toolbar = await screen.findByRole('toolbar', { name: 'Note formatting' });
     const content = await screen.findByRole('textbox', { name: 'Note content' });
     fireEvent.click(content);
-    const summary = within(toolbar).getByLabelText('Text formatting');
+    const summary = within(toolbar).getByText(group);
     const menu = summary.closest('details');
     fireEvent.click(summary);
     expect(menu).toHaveAttribute('open');
@@ -472,6 +627,800 @@ test.each(['Title', 'Heading', 'Subheading', 'Body', 'Bulleted list', 'Numbered 
     expect(menu).toHaveAttribute('open');
   }
 );
+
+test.each([
+  ['Bullets', 'ul'],
+  ['Numbers', 'ol'],
+])('saves and reopens %s', async (option, tag) => {
+  let savedContent = '**Soup** <literal>';
+  global.fetch = jest.fn((url, options) => {
+    if (options?.method === 'PUT') {
+      savedContent = JSON.parse(options.body).content;
+      return Promise.resolve(response({ id: 1 }));
+    }
+    return Promise.resolve(response(url === '/api/notes' ? [{ ...note, content: savedContent }] : []));
+  });
+  const { unmount } = render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  fireEvent.click(content);
+  fireEvent.click(within(screen.getByRole('toolbar', { name: 'Note formatting' })).getByText('Lists'));
+  fireEvent.click(screen.getByRole('button', { name: option }));
+  await waitFor(() => expect(savedContent).not.toBe('**Soup** <literal>'), { timeout: 3000 });
+  unmount();
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const reopened = await screen.findByRole('textbox', { name: 'Note content' });
+  const list = reopened.querySelector(tag);
+  expect(list).toHaveTextContent('Soup <literal>');
+  expect(list.querySelector('strong')).toHaveTextContent('Soup');
+  act(() => reopened.focus());
+  fireEvent.click(within(screen.getByRole('toolbar', { name: 'Note formatting' })).getByText('Lists'));
+  expect(screen.getByRole('button', { name: option })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('switches an existing list type without removing its items', async () => {
+  const formatted = { ...note, content: '- First\n- Second' };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  await selectHierarchyText(content, 'First');
+  fireEvent.click(within(screen.getByRole('toolbar', { name: 'Note formatting' })).getByText('Lists'));
+  expect(screen.getByRole('button', { name: 'Bullets' })).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(screen.getByRole('button', { name: 'Numbers' }));
+  expect(content.querySelector('ol')).toBeInTheDocument();
+  expect(content.querySelectorAll('li')).toHaveLength(2);
+});
+
+test('switches the list type when all text in a list is selected', async () => {
+  const formatted = { ...note, content: '- First\n- Second' };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  await act(async () => {
+    content.focus();
+    const range = document.createRange();
+    range.selectNodeContents(content.querySelector('ul'));
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    document.dispatchEvent(new Event('selectionchange'));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  });
+  fireEvent.click(within(screen.getByRole('toolbar', { name: 'Note formatting' })).getByText('Lists'));
+  fireEvent.click(screen.getByRole('button', { name: 'Numbers' }));
+  expect(content.querySelector('ol')).toBeInTheDocument();
+  expect(content.querySelectorAll('li')).toHaveLength(2);
+});
+
+const hierarchyListTypes = [
+  ['bullets', 'bulletList', 'listItem', 'ul'],
+  ['numbering', 'orderedList', 'listItem', 'ol'],
+  ['checklists', 'taskList', 'taskItem', 'ul[data-type="taskList"]'],
+];
+
+test.each([
+  ['Bullets', 'bulletList', { bulletStyle: 'square' }, 'ul'],
+  ['Numbers', 'orderedList', { type: 'I' }, 'ol'],
+])('%s is active for a saved styled list and toggles it off', async (option, type, attrs, selector) => {
+  const document = { type: 'doc', content: [{
+    type, attrs, content: [hierarchyItem('listItem', 'Item')],
+  }] };
+  const formatted = { ...note, content: '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document, markdown: 'Item' }) };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  await selectHierarchyText(content, 'Item');
+  const toolbar = screen.getByRole('toolbar', { name: 'Note formatting' });
+  fireEvent.click(within(toolbar).getByText('Lists'));
+  const button = within(toolbar).getByRole('button', { name: option });
+  expect(button).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(button);
+  expect(content.querySelector(selector)).not.toBeInTheDocument();
+  expect(content).toHaveTextContent('Item');
+});
+
+function hierarchyItem(itemType, text, nested = []) {
+  return {
+    type: itemType,
+    ...(itemType === 'taskItem' ? { attrs: { checked: text === 'Child' } } : {}),
+    content: [{ type: 'paragraph', content: text ? [{ type: 'text', text }] : [] }, ...nested],
+  };
+}
+
+async function selectHierarchyText(content, text, selectAll = false, atStart = false) {
+  await act(async () => {
+    content.focus();
+    const range = document.createRange();
+    range.selectNodeContents(within(content).getByText(text, { selector: 'p' }));
+    if (!selectAll) range.collapse(atStart);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    document.dispatchEvent(new Event('selectionchange'));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  });
+}
+
+test.each(hierarchyListTypes)('indents and outdents whole %s items and preserves descendants after reopening', async (_label, listType, itemType, selector) => {
+  const grandchild = { type: listType, content: [hierarchyItem(itemType, 'Grandchild')] };
+  const document = { type: 'doc', content: [{
+    type: listType, content: [hierarchyItem(itemType, 'Parent'), hierarchyItem(itemType, 'Child', [grandchild])],
+  }] };
+  let savedContent = '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document, markdown: 'Parent\nChild\nGrandchild' });
+  let saved = false;
+  global.fetch = jest.fn((url, options) => {
+    if (options?.method === 'PUT') {
+      savedContent = JSON.parse(options.body).content;
+      saved = true;
+      return Promise.resolve(response({ id: 1 }));
+    }
+    return Promise.resolve(response(url === '/api/notes' ? [{ ...note, content: savedContent }] : []));
+  });
+  const { unmount } = render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  const toolbar = screen.getByRole('toolbar', { name: 'Note formatting' });
+  await selectHierarchyText(content, 'Child');
+  fireEvent.click(within(toolbar).getByRole('button', { name: 'Indent' }));
+  expect(content.querySelectorAll(selector)).toHaveLength(3);
+  expect(within(content.querySelector(`${selector} ${selector}`)).getByText('Grandchild')).toBeInTheDocument();
+  fireEvent.click(within(toolbar).getByRole('button', { name: 'Outdent' }));
+  expect(content.querySelectorAll(selector)).toHaveLength(2);
+  expect(within(content.querySelector(`${selector} ${selector}`)).getByText('Grandchild')).toBeInTheDocument();
+  fireEvent.keyDown(content, { key: 'Tab' });
+  expect(content.querySelectorAll(selector)).toHaveLength(3);
+  fireEvent.keyDown(content, { key: 'Tab', shiftKey: true });
+  expect(content.querySelectorAll(selector)).toHaveLength(2);
+  fireEvent.click(within(toolbar).getByRole('button', { name: 'Indent' }));
+  await waitFor(() => expect(saved).toBe(true), { timeout: 3000 });
+  expect(savedContent).toMatch(/^<!-- shah-family-note-format:2 -->/);
+  expect(savedContent).toContain('"Grandchild"');
+  unmount();
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const reopened = await screen.findByRole('textbox', { name: 'Note content' });
+  expect(reopened.querySelectorAll(selector)).toHaveLength(3);
+  expect(reopened).toHaveTextContent('Grandchild');
+  if (itemType === 'taskItem') expect(within(reopened).getByRole('checkbox', { name: /^Task item checkbox for Child/ })).toBeChecked();
+});
+
+test.each([
+  ['default bullets', 'bulletList', {}, 'ul', 'circle'],
+  ['hollow bullets', 'bulletList', { bulletStyle: 'circle' }, 'ul', 'square'],
+  ['square bullets', 'bulletList', { bulletStyle: 'square' }, 'ul', 'disc'],
+  ['default numbering', 'orderedList', {}, 'ol', 'a'],
+  ['explicit decimal numbering', 'orderedList', { type: '1' }, 'ol', 'a'],
+  ['lowercase letter numbering', 'orderedList', { type: 'a' }, 'ol', 'A'],
+  ['uppercase letter numbering', 'orderedList', { type: 'A' }, 'ol', 'i'],
+  ['lowercase Roman numbering', 'orderedList', { type: 'i' }, 'ol', 'I'],
+  ['uppercase Roman numbering', 'orderedList', { type: 'I' }, 'ol', null],
+])('a newly indented %s list uses the expected marker style', async (_label, listType, attrs, selector, style) => {
+  const document = { type: 'doc', content: [{
+    type: listType, attrs, content: [hierarchyItem('listItem', 'Parent'), hierarchyItem('listItem', 'Child')],
+  }] };
+  const formatted = { ...note, content: '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document, markdown: 'Parent Child' }) };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  await selectHierarchyText(content, 'Child');
+  fireEvent.keyDown(content, { key: 'Tab' });
+  const nested = content.querySelector(`${selector} ${selector}`);
+  if (listType === 'bulletList') expect(nested.style.listStyleType).toBe(style);
+  else expect(nested.getAttribute('type')).toBe(style);
+});
+
+test('advances bullet styles across levels and preserves them after reopening', async () => {
+  const document = { type: 'doc', content: [{
+    type: 'bulletList', content: [
+      hierarchyItem('listItem', 'Parent'), hierarchyItem('listItem', 'Child'),
+      hierarchyItem('listItem', 'Grandchild'), hierarchyItem('listItem', 'Great-grandchild'),
+    ],
+  }] };
+  let savedContent = '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document, markdown: 'Parent Child Grandchild Great-grandchild' });
+  let saved = false;
+  global.fetch = jest.fn((url, options) => {
+    if (options?.method === 'PUT') {
+      savedContent = JSON.parse(options.body).content;
+      saved = true;
+      return Promise.resolve(response({ id: 1 }));
+    }
+    return Promise.resolve(response(url === '/api/notes' ? [{ ...note, content: savedContent }] : []));
+  });
+  const { unmount } = render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  const toolbar = screen.getByRole('toolbar', { name: 'Note formatting' });
+  for (const [text, levels] of [['Child', 1], ['Grandchild', 2], ['Great-grandchild', 3]]) {
+    await selectHierarchyText(content, text);
+    for (let level = 0; level < levels; level += 1) {
+      fireEvent.click(within(toolbar).getByRole('button', { name: 'Indent' }));
+    }
+  }
+  const styles = () => Array.from(content.querySelectorAll('ul')).map((list) => list.style.listStyleType || 'disc');
+  expect(styles()).toEqual(['disc', 'circle', 'square', 'disc']);
+  fireEvent.keyDown(content, { key: 'Tab', shiftKey: true });
+  expect(within(content).getByText('Great-grandchild').closest('ul').style.listStyleType).toBe('square');
+  fireEvent.keyDown(content, { key: 'Tab' });
+  expect(styles()).toEqual(['disc', 'circle', 'square', 'disc']);
+  await waitFor(() => expect(saved).toBe(true), { timeout: 3000 });
+  unmount();
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const reopened = await screen.findByRole('textbox', { name: 'Note content' });
+  expect(Array.from(reopened.querySelectorAll('ul')).map((list) => list.style.listStyleType || 'disc'))
+    .toEqual(['disc', 'circle', 'square', 'disc']);
+});
+
+test('preserves a saved nested bullet style when outdenting', async () => {
+  const nested = { type: 'bulletList', attrs: { bulletStyle: 'square' }, content: [hierarchyItem('listItem', 'Child')] };
+  const document = { type: 'doc', content: [{
+    type: 'bulletList', content: [hierarchyItem('listItem', 'Parent', [nested])],
+  }] };
+  const formatted = { ...note, content: '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document, markdown: 'Parent Child' }) };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  await selectHierarchyText(content, 'Child');
+  fireEvent.keyDown(content, { key: 'Tab', shiftKey: true });
+  const childList = within(content).getByText('Child', { selector: 'p' }).closest('ul');
+  expect(childList.parentElement).toBe(content);
+  expect(childList.style.listStyleType).toBe('square');
+});
+
+test('advances numbering across levels and preserves it after reopening', async () => {
+  const labels = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth'];
+  const document = { type: 'doc', content: [{
+    type: 'orderedList', content: labels.map((label) => hierarchyItem('listItem', label)),
+  }] };
+  let savedContent = '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document, markdown: labels.join(' ') });
+  let saved = false;
+  global.fetch = jest.fn((url, options) => {
+    if (options?.method === 'PUT') {
+      savedContent = JSON.parse(options.body).content;
+      saved = true;
+      return Promise.resolve(response({ id: 1 }));
+    }
+    return Promise.resolve(response(url === '/api/notes' ? [{ ...note, content: savedContent }] : []));
+  });
+  const { unmount } = render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  const toolbar = screen.getByRole('toolbar', { name: 'Note formatting' });
+  for (let index = 1; index < labels.length; index += 1) {
+    await selectHierarchyText(content, labels[index]);
+    for (let level = 0; level < index; level += 1) {
+      fireEvent.click(within(toolbar).getByRole('button', { name: 'Indent' }));
+    }
+  }
+  const styles = () => Array.from(content.querySelectorAll('ol')).map((list) => list.getAttribute('type'));
+  expect(styles()).toEqual([null, 'a', 'A', 'i', 'I', null]);
+  fireEvent.keyDown(content, { key: 'Tab', shiftKey: true });
+  expect(within(content).getByText('Sixth').closest('ol')).toHaveAttribute('type', 'I');
+  fireEvent.keyDown(content, { key: 'Tab' });
+  expect(styles()).toEqual([null, 'a', 'A', 'i', 'I', null]);
+  fireEvent.keyDown(content, { key: 'Enter' });
+  expect(content.querySelectorAll('ol')[5].children).toHaveLength(2);
+  await waitFor(() => expect(saved).toBe(true), { timeout: 3000 });
+  unmount();
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const reopened = await screen.findByRole('textbox', { name: 'Note content' });
+  expect(Array.from(reopened.querySelectorAll('ol')).map((list) => list.getAttribute('type')))
+    .toEqual([null, 'a', 'A', 'i', 'I', null]);
+  expect(reopened.querySelectorAll('ol')[5].children).toHaveLength(2);
+});
+
+test('preserves a saved nested numbering style when outdenting', async () => {
+  const nested = { type: 'orderedList', attrs: { type: 'I' }, content: [hierarchyItem('listItem', 'Child')] };
+  const document = { type: 'doc', content: [{
+    type: 'orderedList', content: [hierarchyItem('listItem', 'Parent', [nested])],
+  }] };
+  const formatted = { ...note, content: '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document, markdown: 'Parent Child' }) };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  await selectHierarchyText(content, 'Child');
+  fireEvent.keyDown(content, { key: 'Tab', shiftKey: true });
+  const childList = within(content).getByText('Child', { selector: 'p' }).closest('ol');
+  expect(childList.parentElement).toBe(content);
+  expect(childList).toHaveAttribute('type', 'I');
+});
+
+test.each(hierarchyListTypes)('creates a sibling and exits an empty %s list item with Enter', async (_label, listType, itemType, selector) => {
+  const nested = { type: listType, content: [hierarchyItem(itemType, 'Child')] };
+  const document = { type: 'doc', content: [{ type: listType, content: [hierarchyItem(itemType, 'Parent', [nested])] }] };
+  const formatted = { ...note, content: '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document, markdown: 'Parent\nChild' }) };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  await selectHierarchyText(content, 'Child');
+  fireEvent.keyDown(content, { key: 'Enter' });
+  expect(content.querySelector(`${selector} ${selector}`).children).toHaveLength(2);
+  fireEvent.keyDown(content, { key: 'Enter' });
+  expect(content.querySelector(`${selector} ${selector}`).children).toHaveLength(1);
+  expect(content.querySelector(selector).children).toHaveLength(2);
+  fireEvent.keyDown(content, { key: 'Enter' });
+  expect(content.querySelector(selector).children).toHaveLength(1);
+  expect(content.querySelector(':scope > p')).toBeInTheDocument();
+});
+
+test.each([
+  ['checklist within bullets', 'bulletList', 'listItem', 'taskList', 'taskItem', 'ul[data-type="taskList"]'],
+  ['bullets within a checklist', 'taskList', 'taskItem', 'bulletList', 'listItem', 'ul:not([data-type])'],
+])('Enter exits an empty %s item without losing its sibling', async (_label, outerType, outerItem, innerType, innerItem, selector) => {
+  const nested = { type: innerType, content: [hierarchyItem(innerItem, 'Child')] };
+  const document = { type: 'doc', content: [{ type: outerType, content: [hierarchyItem(outerItem, 'Parent', [nested])] }] };
+  const formatted = { ...note, content: '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document, markdown: 'Parent Child' }) };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  await selectHierarchyText(content, 'Child');
+  fireEvent.keyDown(content, { key: 'Enter' });
+  expect(content.querySelector(selector).children).toHaveLength(2);
+  fireEvent.keyDown(content, { key: 'Enter' });
+  expect(content.querySelector(selector).children).toHaveLength(1);
+  expect(content).toHaveTextContent('Child');
+  const selectionNode = window.getSelection().anchorNode;
+  const selectionElement = selectionNode.nodeType === 1 ? selectionNode : selectionNode.parentElement;
+  expect(selectionElement.closest(selector)).toBeNull();
+});
+
+test('Enter on an empty parent retains its nested items', async () => {
+  const nested = { type: 'taskList', content: [hierarchyItem('taskItem', 'Child')] };
+  const savedDocument = { type: 'doc', content: [{ type: 'bulletList', content: [hierarchyItem('listItem', '', [nested])] }] };
+  const formatted = { ...note, content: '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document: savedDocument, markdown: 'Child' }) };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  await act(async () => {
+    content.focus();
+    const range = document.createRange();
+    range.selectNodeContents(content.querySelector('li > p'));
+    range.collapse(true);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    document.dispatchEvent(new Event('selectionchange'));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  });
+  fireEvent.keyDown(content, { key: 'Enter' });
+  expect(within(content).getByRole('checkbox', { name: /^Task item checkbox for Child/ })).toBeChecked();
+});
+
+test.each([
+  ...hierarchyListTypes.map(([label, listType, itemType]) => [label, listType, itemType, listType, itemType]),
+  ['checklist within bullets', 'bulletList', 'listItem', 'taskList', 'taskItem'],
+  ['bullets within a checklist', 'taskList', 'taskItem', 'bulletList', 'listItem'],
+])('preserves %s children when the parent text is deleted', async (_label, listType, itemType, childList, childItem) => {
+  const nested = { type: childList, content: [hierarchyItem(childItem, 'Child')] };
+  const document = { type: 'doc', content: [{ type: listType, content: [hierarchyItem(itemType, 'Parent', [nested])] }] };
+  const formatted = { ...note, content: '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document, markdown: 'Parent\nChild' }) };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  await selectHierarchyText(content, 'Parent', true);
+  fireEvent.keyDown(content, { key: 'Backspace' });
+  fireEvent.keyDown(content, { key: 'Backspace' });
+  expect(content).toHaveTextContent('Child');
+  if (childItem === 'taskItem') expect(within(content).getByRole('checkbox', { name: /^Task item checkbox for Child/ })).toBeChecked();
+});
+
+test('Delete at a parent boundary keeps nested checklist items', async () => {
+  const nested = { type: 'taskList', content: [
+    hierarchyItem('taskItem', 'Child'),
+    hierarchyItem('taskItem', 'Second'),
+  ] };
+  const document = { type: 'doc', content: [{ type: 'bulletList', content: [hierarchyItem('listItem', 'Parent', [nested])] }] };
+  const formatted = { ...note, content: '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document, markdown: 'Parent Child Second' }) };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  await selectHierarchyText(content, 'Parent');
+  fireEvent.keyDown(content, { key: 'Delete' });
+  expect(content).toHaveTextContent('Child');
+  expect(content).toHaveTextContent('Second');
+  expect(within(content).getByRole('checkbox', { name: /^Task item checkbox for Child/ })).toBeChecked();
+});
+
+test('Backspace at the start of a nested checklist keeps its checkbox', async () => {
+  const nested = { type: 'taskList', content: [hierarchyItem('taskItem', 'Child')] };
+  const document = { type: 'doc', content: [{ type: 'bulletList', content: [hierarchyItem('listItem', 'Parent', [nested])] }] };
+  const formatted = { ...note, content: '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document, markdown: 'Parent Child' }) };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  await selectHierarchyText(content, 'Child', false, true);
+  fireEvent.keyDown(content, { key: 'Backspace' });
+  expect(within(content).getByRole('checkbox', { name: /^Task item checkbox for Child/ })).toBeChecked();
+});
+
+test.each([
+  ['checklist within bullets', 'bulletList', 'listItem', 'taskList', 'taskItem'],
+  ['bullets within a checklist', 'taskList', 'taskItem', 'bulletList', 'listItem'],
+])('outdents a %s without losing its list type or descendants', async (_label, outerType, outerItem, innerType, innerItem) => {
+  const grandchild = { type: innerType, content: [hierarchyItem(innerItem, 'Grandchild')] };
+  const nested = { type: innerType, content: [hierarchyItem(innerItem, 'Child', [grandchild])] };
+  const document = { type: 'doc', content: [{ type: outerType, content: [hierarchyItem(outerItem, 'Parent', [nested])] }] };
+  const formatted = { ...note, content: '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document, markdown: 'Parent\nChild\nGrandchild' }) };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  await selectHierarchyText(content, 'Child');
+  fireEvent.keyDown(content, { key: 'Tab', shiftKey: true });
+  const child = within(content).getByText('Child', { selector: 'p' });
+  const item = child.closest('li');
+  expect(item.closest('ul, ol').parentElement).toBe(content);
+  expect(item).toHaveTextContent('Grandchild');
+  expect(item.parentElement.getAttribute('data-type')).toBe(innerItem === 'taskItem' ? 'taskList' : null);
+  if (innerItem === 'taskItem') expect(within(item).getByRole('checkbox', { name: /^Task item checkbox for Child/ })).toBeChecked();
+  fireEvent.keyDown(content, { key: 'Tab' });
+  const nestedChild = within(content).getByText('Child', { selector: 'p' }).closest('li');
+  expect(nestedChild.parentElement.parentElement.closest('li')).toHaveTextContent('Parent');
+  expect(nestedChild).toHaveTextContent('Grandchild');
+  if (innerItem === 'taskItem') expect(within(nestedChild).getByRole('checkbox', { name: /^Task item checkbox for Child/ })).toBeChecked();
+});
+
+test('outdenting a mixed list item preserves preceding, following, and child items', async () => {
+  const grandchild = { type: 'taskList', content: [hierarchyItem('taskItem', 'Grandchild')] };
+  const nested = { type: 'taskList', content: [
+    hierarchyItem('taskItem', 'Before'),
+    hierarchyItem('taskItem', 'Child', [grandchild]),
+    hierarchyItem('taskItem', 'After'),
+  ] };
+  const document = { type: 'doc', content: [{ type: 'bulletList', content: [
+    hierarchyItem('listItem', 'Parent', [nested]), hierarchyItem('listItem', 'Sibling'),
+  ] }] };
+  const formatted = { ...note, content: '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document, markdown: 'Parent Before Child Grandchild After Sibling' }) };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  await selectHierarchyText(content, 'Child');
+  fireEvent.click(within(screen.getByRole('toolbar', { name: 'Note formatting' })).getByRole('button', { name: 'Outdent' }));
+  const texts = Array.from(content.querySelectorAll('p')).map((element) => element.textContent).filter(Boolean);
+  expect(texts).toEqual(['Parent', 'Before', 'Child', 'Grandchild', 'After', 'Sibling']);
+  const item = within(content).getByText('Child', { selector: 'p' }).closest('li');
+  expect(item.parentElement.parentElement).toBe(content);
+  expect(within(item).getByText('Grandchild')).toBeInTheDocument();
+  expect(within(item).getByText('After')).toBeInTheDocument();
+  expect(within(item).getByRole('checkbox', { name: /^Task item checkbox for Child/ })).toBeChecked();
+});
+
+test('preserves a separated mixed checklist after saving and reopening', async () => {
+  const nested = { type: 'taskList', content: [hierarchyItem('taskItem', 'Child')] };
+  const document = { type: 'doc', content: [{ type: 'bulletList', content: [hierarchyItem('listItem', 'Parent', [nested])] }] };
+  let savedContent = '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document, markdown: 'Parent Child' });
+  let saved = false;
+  global.fetch = jest.fn((url, options) => {
+    if (options?.method === 'PUT') {
+      savedContent = JSON.parse(options.body).content;
+      saved = true;
+      return Promise.resolve(response({ id: 1 }));
+    }
+    return Promise.resolve(response(url === '/api/notes' ? [{ ...note, content: savedContent }] : []));
+  });
+  const { unmount } = render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  await selectHierarchyText(content, 'Child');
+  fireEvent.keyDown(content, { key: 'Tab', shiftKey: true });
+  await waitFor(() => expect(saved).toBe(true), { timeout: 3000 });
+  expect(savedContent).toMatch(/^<!-- shah-family-note-format:2 -->/);
+  unmount();
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const reopened = await screen.findByRole('textbox', { name: 'Note content' });
+  expect(reopened.querySelector('ul:not([data-type])')).toHaveTextContent('Parent');
+  expect(within(reopened).getByRole('checkbox', { name: /^Task item checkbox for Child/ })).toBeChecked();
+});
+
+test('outdents a mixed item by only one level in a deeper hierarchy', async () => {
+  const inner = { type: 'bulletList', content: [hierarchyItem('listItem', 'Child')] };
+  const middle = { type: 'taskList', content: [hierarchyItem('taskItem', 'Middle', [inner])] };
+  const document = { type: 'doc', content: [{ type: 'bulletList', content: [hierarchyItem('listItem', 'Parent', [middle])] }] };
+  const formatted = { ...note, content: '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({ document, markdown: 'Parent Middle Child' }) };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  await selectHierarchyText(content, 'Child');
+  fireEvent.keyDown(content, { key: 'Tab', shiftKey: true });
+  const child = within(content).getByText('Child', { selector: 'p' });
+  expect(child.closest('ul').parentElement.closest('li').querySelector(':scope > p')).toHaveTextContent('Parent');
+  expect(within(content).getByRole('checkbox', { name: /^Task item checkbox for Middle/ })).toBeInTheDocument();
+});
+
+test('preserves nested list styles and text formatting while editing a saved styled note', async () => {
+  const savedDocument = { type: 'doc', content: [{
+    type: 'bulletList', attrs: { bulletStyle: 'square' }, content: [{
+      type: 'listItem', content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Parent' }] },
+        { type: 'orderedList', attrs: { start: 1, type: 'i' }, content: [{
+          type: 'listItem', content: [{
+            type: 'paragraph', content: [{ type: 'text', text: 'Nested <text>', marks: [{ type: 'underline' }] }],
+          }],
+        }] },
+      ],
+    }],
+  }] };
+  let savedContent = '<!-- shah-family-note-format:2 -->\n' + JSON.stringify({
+    document: savedDocument, markdown: '- Parent\n  i. <u>Nested &lt;text&gt;</u>',
+  });
+  global.fetch = jest.fn((url, options) => {
+    if (options?.method === 'PUT') {
+      savedContent = JSON.parse(options.body).content;
+      return Promise.resolve(response({ id: 1 }));
+    }
+    return Promise.resolve(response(url === '/api/notes' ? [{ ...note, content: savedContent }] : []));
+  });
+  const { unmount } = render(<NotesReminders />);
+  await screen.findByText('Family recipes');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  expect(within(screen.getByRole('complementary', { name: 'Note list' }))
+    .getByRole('button', { name: /^Family recipes/ })).toHaveTextContent('Nested <text>');
+  await act(async () => {
+    content.focus();
+    const range = document.createRange();
+    range.selectNodeContents(content.querySelector('ol u'));
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    document.dispatchEvent(new Event('selectionchange'));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  });
+  fireEvent.click(within(screen.getByRole('toolbar', { name: 'Note formatting' })).getByText('Lists'));
+  expect(screen.getByRole('button', { name: 'Numbers' })).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(within(screen.getByRole('toolbar', { name: 'Note formatting' })).getByText('Text styles'));
+  fireEvent.click(screen.getByRole('button', { name: 'Bold' }));
+  await waitFor(() => expect(savedContent).toContain('"type":"bold"'), { timeout: 3000 });
+  unmount();
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const reopened = await screen.findByRole('textbox', { name: 'Note content' });
+  expect(reopened.querySelector('ul').style.listStyleType).toBe('square');
+  expect(reopened.querySelector('ul ol')).toHaveAttribute('type', 'i');
+  expect(reopened.querySelector('ol u')).toHaveTextContent('Nested <text>');
+  await act(async () => {
+    reopened.focus();
+    const range = document.createRange();
+    range.selectNodeContents(reopened.querySelector('ol u'));
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    document.dispatchEvent(new Event('selectionchange'));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  });
+  fireEvent.click(within(screen.getByRole('toolbar', { name: 'Note formatting' })).getByText('Lists'));
+  expect(screen.getByRole('button', { name: 'Bullets' })).toHaveAttribute('aria-pressed', 'false');
+  fireEvent.click(screen.getByRole('button', { name: 'Bullets' }));
+  expect(reopened.querySelector('ul').style.listStyleType).toBe('square');
+  expect(reopened.querySelector('ul ul')).toBeInTheDocument();
+  expect(reopened.querySelector('ul ul u')).toHaveTextContent('Nested <text>');
+});
+
+test.each([
+  '{bad',
+  JSON.stringify({ document: { type: 'doc', content: [{ type: 'unknown' }] }, markdown: 'Text' }),
+])('does not allow editing malformed styled-note data', async (data) => {
+  const broken = { ...note, content: '<!-- shah-family-note-format:2 -->\n' + data };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [broken] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Family recipes');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('invalid saved format');
+  expect(screen.getByRole('textbox', { name: 'Note content' })).toHaveAttribute('contenteditable', 'false');
+  expect(within(screen.getByRole('toolbar', { name: 'Note formatting' })).getByText('Lists'))
+    .toHaveAttribute('aria-disabled', 'true');
+  expect(global.fetch.mock.calls.some(([, options]) => options?.method === 'PUT')).toBe(false);
+});
+
+test.each([1, 2, 3, 4, 5, 6])('saves and reopens H%i headings', async (level) => {
+  let savedContent = note.content;
+  global.fetch = jest.fn((url, options) => {
+    if (options?.method === 'PUT') {
+      savedContent = JSON.parse(options.body).content;
+      return Promise.resolve(response({ id: 1 }));
+    }
+    return Promise.resolve(response(url === '/api/notes' ? [{ ...note, content: savedContent }] : []));
+  });
+  const { unmount } = render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  fireEvent.click(content);
+  fireEvent.click(screen.getByText('Headings'));
+  fireEvent.click(screen.getByRole('button', { name: `Heading - H${level}` }));
+  await waitFor(() => expect(savedContent.trimEnd()).toBe(`${'#'.repeat(level)} Soup for everyone`), { timeout: 3000 });
+  unmount();
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const reopened = await screen.findByRole('textbox', { name: 'Note content' });
+  expect(within(reopened).getByRole('heading', { name: 'Soup for everyone', level })).toBeInTheDocument();
+  const sectionToggle = within(reopened).queryByRole('button', { name: 'Collapse section Soup for everyone' });
+  if (level === 2) expect(sectionToggle).toBeInTheDocument();
+  else expect(sectionToggle).not.toBeInTheDocument();
+});
+
+test('collapses heading sections without changing saved content and expands them when reopened', async () => {
+  const formatted = { ...note, content: '## First\n\nAlpha\n\n### Detail\n\nMore details\n\n## Second\n\nBeta\n\n# Title\n\nOutside' };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  const main = within(screen.getByRole('navigation', { name: 'Notes and reminders navigation' }));
+  fireEvent.click(main.getByRole('button', { name: 'Notes' }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  const collapse = within(content).getByRole('button', { name: 'Collapse section First' });
+  collapse.focus();
+  fireEvent.click(collapse);
+  expect(within(content).getByRole('button', { name: 'Expand section First' })).toHaveAttribute('aria-expanded', 'false');
+  expect(within(content).getByRole('button', { name: 'Expand section First' })).toHaveFocus();
+  expect(within(content).getByText('Alpha')).toHaveClass('nr-folded-content');
+  expect(content.querySelector('h3')).toHaveClass('nr-folded-content');
+  expect(within(content).getByText('Beta')).not.toHaveClass('nr-folded-content');
+  expect(within(content).getByText('Outside')).not.toHaveClass('nr-folded-content');
+  expect(global.fetch.mock.calls.some(([, options]) => options?.method === 'PUT')).toBe(false);
+  fireEvent.click(within(content).getByRole('button', { name: 'Expand section First' }));
+  expect(within(content).getByText('Alpha')).not.toHaveClass('nr-folded-content');
+  fireEvent.click(within(content).getByRole('button', { name: 'Collapse section First' }));
+  fireEvent.click(main.getByRole('button', { name: 'Dashboard' }));
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(main.getByRole('button', { name: 'Notes' }));
+  await screen.findByRole('textbox', { name: 'Note content' });
+  expect(within(content).getByText('Alpha')).not.toHaveClass('nr-folded-content');
+  expect(within(content).getByRole('button', { name: 'Collapse section First' })).toHaveAttribute('aria-expanded', 'true');
+});
+
+test('allows existing literal underline tags without treating them as formatting', async () => {
+  const legacy = { ...note, content: '<u>literal</u>' };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [legacy] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  expect(content).toHaveTextContent('<u>literal</u>');
+  expect(content.querySelector('u')).not.toBeInTheDocument();
+});
+
+test('saves underlining and preserves literal HTML when reopening a note', async () => {
+  let savedContent = 'Underline this\n\n<b>literal</b> <u>plain</u>';
+  global.fetch = jest.fn((url, options) => {
+    if (options?.method === 'PUT') {
+      savedContent = JSON.parse(options.body).content;
+      return Promise.resolve(response({ id: 1 }));
+    }
+    return Promise.resolve(response(url === '/api/notes' ? [{ ...note, content: savedContent }] : []));
+  });
+  const { unmount } = render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  act(() => content.focus());
+  const text = within(content).getByText('Underline this');
+  const range = document.createRange();
+  range.selectNodeContents(text);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  await act(async () => {
+    document.dispatchEvent(new Event('selectionchange'));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  });
+  fireEvent.click(screen.getByText('Text styles'));
+  fireEvent.click(screen.getByRole('button', { name: 'Underline' }));
+  await waitFor(() => expect(savedContent).toContain('<u>Underline this</u>'), { timeout: 3000 });
+  unmount();
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const reopened = await screen.findByRole('textbox', { name: 'Note content' });
+  expect(reopened.querySelector('u')).toHaveTextContent('Underline this');
+  expect(reopened).toHaveTextContent('<b>literal</b>');
+  expect(reopened).toHaveTextContent('<u>plain</u>');
+  expect(reopened.querySelectorAll('u')).toHaveLength(1);
+  expect(reopened.querySelector('b')).not.toBeInTheDocument();
+});
+
+test.each([
+  ['Italic', 'em', '*Underline this*'],
+  ['Strikethrough', 's', '~~Underline this~~'],
+])('saves and reopens %s formatting', async (button, tag, markdown) => {
+  let savedContent = 'Underline this';
+  global.fetch = jest.fn((url, options) => {
+    if (options?.method === 'PUT') {
+      savedContent = JSON.parse(options.body).content;
+      return Promise.resolve(response({ id: 1 }));
+    }
+    return Promise.resolve(response(url === '/api/notes' ? [{ ...note, content: savedContent }] : []));
+  });
+  const { unmount } = render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  act(() => content.focus());
+  const range = document.createRange();
+  range.selectNodeContents(within(content).getByText('Underline this'));
+  window.getSelection().removeAllRanges();
+  window.getSelection().addRange(range);
+  await act(async () => {
+    document.dispatchEvent(new Event('selectionchange'));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  });
+  fireEvent.click(screen.getByText('Text styles'));
+  fireEvent.click(screen.getByRole('button', { name: button }));
+  await waitFor(() => expect(savedContent).toContain(markdown), { timeout: 3000 });
+  unmount();
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  expect((await screen.findByRole('textbox', { name: 'Note content' })).querySelector(tag))
+    .toHaveTextContent('Underline this');
+});
+
+test.each([
+  ['Blockquote', 'blockquote', '> Soup for everyone'],
+  ['Code block', 'pre', '```'],
+  ['Divider', 'hr', '---'],
+])('saves and reopens a %s', async (option, tag, markdown) => {
+  let savedContent = note.content;
+  global.fetch = jest.fn((url, options) => {
+    if (options?.method === 'PUT') {
+      savedContent = JSON.parse(options.body).content;
+      return Promise.resolve(response({ id: 1 }));
+    }
+    return Promise.resolve(response(url === '/api/notes' ? [{ ...note, content: savedContent }] : []));
+  });
+  const { unmount } = render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  fireEvent.click(content);
+  fireEvent.click(screen.getByText('Headings'));
+  fireEvent.click(screen.getByRole('button', { name: option }));
+  await waitFor(() => expect(savedContent).toContain(markdown), { timeout: 3000 });
+  unmount();
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  expect((await screen.findByRole('textbox', { name: 'Note content' })).querySelector(tag))
+    .toBeInTheDocument();
+});
 
 test('hides the saved label in the note editor without disabling autosave', async () => {
   global.fetch = jest.fn((url, options) => Promise.resolve(response(
@@ -484,8 +1433,8 @@ test('hides the saved label in the note editor without disabling autosave', asyn
   const content = await within(editor).findByRole('textbox', { name: 'Note content' });
   expect(within(editor).queryByText('Saved')).not.toBeInTheDocument();
   fireEvent.click(content);
-  fireEvent.click(within(editor).getByLabelText('Text formatting'));
-  fireEvent.click(within(editor).getByRole('button', { name: 'Heading' }));
+  fireEvent.click(within(editor).getByText('Headings'));
+  fireEvent.click(within(editor).getByRole('button', { name: 'Heading - H2' }));
   await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/notes/1', expect.objectContaining({
     method: 'PUT', body: expect.stringContaining('## Soup for everyone'),
   })), { timeout: 3000 });
@@ -504,8 +1453,8 @@ test('shares the top formatting toolbar across selected notes', async () => {
   const toolbar = await screen.findByRole('toolbar', { name: 'Note formatting' });
   let content = await screen.findByRole('textbox', { name: 'Note content' });
   fireEvent.click(content);
-  fireEvent.click(within(toolbar).getByLabelText('Text formatting'));
-  fireEvent.click(within(toolbar).getByRole('button', { name: 'Heading' }));
+  fireEvent.click(within(toolbar).getByText('Headings'));
+  fireEvent.click(within(toolbar).getByRole('button', { name: 'Heading - H2' }));
   expect(within(content).getByRole('heading', { name: 'Soup for everyone' })).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: /^Packing list/ }));
@@ -513,8 +1462,8 @@ test('shares the top formatting toolbar across selected notes', async () => {
   expect(screen.getByRole('toolbar', { name: 'Note formatting' })).toBe(toolbar);
   content = screen.getByRole('textbox', { name: 'Note content' });
   fireEvent.click(content);
-  fireEvent.click(within(toolbar).getByLabelText('Text formatting'));
-  fireEvent.click(within(toolbar).getByRole('button', { name: 'Heading' }));
+  fireEvent.click(within(toolbar).getByText('Headings'));
+  fireEvent.click(within(toolbar).getByRole('button', { name: 'Heading - H2' }));
   expect(within(content).getByRole('heading', { name: 'Shoes' })).toBeInTheDocument();
   await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/notes/4', expect.objectContaining({
     method: 'PUT', body: expect.stringContaining('## Shoes'),
@@ -527,8 +1476,8 @@ test('disables the shared formatting toolbar when no note is selected', async ()
   await screen.findByText('Nothing overdue.');
   fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
   const toolbar = screen.getByRole('toolbar', { name: 'Note formatting' });
-  expect(within(toolbar).getByRole('button', { name: 'B Bold' })).toBeDisabled();
-  expect(within(toolbar).getByLabelText('Text formatting')).toHaveAttribute('aria-disabled', 'true');
+  ['Headings', 'Lists', 'Text styles'].forEach((group) =>
+    expect(within(toolbar).getByText(group)).toHaveAttribute('aria-disabled', 'true'));
 });
 
 test('preserves legacy lines and literal angle brackets while editing another field', async () => {
@@ -567,8 +1516,8 @@ test('preserves literal HTML as text when formatting and reopening a note', asyn
   fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
   const content = await screen.findByRole('textbox', { name: 'Note content' });
   fireEvent.click(content);
-  fireEvent.click(screen.getByText('Aa'));
-  fireEvent.click(screen.getByRole('button', { name: 'Heading' }));
+  fireEvent.click(screen.getByText('Headings'));
+  fireEvent.click(screen.getByRole('button', { name: 'Heading - H2' }));
   await waitFor(() => expect(savedContent).toContain('## '), { timeout: 3000 });
   unmount();
   render(<NotesReminders />);

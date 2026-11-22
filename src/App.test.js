@@ -216,8 +216,8 @@ test('sidebar reset keeps unsaved note edits when saving fails', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
   const content = await screen.findByRole('textbox', { name: 'Note content' });
   fireEvent.click(content);
-  fireEvent.click(screen.getByLabelText('Text formatting'));
-  fireEvent.click(screen.getByRole('button', { name: 'Heading' }));
+  fireEvent.click(screen.getByText('Headings'));
+  fireEvent.click(screen.getByRole('button', { name: 'Heading - H2' }));
   fireEvent.click(within(sidebar).getByRole('button', { name: 'Family', exact: true }));
   expect(await screen.findByText('Failed to save note: Save failed')).toBeInTheDocument();
   expect(within(content).getByRole('heading', { name: 'Before' })).toBeInTheDocument();
@@ -529,8 +529,8 @@ test('keeps unsaved note edits when navigating away fails', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
   const content = await screen.findByRole('textbox', { name: 'Note content' });
   fireEvent.click(content);
-  fireEvent.click(screen.getByLabelText('Text formatting'));
-  fireEvent.click(screen.getByRole('button', { name: 'Heading' }));
+  fireEvent.click(screen.getByText('Headings'));
+  fireEvent.click(screen.getByRole('button', { name: 'Heading - H2' }));
   fireEvent.click(screen.getByRole('button', { name: 'Family', exact: true }));
   expect(await screen.findByText('Failed to save note: Could not save note.')).toBeInTheDocument();
   expect(within(content).getByRole('heading', { name: 'Before' })).toBeInTheDocument();
