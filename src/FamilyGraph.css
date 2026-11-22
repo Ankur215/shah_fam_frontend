@@ -4,31 +4,6 @@
   min-width: 0;
 }
 
-.family-graph-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 21px 24px;
-  border: 1px solid var(--family-border);
-  border-radius: 12px;
-  background: linear-gradient(120deg, var(--family-tint), var(--family-soft));
-}
-
-.family-graph-header h1 {
-  margin: 7px 0 5px;
-  color: var(--family-heading);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 25px;
-  font-weight: 500;
-}
-
-.family-graph-header p {
-  margin: 0;
-  color: var(--family-muted-accent);
-  font-size: 11px;
-}
-
 .family-graph-panel,
 .family-graph-state {
   box-sizing: border-box;
@@ -215,15 +190,6 @@
 }
 
 @media (max-width: 740px) {
-  .family-graph-header {
-    align-items: flex-start;
-    padding: 18px;
-  }
-
-  .family-graph-header h1 {
-    font-size: 22px;
-  }
-
   .family-graph-header .secondary-button {
     min-height: 33px;
     padding: 0 9px;
@@ -238,12 +204,5 @@
 
   .family-graph-scroll-hint {
     display: block;
-  }
-}
-
-@media (max-width: 480px) {
-  .family-graph-header {
-    flex-direction: column;
-    gap: 12px;
   }
 }

@@ -404,7 +404,7 @@ function CharityLog({ familyMembers = [], loadFamilyMembers = false }) {
 
   return (
     <section className="page-content charity-page" aria-labelledby="charity-page-heading">
-      <header className="charity-page-heading">
+      <header className="section-header charity-page-heading">
         <div>
           <span className="eyebrow">KINDNESS, REMEMBERED</span>
           <h1 id="charity-page-heading">Charity work</h1>

@@ -13,6 +13,7 @@ button {
 }
 
 .app-shell {
+  --page-gutter: 24px;
   min-height: 100vh;
   background: var(--family-canvas);
   color: var(--family-text);
@@ -209,21 +210,6 @@ button {
   margin-bottom: 22px;
 }
 
-.medical-reports-heading h1 {
-  margin: 5px 0 7px;
-  color: var(--family-heading);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 31px;
-  font-weight: 500;
-  letter-spacing: -0.8px;
-}
-
-.medical-reports-heading p {
-  margin: 0;
-  color: #7a877c;
-  font-size: 12px;
-}
-
 .medical-report-card {
   padding: 22px;
   border: 1px solid var(--family-border);
@@ -350,7 +336,7 @@ button {
   min-height: 62px;
   align-items: center;
   justify-content: space-between;
-  padding: 0 5.1%;
+  padding: 0 var(--page-gutter);
   border-bottom: 1px solid var(--family-border);
   background: rgba(255, 255, 255, 0.76);
 }
@@ -409,7 +395,7 @@ button {
 }
 
 .session-error {
-  margin: 14px 5.1% 0;
+  margin: 14px var(--page-gutter) 0;
   color: #a63b34;
   font-size: 12px;
 }
@@ -423,8 +409,36 @@ button {
 }
 
 .page-content {
-  width: min(100% - 10.2%, 1050px);
+  width: calc(100% - 2 * var(--page-gutter));
   margin: 31px auto 52px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 20px;
+  border: 1px solid var(--family-border);
+  border-radius: 20px;
+  background: linear-gradient(120deg, var(--family-tint), #fff 75%);
+}
+
+.section-header > div { min-width: 0; }
+.section-header h1 {
+  margin: 3px 0;
+  color: var(--family-heading);
+  font: 500 clamp(25px, 2.5vw, 29px) Georgia, serif;
+  letter-spacing: -.7px;
+}
+.section-header p { margin: 0; color: #65756a; font-size: 13px; line-height: 1.6; }
+.section-header .eyebrow, .section-header .nr-eyebrow {
+  color: var(--family-muted-accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
 }
 
 .introduction-page {
@@ -432,28 +446,8 @@ button {
   gap: 28px;
 }
 
-.introduction-hero {
-  padding: 34px 38px;
-  border: 1px solid var(--family-border);
-  border-radius: 14px;
-  background: linear-gradient(125deg, var(--family-tint), var(--family-soft));
-}
-
-.introduction-hero h1 {
-  margin: 11px 0 9px;
-  color: var(--family-heading);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(27px, 4vw, 38px);
-  font-weight: 500;
-  letter-spacing: -0.8px;
-}
-
 .introduction-hero p {
   max-width: 650px;
-  margin: 0;
-  color: var(--family-muted-accent);
-  font-size: 13px;
-  line-height: 1.7;
 }
 
 .introduction-section-heading {
@@ -619,19 +613,13 @@ button {
 
 .welcome-banner {
   position: relative;
-  display: flex;
-  min-height: 174px;
-  align-items: center;
   overflow: hidden;
-  padding: 28px 39px;
-  border: 1px solid var(--family-border);
-  border-radius: 13px;
-  background: var(--family-tint);
 }
 
 .welcome-copy {
   position: relative;
   z-index: 1;
+  max-width: calc(100% - 175px);
 }
 
 .eyebrow {
@@ -641,27 +629,14 @@ button {
   letter-spacing: 1.25px;
 }
 
-.welcome-copy h1 {
-  margin: 10px 0 7px;
-  color: var(--family-heading);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 31px;
-  font-weight: 500;
-  letter-spacing: -0.8px;
-}
-
-.welcome-copy p {
-  margin: 0;
-  color: #7a877c;
-  font-size: 12px;
-}
-
 .welcome-art {
   position: absolute;
   right: 7%;
   bottom: 0;
   width: 224px;
   height: 146px;
+  transform: scale(.65);
+  transform-origin: bottom right;
 }
 
 .art-sun {
@@ -1507,10 +1482,6 @@ button {
     margin-left: 205px;
   }
 
-  .page-content {
-    width: calc(100% - 48px);
-  }
-
   .member-row {
     grid-template-columns:
       minmax(120px, 1.2fr) repeat(3, minmax(75px, 0.85fr))
@@ -1520,8 +1491,14 @@ button {
 }
 
 @media (max-width: 740px) {
-  .introduction-hero {
-    padding: 25px 22px;
+  .app-shell {
+    --page-gutter: 18px;
+  }
+
+  .section-header {
+    align-items: flex-start;
+    padding: 14px 16px;
+    border-radius: 16px;
   }
 
   .introduction-modules {
@@ -1604,30 +1581,18 @@ button {
 
   .topbar {
     min-height: 48px;
-    padding: 0 22px;
   }
 
   .page-content {
-    width: calc(100% - 36px);
     margin-top: 20px;
   }
 
-  .welcome-banner {
-    min-height: 159px;
-    padding: 23px;
-  }
-
   .welcome-art {
-    right: -41px;
-    opacity: 0.62;
+    display: none;
   }
 
   .welcome-copy {
-    max-width: 65%;
-  }
-
-  .welcome-copy h1 {
-    font-size: 26px;
+    max-width: none;
   }
 
   .summary-row {
@@ -1665,6 +1630,10 @@ button {
 }
 
 @media (max-width: 480px) {
+  .app-shell {
+    --page-gutter: 12px;
+  }
+
   .sidebar {
     padding: 0 13px;
   }
@@ -1695,32 +1664,7 @@ button {
   }
 
   .page-content {
-    width: calc(100% - 24px);
     margin-top: 13px;
-  }
-
-  .welcome-banner {
-    min-height: 145px;
-    padding: 19px;
-  }
-
-  .welcome-copy {
-    max-width: 75%;
-  }
-
-  .welcome-copy h1 {
-    font-size: 23px;
-  }
-
-  .welcome-copy p {
-    max-width: 200px;
-    font-size: 10px;
-    line-height: 1.5;
-  }
-
-  .welcome-art {
-    right: -102px;
-    opacity: 0.4;
   }
 
   .summary-row {

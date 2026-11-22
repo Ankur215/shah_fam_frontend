@@ -436,7 +436,7 @@ function FamilyGraph({ members, isLoading, isLoadError, onRetry, onManageMembers
 
   return (
     <section className="family-graph-page page-content" aria-labelledby="family-graph-title">
-      <header className="family-graph-header">
+      <header className="section-header family-graph-header">
         <div>
           <span className="eyebrow">YOUR FAMILY, ACROSS GENERATIONS</span>
           <h1 id="family-graph-title">Family graph</h1>

@@ -417,8 +417,8 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
   const activeMainView = Object.keys(SUB_VIEWS).find((main) =>
     SUB_VIEWS[main].includes(view)) || view;
 
-  return <div className="notes-reminders-container">
-    <header className="nr-header">
+  return <div className="page-content notes-reminders-container">
+    <header className="section-header nr-header">
       <div><span className="nr-eyebrow">YOUR FAMILY SPACE</span><h1>Notes &amp; Reminders</h1>
         <p>A little space for the things you want to remember.</p></div>
       <div className="nr-header-actions">

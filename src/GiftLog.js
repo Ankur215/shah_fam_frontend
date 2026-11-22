@@ -368,7 +368,7 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
 
   return (
     <section className="page-content gift-page" aria-labelledby="gift-page-heading">
-      <header className="gift-page-heading">
+      <header className="section-header gift-page-heading">
         <div>
           <span className="eyebrow">THOUGHTFULNESS, REMEMBERED</span>
           <h1 id="gift-page-heading">Gift log</h1>

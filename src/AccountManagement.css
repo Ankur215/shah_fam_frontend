@@ -1,6 +1,8 @@
 .account-heading {
-  margin-bottom: 22px;
+  margin-bottom: 14px;
 }
+
+.account-page > .account-hint { margin: 0 0 14px; line-height: 1.5; }
 
 .account-section-nav {
   display: flex;
@@ -28,21 +30,6 @@
 .account-section-nav button:focus-visible {
   outline: 3px solid var(--family-focus);
   outline-offset: 2px;
-}
-
-.account-heading h1 {
-  margin: 5px 0 7px;
-  color: var(--family-heading);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 31px;
-  font-weight: 500;
-  letter-spacing: -0.8px;
-}
-
-.account-heading p {
-  margin: 0;
-  color: #7a877c;
-  font-size: 12px;
 }
 
 .account-card {

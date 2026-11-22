@@ -3,23 +3,9 @@
 }
 
 .charity-page-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
   margin-bottom: 18px;
 }
 
-.charity-page-heading h1 {
-  margin: 8px 0 6px;
-  color: var(--family-heading);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 30px;
-  font-weight: 500;
-  letter-spacing: -0.6px;
-}
-
-.charity-page-heading p,
 .charity-card-heading p,
 .charity-history-heading p {
   margin: 0;
@@ -523,10 +509,6 @@
 }
 
 @media (max-width: 740px) {
-  .charity-page-heading h1 {
-    font-size: 26px;
-  }
-
   .charity-form-card,
   .charity-history-card {
     padding: 17px;
@@ -534,20 +516,6 @@
 }
 
 @media (max-width: 480px) {
-  .charity-page-heading {
-    align-items: flex-start;
-  }
-
-  .charity-page-heading h1 {
-    font-size: 23px;
-  }
-
-  .charity-page-heading p {
-    max-width: 220px;
-    font-size: 10px;
-    line-height: 1.5;
-  }
-
   .charity-record-count {
     gap: 7px;
     padding: 8px 10px;

@@ -1,13 +1,10 @@
 .notes-reminders-container {
   display: grid;
   gap: 24px;
-  max-width: 1300px;
-  margin: 0 auto;
-  padding: 34px 38px 60px;
   color: var(--family-text);
 }
 
-.nr-header, .nr-header-actions, .nr-card-top, .nr-card-footer,
+.nr-header-actions, .nr-card-top, .nr-card-footer,
 .nr-section-heading, .nr-reminder, .nr-reminder-main, .nr-actions,
 .nr-calendar-header, .nr-form-footer {
   display: flex;
@@ -16,23 +13,7 @@
   gap: 12px;
 }
 
-.nr-header {
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: 20px;
-  padding: 27px 30px;
-  border: 1px solid var(--family-border);
-  border-radius: 20px;
-  background: linear-gradient(120deg, var(--family-tint), #fff 75%);
-}
-.nr-header h1 {
-  margin: 8px 0;
-  color: var(--family-heading);
-  font: 500 clamp(29px, 3vw, 36px) Georgia, serif;
-  letter-spacing: -1px;
-}
-.nr-header p, .nr-help { margin: 0; color: #65756a; font-size: 13px; line-height: 1.6; }
-.nr-eyebrow { color: var(--family-muted-accent); font-size: 10px; font-weight: 700; letter-spacing: 1.4px; }
+.nr-help { margin: 0; color: #65756a; font-size: 13px; line-height: 1.6; }
 .nr-button {
   min-height: 42px;
   padding: 10px 17px;
@@ -290,8 +271,7 @@
 .nr-form-footer [role='status'] { margin-right: auto; color: #7d8c81; font-size: 11px; }
 
 @media (max-width: 700px) {
-  .notes-reminders-container { padding: 24px 16px 40px; gap: 18px; }
-  .nr-header { align-items: flex-start; padding: 22px; border-radius: 16px; }
+  .notes-reminders-container { gap: 18px; }
   .nr-header-actions { width: 100%; flex-wrap: wrap; }
   .nr-header-actions .nr-button { flex: 1 1 auto; }
   .nr-calendar-layout { grid-template-columns: 1fr; }

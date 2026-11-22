@@ -376,23 +376,18 @@ function AccountManagement({
 
   return (
     <section className="page-content account-page" aria-labelledby="accounts-heading">
-      <header className="account-heading">
-        <span className="eyebrow">ADMINISTRATION</span>
-        <h1 id="accounts-heading">
-          {isSuperAdmin && accountSection === 'settings' ? 'Settings' : 'User accounts'}
-        </h1>
-        <p>
-          {isSuperAdmin && accountSection === 'settings'
-            ? 'Changes apply only to your primary family workspace.'
-            : 'Assign module and family-member access to each account. Only super admins can change family information.'}
-        </p>
-        {accountSection === 'accounts' && (
-          <p className="account-hint">
-            {isSuperAdmin
-              ? 'Create admins and users within your family tenant. Promoting an admin creates an independent copy of their family data.'
-              : 'You can create and manage users in your family workspace. Become a super admin to manage a separate copy of your family tree.'}
+      <header className="section-header account-heading">
+        <div>
+          <span className="eyebrow">ADMINISTRATION</span>
+          <h1 id="accounts-heading">
+            {isSuperAdmin && accountSection === 'settings' ? 'Settings' : 'User accounts'}
+          </h1>
+          <p>
+            {isSuperAdmin && accountSection === 'settings'
+              ? 'Changes apply only to your primary family workspace.'
+              : 'Assign module and family-member access to each account. Only super admins can change family information.'}
           </p>
-        )}
+        </div>
         {!isSuperAdmin && (
           <button
             className="account-submit"
@@ -405,6 +400,13 @@ function AccountManagement({
         )}
       </header>
 
+      {accountSection === 'accounts' && (
+        <p className="account-hint">
+          {isSuperAdmin
+            ? 'Create admins and users within your family tenant. Promoting an admin creates an independent copy of their family data.'
+            : 'You can create and manage users in your family workspace. Become a super admin to manage a separate copy of your family tree.'}
+        </p>
+      )}
       {isSuperAdmin && (
         <nav className="account-section-nav" aria-label="Account management">
           <button

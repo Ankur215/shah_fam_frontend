@@ -429,10 +429,12 @@ function MedicalReports() {
       className="page-content medical-reports-page"
       aria-labelledby="medical-reports-heading"
     >
-      <header className="medical-reports-heading">
-        <span className="eyebrow">HEALTH RECORDS</span>
-        <h1 id="medical-reports-heading">Medical reports</h1>
-        <p>Redacted summaries of the medical documents you choose to keep here.</p>
+      <header className="section-header medical-reports-heading">
+        <div>
+          <span className="eyebrow">HEALTH RECORDS</span>
+          <h1 id="medical-reports-heading">Medical reports</h1>
+          <p>Redacted summaries of the medical documents you choose to keep here.</p>
+        </div>
       </header>
 
       <article className="medical-report-card">
@@ -1080,13 +1082,15 @@ function App() {
 
         {activePage === 'intro' ? (
           <section className="page-content introduction-page">
-            <header className="introduction-hero">
-              <span className="eyebrow">WELCOME TO {familyName.toUpperCase()}</span>
-              <h1>Your family, all in one place.</h1>
-              <p>
-                This private space helps your family keep its story, important
-                information, and shared moments organized and easy to find.
-              </p>
+            <header className="section-header introduction-hero">
+              <div>
+                <span className="eyebrow">WELCOME TO {familyName.toUpperCase()}</span>
+                <h1>Your family, all in one place.</h1>
+                <p>
+                  This private space helps your family keep its story, important
+                  information, and shared moments organized and easy to find.
+                </p>
+              </div>
             </header>
 
             <section aria-labelledby="modules-heading">
@@ -1187,7 +1191,7 @@ function App() {
           </section>
         ) : activePage === 'members' && hasFamilyPageAccess ? (
         <section className="page-content">
-          <div className="welcome-banner">
+          <div className="section-header welcome-banner">
             <div className="welcome-copy">
               <span className="eyebrow">YOUR FAMILY, ALL IN ONE PLACE</span>
               <h1>Family members</h1>
