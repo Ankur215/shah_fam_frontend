@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import './GiftLog.css';
 import { API_URL, apiFetch, readApiResponse } from './api';
 import FormDialog from './FormDialog';
@@ -120,7 +119,7 @@ function GiftEntry({
 }
 
 function GiftLog({
-  familyMembers = [], loadFamilyMembers = false, actionContainer, hidden = false, onCreate,
+  familyMembers = [], loadFamilyMembers = false, hidden = false,
 }) {
   const [gifts, setGifts] = useState([]);
   const [assignedFamilyMembers, setAssignedFamilyMembers] = useState([]);
@@ -368,26 +367,8 @@ function GiftLog({
   const visibleRecipientGroups = recipientGroups.filter((group) =>
     group.name.toLocaleLowerCase().includes(normalizedSearch)
   );
-  const recordButton = (
-    <button
-      className="primary-button"
-      type="button"
-      disabled={isSaving || isReordering || deletingGiftId !== null}
-      onClick={() => {
-        onCreate?.();
-        closeGiftForm();
-        setIsFormOpen(true);
-      }}
-    >
-      + Record a gift
-    </button>
-  );
-
   return (
     <section className="gift-page" aria-label="Gift" hidden={hidden}>
-      {actionContainer
-        ? createPortal(recordButton, actionContainer)
-        : <div className="gift-page-actions">{recordButton}</div>}
       <div className="gift-stats">
         <div className="gift-stat-card">
           <span className="gift-stat-icon" aria-hidden="true">✦</span>
@@ -620,6 +601,17 @@ function GiftLog({
               <h2 id="gift-history-heading">Gifts by person</h2>
               <p>Choose a name to open their gift history.</p>
             </div>
+            <button
+              className="primary-button"
+              type="button"
+              disabled={isSaving || isReordering || deletingGiftId !== null}
+              onClick={() => {
+                closeGiftForm();
+                setIsFormOpen(true);
+              }}
+            >
+              <span aria-hidden="true">＋</span> Record a gift
+            </button>
           </div>
           <div className="member-toolbar">
             <label className="search-box">

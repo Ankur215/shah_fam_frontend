@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import './CharityLog.css';
 import { API_URL, apiFetch, readApiResponse } from './api';
 import FormDialog from './FormDialog';
@@ -168,7 +167,7 @@ function CharityRecordEntry({
 }
 
 function CharityLog({
-  familyMembers = [], loadFamilyMembers = false, actionContainer, hidden = false, onCreate,
+  familyMembers = [], loadFamilyMembers = false, hidden = false,
 }) {
   const [records, setRecords] = useState([]);
   const [assignedFamilyMembers, setAssignedFamilyMembers] = useState([]);
@@ -404,26 +403,8 @@ function CharityLog({
         .includes(normalizedSearch)
     );
   }, [records, search]);
-  const recordButton = (
-    <button
-      className="primary-button"
-      type="button"
-      disabled={isSaving || isReordering || deletingRecordId !== null}
-      onClick={() => {
-        onCreate?.();
-        closeCharityForm();
-        setIsFormOpen(true);
-      }}
-    >
-      + Record charity
-    </button>
-  );
-
   return (
     <section className="charity-page" aria-label="Charity" hidden={hidden}>
-      {actionContainer
-        ? createPortal(recordButton, actionContainer)
-        : <div className="charity-page-actions">{recordButton}</div>}
       <div className="charity-summary">
         <div>
           <span className="summary-label">RECORDS SAVED</span>
@@ -615,6 +596,17 @@ function CharityLog({
               <h2 id="charity-history-heading">All charity records</h2>
               <p>Every saved entry in your chosen order.</p>
             </div>
+            <button
+              className="primary-button"
+              type="button"
+              disabled={isSaving || isReordering || deletingRecordId !== null}
+              onClick={() => {
+                closeCharityForm();
+                setIsFormOpen(true);
+              }}
+            >
+              <span aria-hidden="true">＋</span> Record charity
+            </button>
           </div>
           <div className="member-toolbar">
             <label className="search-box">

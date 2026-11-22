@@ -679,28 +679,40 @@ test('opens the charity section from the main navigation', async () => {
   expect(await screen.findByRole('heading', { name: 'Gifts by person' })).toBeInTheDocument();
 });
 
-test('record buttons stay in the giving header and open the correct section', async () => {
+test('records gifts and charity from their respective panels', async () => {
   render(<App />);
   fireEvent.click(await screen.findByRole('button', { name: 'Gifts & Giving' }));
   await screen.findByText('No gifts logged yet');
   await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/charity-records'));
   const header = screen.getByRole('heading', { name: 'Gifts & Giving' }).closest('header');
-  const giftButton = within(header).getByRole('button', { name: /record a gift/i });
-  const charityButton = within(header).getByRole('button', { name: /record charity/i });
+  const giftPanel = screen.getByRole('region', { name: 'Gifts by person' });
+  const giftButton = within(giftPanel).getByRole('button', { name: /record a gift/i });
+  expect(within(header).queryByRole('button', { name: /record a gift/i })).not.toBeInTheDocument();
+  expect(within(header).queryByRole('button', { name: /record charity/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /record charity/i })).not.toBeInTheDocument();
 
+  giftButton.focus();
+  fireEvent.click(giftButton);
+  expect(screen.getByRole('dialog', { name: 'Record a gift' })).toBeInTheDocument();
+  fireEvent.keyDown(document, { key: 'Escape' });
+  expect(giftButton).toHaveFocus();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Charity', exact: true }));
+  expect(screen.getByRole('button', { name: 'Charity', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.queryByRole('button', { name: /record a gift/i })).not.toBeInTheDocument();
+  const charityPanel = screen.getByRole('region', { name: 'All charity records' });
+  const charityButton = within(charityPanel).getByRole('button', { name: /record charity/i });
   charityButton.focus();
   fireEvent.click(charityButton);
-  expect(screen.getByRole('button', { name: 'Charity', exact: true })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.getByRole('dialog', { name: 'Record charity' })).toBeInTheDocument();
   fireEvent.keyDown(document, { key: 'Escape' });
   expect(charityButton).toHaveFocus();
 
-  giftButton.focus();
-  fireEvent.click(giftButton);
+  fireEvent.click(screen.getByRole('button', { name: 'Gift', exact: true }));
   expect(screen.getByRole('button', { name: 'Gift' })).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(within(screen.getByRole('region', { name: 'Gifts by person' }))
+    .getByRole('button', { name: /record a gift/i }));
   expect(screen.getByRole('dialog', { name: 'Record a gift' })).toBeInTheDocument();
-  fireEvent.keyDown(document, { key: 'Escape' });
-  expect(giftButton).toHaveFocus();
 });
 
 test('opens medical reports and displays only the redacted summary', async () => {
