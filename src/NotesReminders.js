@@ -11,10 +11,10 @@ import './NotesReminders.css';
 const NOTES_ENDPOINT = `${API_URL}/api/notes`;
 const REMINDERS_ENDPOINT = `${API_URL}/api/reminders`;
 const REMINDER_LISTS_ENDPOINT = `${API_URL}/api/reminder-lists`;
-const MAIN_VIEWS = ['Dashboard', 'Notes', 'Reminders', 'Trash'];
+const MAIN_VIEWS = ['Dashboard', 'Notes', 'Reminders'];
 const SUB_VIEWS = {
-  Notes: ['Notes', 'Pinned'],
-  Reminders: ['Reminders', 'Calendar', 'Completed'],
+  Notes: ['Notes', 'Pinned', 'Notes Trash'],
+  Reminders: ['Reminders', 'Calendar', 'Completed', 'Reminders Trash'],
 };
 
 async function requestJson(url, options = {}) {
@@ -417,6 +417,11 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
   };
   const activeMainView = Object.keys(SUB_VIEWS).find((main) =>
     SUB_VIEWS[main].includes(view)) || view;
+  const isTrash = view === 'Notes Trash' || view === 'Reminders Trash';
+  const trashItems = view === 'Notes Trash'
+    ? trashNotes.map((item) => ({ ...item, type: 'note' }))
+    : [...trashReminders.map((item) => ({ ...item, type: 'reminder' })),
+      ...trashReminderLists.map((item) => ({ ...item, type: 'list', title: item.name }))];
 
   return <div className="page-content notes-reminders-container">
     <h1 className="visually-hidden">Notes &amp; Reminders</h1>
@@ -427,7 +432,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
       </nav>
       {SUB_VIEWS[activeMainView] && <nav className="nr-subnav" aria-label={`${activeMainView} sections`}>
         {SUB_VIEWS[activeMainView].map((item) => <button key={item} type="button" aria-current={view === item ? 'page' : undefined}
-          className={view === item ? 'nr-subnav-active' : ''} onClick={() => switchView(item)}>{item}</button>)}
+          className={view === item ? 'nr-subnav-active' : ''} onClick={() => switchView(item)}>{item.endsWith(' Trash') ? 'Trash' : item}</button>)}
       </nav>}
     </div>
     <div className="members-panel nr-search-panel">
@@ -442,14 +447,14 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
             {matchingNotes.length + matchingReminders.length + matchingLists.length}{' '}
             {matchingNotes.length + matchingReminders.length + matchingLists.length === 1 ? 'result' : 'results'}
           </span>}
-          {activeMainView !== 'Reminders' && activeMainView !== 'Trash' && <button type="button" className="primary-button" disabled={loading || switchingNote} onClick={async () => {
+          {activeMainView !== 'Reminders' && !isTrash && <button type="button" className="primary-button" disabled={loading || switchingNote} onClick={async () => {
             if (activeMainView === 'Notes' && !query) {
               if (await changeSelection({})) { setView('Notes'); setSearch(''); setMetadataEdit('title'); }
             } else {
               openNoteDialog({});
             }
           }}>+ New Note</button>}
-          {activeMainView !== 'Notes' && activeMainView !== 'Trash' && <button type="button" className="primary-button" disabled={loading}
+          {activeMainView !== 'Notes' && !isTrash && <button type="button" className="primary-button" disabled={loading}
             onClick={() => setReminderEditor({ list_id: selectedListId })}>+ New Reminder</button>}
         </div>
       </div>
@@ -521,10 +526,8 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
           {reminderList(selectedReminders, 'No reminders on this date.')}</section>
       </div> : <section className="members-panel nr-section"><div className="panel-heading"><h2>Trash</h2></div>
         <p className="nr-help">Restore an item or permanently delete it.</p>
-        {!trashNotes.length && !trashReminders.length && !trashReminderLists.length ? <p className="nr-empty">Trash is empty.</p> :
-          <div className="nr-list">{[...trashNotes.map((item) => ({ ...item, type: 'note' })),
-            ...trashReminders.map((item) => ({ ...item, type: 'reminder' })),
-            ...trashReminderLists.map((item) => ({ ...item, type: 'list', title: item.name }))].map((item) =>
+        {!trashItems.length ? <p className="nr-empty">Trash is empty.</p> :
+          <div className="nr-list">{trashItems.map((item) =>
             <article className="nr-reminder" key={`${item.type}-${item.id}`}><div><h3>{item.title}</h3><span className="nr-help">{item.type === 'note' ? 'Note' : item.type === 'list' ? 'Reminder list and its items' : 'Reminder'}</span></div>
               <div className="nr-actions"><button type="button" disabled={busy} onClick={() => restore(item.type, item)}>Restore</button>
                 <button type="button" disabled={busy} onClick={() => permanentlyDelete(item.type, item)}>Delete permanently</button></div></article>)}</div>}

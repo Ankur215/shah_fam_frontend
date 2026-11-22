@@ -58,10 +58,17 @@ test('shows only the relevant creation action in notes and reminder sections', a
   expect(screen.getByRole('button', { name: '+ New Reminder' })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: '+ New Note' })).not.toBeInTheDocument();
 
-  fireEvent.click(nav.getByRole('button', { name: 'Trash' }));
+  fireEvent.click(within(screen.getByRole('navigation', { name: 'Reminders sections' })).getByRole('button', { name: 'Trash' }));
   expect(screen.queryByRole('button', { name: '+ New Note' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: '+ New Reminder' })).not.toBeInTheDocument();
   expect(screen.getByLabelText('Search notes and reminders')).toBeInTheDocument();
+  expect(screen.getByText('Trash is empty.')).toBeInTheDocument();
+
+  fireEvent.click(nav.getByRole('button', { name: 'Notes' }));
+  fireEvent.click(within(screen.getByRole('navigation', { name: 'Notes sections' })).getByRole('button', { name: 'Trash' }));
+  expect(screen.queryByRole('button', { name: '+ New Note' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '+ New Reminder' })).not.toBeInTheDocument();
+  expect(screen.getByText('Trash is empty.')).toBeInTheDocument();
 
   fireEvent.click(nav.getByRole('button', { name: 'Dashboard' }));
   expect(screen.getByRole('button', { name: '+ New Note' })).toBeInTheDocument();
@@ -592,7 +599,8 @@ test('restores trashed items and confirms permanent deletion', async () => {
   const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false);
   render(<NotesReminders />);
   await screen.findByText('Nothing overdue.');
-  fireEvent.click(screen.getByRole('button', { name: 'Trash' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  fireEvent.click(within(screen.getByRole('navigation', { name: 'Notes sections' })).getByRole('button', { name: 'Trash' }));
   fireEvent.click(screen.getByRole('button', { name: 'Delete permanently' }));
   expect(confirm).toHaveBeenCalled();
   expect(global.fetch).not.toHaveBeenCalledWith('/api/notes/1?permanent=true', expect.anything());
@@ -626,36 +634,46 @@ test('shows pinned and completed views and sends reminder actions', async () => 
   })));
 });
 
-test('organizes notes and reminders under their main tabs and keeps trash shared', async () => {
+test('organizes notes and reminders under their main tabs with separate trash views', async () => {
   global.fetch = jest.fn((url) => Promise.resolve(response(
-    url === '/api/notes?trash=true' ? [note] : url === '/api/reminders?trash=true' ? [reminder] : []
+    url === '/api/notes?trash=true' ? [note] : url === '/api/reminders?trash=true' ? [reminder]
+      : url === '/api/reminder-lists?trash=true' ? [{ id: 11, name: 'Old list' }] : []
   )));
   render(<NotesReminders />);
   await screen.findByText('Nothing overdue.');
   const main = within(screen.getByRole('navigation', { name: 'Notes and reminders navigation' }));
   expect(main.getAllByRole('button').map((button) => button.textContent))
-    .toEqual(['Dashboard', 'Notes', 'Reminders', 'Trash']);
+    .toEqual(['Dashboard', 'Notes', 'Reminders']);
   expect(screen.queryByRole('navigation', { name: 'Notes sections' })).not.toBeInTheDocument();
 
   fireEvent.click(main.getByRole('button', { name: 'Notes' }));
   const notesNav = within(screen.getByRole('navigation', { name: 'Notes sections' }));
-  expect(notesNav.getAllByRole('button').map((button) => button.textContent)).toEqual(['Notes', 'Pinned']);
+  expect(notesNav.getAllByRole('button').map((button) => button.textContent)).toEqual(['Notes', 'Pinned', 'Trash']);
   fireEvent.click(notesNav.getByRole('button', { name: 'Pinned' }));
   expect(await screen.findByText('Pin a note to keep it close.')).toBeInTheDocument();
   expect(main.getByRole('button', { name: 'Notes' })).toHaveAttribute('aria-current', 'page');
+  fireEvent.click(notesNav.getByRole('button', { name: 'Trash' }));
+  expect(notesNav.getByRole('button', { name: 'Trash' })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByText('Family recipes')).toBeInTheDocument();
+  expect(screen.queryByText('Call home')).not.toBeInTheDocument();
+  expect(screen.queryByText('Old list')).not.toBeInTheDocument();
 
   fireEvent.click(main.getByRole('button', { name: 'Reminders' }));
   const remindersNav = within(screen.getByRole('navigation', { name: 'Reminders sections' }));
   expect(remindersNav.getAllByRole('button').map((button) => button.textContent))
-    .toEqual(['Reminders', 'Calendar', 'Completed']);
+    .toEqual(['Reminders', 'Calendar', 'Completed', 'Trash']);
   fireEvent.click(remindersNav.getByRole('button', { name: 'Completed' }));
   expect(main.getByRole('button', { name: 'Reminders' })).toHaveAttribute('aria-current', 'page');
   expect(screen.getByText('Completed reminders will appear here.')).toBeInTheDocument();
 
-  fireEvent.click(main.getByRole('button', { name: 'Trash' }));
-  expect(screen.getByText('Family recipes')).toBeInTheDocument();
+  fireEvent.click(remindersNav.getByRole('button', { name: 'Trash' }));
+  expect(remindersNav.getByRole('button', { name: 'Trash' })).toHaveAttribute('aria-current', 'page');
+  expect(main.getByRole('button', { name: 'Reminders' })).toHaveAttribute('aria-current', 'page');
+  expect(screen.queryByText('Family recipes')).not.toBeInTheDocument();
   expect(screen.getByText('Call home')).toBeInTheDocument();
-  expect(screen.queryByRole('navigation', { name: 'Reminders sections' })).not.toBeInTheDocument();
+  expect(screen.getByText('Old list')).toBeInTheDocument();
+  fireEvent.click(within(screen.getByRole('heading', { name: 'Call home' }).closest('article')).getByRole('button', { name: 'Restore' }));
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/reminders/2/restore', { method: 'POST' }));
 });
 
 test('creates a list with multiple undated items, edits item notes, and keeps completed items at the bottom', async () => {
@@ -801,7 +819,7 @@ test('trashes and restores a reminder list and confirms permanent deletion', asy
   expect(global.fetch).not.toHaveBeenCalledWith('/api/reminder-lists/11?permanent=true', expect.anything());
   fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
   await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/reminder-lists/11/restore', { method: 'POST' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Reminders', exact: true }));
+  fireEvent.click(within(screen.getByRole('navigation', { name: 'Reminders sections' })).getByRole('button', { name: 'Reminders' }));
   fireEvent.click(await screen.findByRole('button', { name: /Family 1 remaining/ }));
   expect(await screen.findByRole('heading', { name: 'Call home' })).toBeInTheDocument();
 });
