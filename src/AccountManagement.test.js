@@ -429,7 +429,8 @@ test('lets an admin become a super admin with a copied family workspace', async 
     />
   );
   await screen.findByText('admin@example.com');
-  fireEvent.click(screen.getByRole('button', { name: 'Become a super admin' }));
+  const accounts = screen.getByRole('region', { name: 'Existing accounts' });
+  fireEvent.click(within(accounts).getByRole('button', { name: 'Become a super admin' }));
 
   await waitFor(() => expect(onUserUpdated).toHaveBeenCalledWith(updatedUser));
   expect(window.confirm).toHaveBeenCalledWith(

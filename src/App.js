@@ -20,10 +20,10 @@ const MODULES = [
     icon: '⌂',
   },
   {
-    id: 'medical',
-    name: 'Medical reports',
-    description: 'Keep track of family health information and medical reports.',
-    icon: '✚',
+    id: 'notes',
+    name: 'Notes & Reminders',
+    description: 'Create notes, set reminders, and organize your tasks.',
+    icon: '📝',
   },
   {
     id: 'gifts',
@@ -38,10 +38,10 @@ const MODULES = [
     icon: '♡',
   },
   {
-    id: 'notes',
-    name: 'Notes & Reminders',
-    description: 'Create notes, set reminders, and organize your tasks.',
-    icon: '📝',
+    id: 'medical',
+    name: 'Medical reports',
+    description: 'Keep track of family health information and medical reports.',
+    icon: '✚',
   },
 ];
 const PHONE_CHARACTERS_PATTERN = /^[\d\s().-]+$/;
@@ -371,18 +371,13 @@ function MedicalReports() {
       className="page-content medical-reports-page"
       aria-labelledby="medical-reports-heading"
     >
-      <header className="section-header medical-reports-heading">
-        <div>
-          <h1 id="medical-reports-heading">Medical reports</h1>
-          <p>Redacted summaries of the medical documents you choose to keep here.</p>
-        </div>
-      </header>
-
+      <h1 id="medical-reports-heading" className="visually-hidden">Medical reports</h1>
       <article className="medical-report-card">
         <div className="medical-report-header">
           <div>
             <span className="eyebrow">PULMONARY FUNCTION TEST</span>
             <h2>Reported interpretation</h2>
+            <p className="medical-report-caption">Redacted summaries of the medical documents you choose to keep here.</p>
           </div>
           <time dateTime="2024-04-24">Apr 24, 2024</time>
         </div>
@@ -876,28 +871,6 @@ function App() {
               Family
             </button>
           )}
-          {hasMedicalPageAccess && <button
-            className={`nav-item ${activePage === 'medical' ? 'nav-item-active' : ''}`}
-            type="button"
-            aria-current={activePage === 'medical' ? 'page' : undefined}
-            onClick={() => navigateTo('medical')}
-          >
-            <span className="nav-icon" aria-hidden="true">✚</span>
-            Medical reports
-          </button>}
-          {(hasGiftsPageAccess || hasCharityPageAccess) && (
-            <button
-              className={`nav-item ${
-                activePage === 'gifts' || activePage === 'charity' ? 'nav-item-active' : ''
-              }`}
-              type="button"
-              aria-current={activePage === 'gifts' || activePage === 'charity' ? 'page' : undefined}
-              onClick={() => navigateTo(hasGiftsPageAccess ? 'gifts' : 'charity')}
-            >
-              <span className="nav-icon" aria-hidden="true">▤</span>
-              Gifts & Giving
-            </button>
-          )}
           {hasNotesPageAccess && (
             <button
               className={`nav-item ${activePage === 'notes' ? 'nav-item-active' : ''}`}
@@ -912,6 +885,28 @@ function App() {
               Notes &amp; Reminders
             </button>
           )}
+          {(hasGiftsPageAccess || hasCharityPageAccess) && (
+            <button
+              className={`nav-item ${
+                activePage === 'gifts' || activePage === 'charity' ? 'nav-item-active' : ''
+              }`}
+              type="button"
+              aria-current={activePage === 'gifts' || activePage === 'charity' ? 'page' : undefined}
+              onClick={() => navigateTo(hasGiftsPageAccess ? 'gifts' : 'charity')}
+            >
+              <span className="nav-icon" aria-hidden="true">▤</span>
+              Gifts & Giving
+            </button>
+          )}
+          {hasMedicalPageAccess && <button
+            className={`nav-item ${activePage === 'medical' ? 'nav-item-active' : ''}`}
+            type="button"
+            aria-current={activePage === 'medical' ? 'page' : undefined}
+            onClick={() => navigateTo('medical')}
+          >
+            <span className="nav-icon" aria-hidden="true">✚</span>
+            Medical reports
+          </button>}
         </nav>
 
         <div className="sidebar-note">
@@ -1082,13 +1077,7 @@ function App() {
           </section>
         ) : activePage === 'members' && hasFamilyPageAccess ? (
         <section className="page-content">
-          <div className="section-header welcome-banner">
-            <div>
-              <h1>Family</h1>
-              <p>Keep the important details of your family close at hand.</p>
-            </div>
-          </div>
-
+          <h1 className="visually-hidden">Family</h1>
           <nav className="section-tabs" aria-label="Family sections">
             <button type="button" className={familyTab === 'members' ? 'active' : ''} aria-pressed={familyTab === 'members'} onClick={() => setFamilyTab('members')}>Family members</button>
             <button type="button" className={familyTab === 'graph' ? 'active' : ''} aria-pressed={familyTab === 'graph'} onClick={() => setFamilyTab('graph')}>Family graph</button>
@@ -1355,12 +1344,7 @@ function App() {
         ) : (activePage === 'gifts' && hasGiftsPageAccess) ||
             (activePage === 'charity' && hasCharityPageAccess) ? (
           <section className="page-content" aria-labelledby="giving-heading">
-            <header className="section-header giving-header">
-              <div>
-                <h1 id="giving-heading">Gifts &amp; Giving</h1>
-                <p>Keep track of thoughtful gifts and the ways your family gives back.</p>
-              </div>
-            </header>
+            <h1 id="giving-heading" className="visually-hidden">Gifts &amp; Giving</h1>
             <nav className="section-tabs" aria-label="Gifts and giving sections">
               {hasGiftsPageAccess && <button type="button" className={activePage === 'gifts' ? 'active' : ''} aria-pressed={activePage === 'gifts'} onClick={() => navigateTo('gifts')}>Gift</button>}
               {hasCharityPageAccess && <button type="button" className={activePage === 'charity' ? 'active' : ''} aria-pressed={activePage === 'charity'} onClick={() => navigateTo('charity')}>Charity</button>}

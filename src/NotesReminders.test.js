@@ -22,6 +22,52 @@ afterEach(() => {
   jest.resetAllMocks();
 });
 
+test('keeps new note and reminder actions below the tabs across views', async () => {
+  global.fetch = jest.fn(() => Promise.resolve(response([])));
+  const { container } = render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  const toolbar = container.querySelector('.nr-search-toolbar');
+  expect(screen.getByRole('heading', { name: 'Notes & Reminders', level: 1 }))
+    .toHaveClass('visually-hidden');
+  fireEvent.click(within(toolbar).getByRole('button', { name: '+ New Reminder' }));
+  expect(screen.getByRole('dialog', { name: 'New reminder' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Close form' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  fireEvent.click(within(toolbar).getByRole('button', { name: '+ New Note' }));
+  expect(await screen.findByRole('dialog', { name: 'Rename note' })).toBeInTheDocument();
+});
+
+test('shows only the relevant creation action in notes and reminder sections', async () => {
+  global.fetch = jest.fn(() => Promise.resolve(response([])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  const nav = within(screen.getByRole('navigation', { name: 'Notes and reminders navigation' }));
+  expect(screen.getByRole('button', { name: '+ New Note' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '+ New Reminder' })).toBeInTheDocument();
+
+  fireEvent.click(nav.getByRole('button', { name: 'Notes' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Pinned' }));
+  expect(screen.getByRole('button', { name: '+ New Note' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '+ New Reminder' })).not.toBeInTheDocument();
+
+  fireEvent.click(nav.getByRole('button', { name: 'Reminders' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
+  expect(screen.getByRole('button', { name: '+ New Reminder' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '+ New Note' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Completed' }));
+  expect(screen.getByRole('button', { name: '+ New Reminder' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '+ New Note' })).not.toBeInTheDocument();
+
+  fireEvent.click(nav.getByRole('button', { name: 'Trash' }));
+  expect(screen.queryByRole('button', { name: '+ New Note' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '+ New Reminder' })).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Search notes and reminders')).toBeInTheDocument();
+
+  fireEvent.click(nav.getByRole('button', { name: 'Dashboard' }));
+  expect(screen.getByRole('button', { name: '+ New Note' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '+ New Reminder' })).toBeInTheDocument();
+});
+
 test('searches both notes and reminders including tags and descriptions', async () => {
   global.fetch = jest.fn((url) => Promise.resolve(response(
     url === '/api/notes' ? [note] : url === '/api/reminders' ? [reminder] : []

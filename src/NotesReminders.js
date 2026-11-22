@@ -419,21 +419,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
     SUB_VIEWS[main].includes(view)) || view;
 
   return <div className="page-content notes-reminders-container">
-    <header className="section-header nr-header">
-      <div><h1>Notes &amp; Reminders</h1>
-        <p>A little space for the things you want to remember.</p></div>
-      <div className="nr-header-actions">
-        <button type="button" className="primary-button" disabled={loading || switchingNote} onClick={async () => {
-          if (activeMainView === 'Notes' && !query) {
-            if (await changeSelection({})) { setView('Notes'); setSearch(''); setMetadataEdit('title'); }
-          } else {
-            openNoteDialog({});
-          }
-        }}>+ New Note</button>
-        <button type="button" className="primary-button" disabled={loading}
-          onClick={() => setReminderEditor({ list_id: selectedListId })}>+ New Reminder</button>
-      </div>
-    </header>
+    <h1 className="visually-hidden">Notes &amp; Reminders</h1>
     <div className="nr-navigation">
       <nav className="section-tabs nr-nav" aria-label="Notes and reminders navigation">
         {MAIN_VIEWS.map((item) => <button key={item} type="button" aria-current={activeMainView === item ? 'page' : undefined}
@@ -451,10 +437,21 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
           <input type="search" aria-label="Search notes and reminders" placeholder="Search notes and reminders..." value={search}
             onChange={(event) => setSearch(event.target.value)} />
         </label>
-        {query && !loading && <span className="member-count">
-          {matchingNotes.length + matchingReminders.length + matchingLists.length}{' '}
-          {matchingNotes.length + matchingReminders.length + matchingLists.length === 1 ? 'result' : 'results'}
-        </span>}
+        <div className="nr-search-actions">
+          {query && !loading && <span className="member-count">
+            {matchingNotes.length + matchingReminders.length + matchingLists.length}{' '}
+            {matchingNotes.length + matchingReminders.length + matchingLists.length === 1 ? 'result' : 'results'}
+          </span>}
+          {activeMainView !== 'Reminders' && activeMainView !== 'Trash' && <button type="button" className="primary-button" disabled={loading || switchingNote} onClick={async () => {
+            if (activeMainView === 'Notes' && !query) {
+              if (await changeSelection({})) { setView('Notes'); setSearch(''); setMetadataEdit('title'); }
+            } else {
+              openNoteDialog({});
+            }
+          }}>+ New Note</button>}
+          {activeMainView !== 'Notes' && activeMainView !== 'Trash' && <button type="button" className="primary-button" disabled={loading}
+            onClick={() => setReminderEditor({ list_id: selectedListId })}>+ New Reminder</button>}
+        </div>
       </div>
     </div>
     {error && <p className="nr-error" role="alert">{error}</p>}

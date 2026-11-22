@@ -206,10 +206,6 @@ button {
   color: var(--family-primary-strong);
 }
 
-.medical-reports-heading {
-  margin-bottom: 22px;
-}
-
 .medical-report-card {
   padding: 22px;
   border: 1px solid var(--family-border);
@@ -231,6 +227,13 @@ button {
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 20px;
   font-weight: 500;
+}
+
+.medical-report-caption {
+  margin: 6px 0 0;
+  color: #7a877c;
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .medical-report-header time {
@@ -1243,8 +1246,6 @@ button {
   font-size: 20px;
   line-height: 1;
 }
-
-.giving-header { margin-bottom: 18px; }
 
 .section-tabs {
   display: flex;

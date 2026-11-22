@@ -386,26 +386,7 @@ const AccountManagement = forwardRef(function AccountManagement({
 
   return (
     <section className="page-content account-page" aria-labelledby="accounts-heading">
-      <header className="section-header account-heading">
-        <div>
-          <h1 id="accounts-heading">User accounts</h1>
-          <p>
-            {isSuperAdmin && accountSection === 'settings'
-              ? 'Changes apply only to your primary family workspace.'
-              : 'Assign module and family-member access to each account. Only super admins can change family information.'}
-          </p>
-        </div>
-        {!isSuperAdmin && (
-          <button
-            className="account-submit"
-            disabled={isPromoting}
-            onClick={handleSelfPromotion}
-            type="button"
-          >
-            {isPromoting ? 'Creating independent family copy…' : 'Become a super admin'}
-          </button>
-        )}
-      </header>
+      <h1 id="accounts-heading" className="visually-hidden">User accounts</h1>
 
       {isSuperAdmin && (
         <nav className="section-tabs" aria-label="Account management">
@@ -439,7 +420,10 @@ const AccountManagement = forwardRef(function AccountManagement({
             aria-labelledby="family-appearance-heading"
           >
             <div className="panel-heading">
-              <div><h2 id="family-appearance-heading">Family appearance</h2></div>
+              <div>
+                <h2 id="family-appearance-heading">Family appearance</h2>
+                <p>Changes apply only to your primary family workspace.</p>
+              </div>
             </div>
             {!isPrimaryWorkspace && (
               <p className="account-muted">Refresh the page to access your primary family workspace.</p>
@@ -517,19 +501,32 @@ const AccountManagement = forwardRef(function AccountManagement({
                 : 'Manage users in your family workspace. Become a super admin to manage a separate copy of your family tree.'}
             </p>
           </div>
-        <button
-          className="primary-button"
-          type="button"
-          disabled={isLoading}
-          onClick={() => {
-            setError('');
-            setNotice('');
-            setIsCreateOpen(true);
-          }}
-        >
-          <span aria-hidden="true">＋</span> Create an account
-        </button>
+          <div className="account-panel-actions">
+            {!isSuperAdmin && (
+              <button
+                className="secondary-button"
+                disabled={isPromoting}
+                onClick={handleSelfPromotion}
+                type="button"
+              >
+                {isPromoting ? 'Creating independent family copy…' : 'Become a super admin'}
+              </button>
+            )}
+            <button
+              className="primary-button"
+              type="button"
+              disabled={isLoading}
+              onClick={() => {
+                setError('');
+                setNotice('');
+                setIsCreateOpen(true);
+              }}
+            >
+              <span aria-hidden="true">＋</span> Create an account
+            </button>
+          </div>
         </div>
+        <p className="family-readonly-note">Only super admins can change family information.</p>
         <div className="member-toolbar">
           <label className="search-box">
             <span className="search-icon" aria-hidden="true">⌕</span>

@@ -78,7 +78,33 @@ test('shows the family illustration on the logo introduction, not the family pag
   expect(container.querySelector('.introduction-hero .welcome-art')).toBeInTheDocument();
 });
 
-test('section headers omit eyebrow text while keeping page titles', async () => {
+test('orders the main sections consistently in navigation and introduction', async () => {
+  render(<App />);
+  const nav = await screen.findByRole('navigation', { name: 'Main navigation' });
+  const buttons = within(nav).getAllByRole('button');
+  ['User accounts', 'Family', 'Notes & Reminders', 'Gifts & Giving', 'Medical reports']
+    .forEach((name, index) => expect(buttons[index]).toHaveAccessibleName(name));
+  expect(buttons).toHaveLength(5);
+
+  const sections = screen.getByLabelText('Available sections');
+  expect(within(sections).getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent))
+    .toEqual(['Family members & tree', 'Notes & Reminders', 'Gift', 'Charity', 'Medical reports']);
+});
+
+test('preserves section order for accounts with limited access', async () => {
+  const user = { id: 2, role: 'user', email: 'family@example.com', accessPages: ['medical', 'charity', 'notes'] };
+  global.fetch = jest.fn((url) => Promise.resolve(
+    url === '/api/auth/me' ? apiResponse({ user }) : apiResponse([])
+  ));
+  render(<App />);
+  const nav = await screen.findByRole('navigation', { name: 'Main navigation' });
+  const buttons = within(nav).getAllByRole('button');
+  expect(buttons).toHaveLength(3);
+  ['Notes & Reminders', 'Gifts & Giving', 'Medical reports']
+    .forEach((name, index) => expect(buttons[index]).toHaveAccessibleName(name));
+});
+
+test('modules keep accessible page titles without repeated banners', async () => {
   const { container } = render(<App />);
   await screen.findByRole('heading', { name: 'Your family, all in one place.' });
   for (const [button, heading] of [
@@ -89,9 +115,25 @@ test('section headers omit eyebrow text while keeping page titles', async () => 
     ['Notes & Reminders', 'Notes & Reminders'],
   ]) {
     fireEvent.click(screen.getByRole('button', { name: button, exact: true }));
-    expect(await screen.findByRole('heading', { name: heading, level: 1 })).toBeInTheDocument();
-    expect(container.querySelector('.section-header .eyebrow, .section-header .nr-eyebrow')).toBeNull();
+    expect(await screen.findByRole('heading', { name: heading, level: 1 })).toHaveClass('visually-hidden');
+    expect(container.querySelector('.page-content .section-header')).not.toBeInTheDocument();
   }
+});
+
+test('keeps Family navigation and breadcrumb without a repeated banner', async () => {
+  const { container } = await renderOnFamilyMembers();
+  expect(screen.getByRole('button', { name: 'Family', exact: true })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByRole('heading', { name: 'Family', level: 1 })).toHaveClass('visually-hidden');
+  expect(container.querySelector('.breadcrumb')).toHaveTextContent('Family space / Family members');
+  expect(container.querySelector('#members .section-header')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Family graph' }));
+  expect(container.querySelector('.breadcrumb')).toHaveTextContent('Family space / Family graph');
+  fireEvent.click(screen.getByRole('button', { name: 'Important dates' }));
+  expect(container.querySelector('.breadcrumb')).toHaveTextContent('Family space / Important dates');
+  fireEvent.click(screen.getByRole('button', { name: 'Medical reports' }));
+  expect(screen.getByRole('heading', { name: 'Medical reports', level: 1 }))
+    .toHaveClass('visually-hidden');
 });
 
 test('switches between family members, family graph, and important dates', async () => {
@@ -684,11 +726,9 @@ test('records gifts and charity from their respective panels', async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Gifts & Giving' }));
   await screen.findByText('No gifts logged yet');
   await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/charity-records'));
-  const header = screen.getByRole('heading', { name: 'Gifts & Giving' }).closest('header');
+  expect(screen.getByRole('heading', { name: 'Gifts & Giving' })).toHaveClass('visually-hidden');
   const giftPanel = screen.getByRole('region', { name: 'Gifts by person' });
   const giftButton = within(giftPanel).getByRole('button', { name: /record a gift/i });
-  expect(within(header).queryByRole('button', { name: /record a gift/i })).not.toBeInTheDocument();
-  expect(within(header).queryByRole('button', { name: /record charity/i })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /record charity/i })).not.toBeInTheDocument();
 
   giftButton.focus();

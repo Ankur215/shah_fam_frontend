@@ -1,5 +1,8 @@
-.account-heading {
-  margin-bottom: 14px;
+.account-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .account-settings {
@@ -270,6 +273,14 @@
 }
 
 @media (max-width: 520px) {
+  .account-panel .panel-heading {
+    flex-wrap: wrap;
+  }
+
+  .account-panel-actions {
+    justify-content: flex-start;
+  }
+
   .account-access {
     flex-basis: 100%;
   }

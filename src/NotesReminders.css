@@ -4,7 +4,7 @@
   color: var(--family-text);
 }
 
-.nr-header-actions, .nr-card-top, .nr-card-footer,
+.nr-card-top, .nr-card-footer,
 .nr-reminder, .nr-reminder-main, .nr-actions,
 .nr-calendar-header, .nr-form-footer {
   display: flex;
@@ -44,6 +44,7 @@
 .nr-subnav button.nr-subnav-active { border-bottom-color: var(--family-primary); color: var(--family-primary-strong); }
 .nr-search-panel { padding-top: 0; padding-bottom: 0; }
 .nr-search-toolbar { border: 0; }
+.nr-search-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
 .nr-form label { font-size: 11px; font-weight: 700; color: var(--family-heading); }
 .nr-form input, .nr-form textarea, .nr-form select {
   width: 100%;
@@ -246,8 +247,7 @@
 
 @media (max-width: 700px) {
   .notes-reminders-container { gap: 18px; }
-  .nr-header-actions { width: 100%; flex-wrap: wrap; }
-  .nr-header-actions .primary-button { flex: 1 1 auto; }
+  .nr-search-actions { width: 100%; }
   .nr-calendar-layout { grid-template-columns: 1fr; }
   .nr-dashboard-columns { grid-template-columns: 1fr; }
   .nr-note-workspace { grid-template-columns: 1fr; min-height: 420px; }
