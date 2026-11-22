@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react';
 import './AccountManagement.css';
 import { API_URL, apiFetch, readApiResponse } from './api';
 import FAMILY_THEMES from './familyThemes';
@@ -71,10 +71,10 @@ function FamilyMemberAccessFieldset({ familyMembers, selectedIds, onChange }) {
   );
 }
 
-function AccountManagement({
+const AccountManagement = forwardRef(function AccountManagement({
   authUser = { role: 'admin' },
   onUserUpdated = () => {},
-}) {
+}, ref) {
   const isSuperAdmin = authUser.role === 'super_admin';
   const isPrimaryWorkspace = Boolean(authUser.workspaceId)
     && Number(authUser.workspaceId) === Number(authUser.currentWorkspaceId);
@@ -106,6 +106,9 @@ function AccountManagement({
   const [isPromoting, setIsPromoting] = useState(false);
   const [isSavingAppearance, setIsSavingAppearance] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState(null);
+  useImperativeHandle(ref, () => ({
+    openFirstTab: () => setAccountSection('accounts'),
+  }), []);
 
   const loadUsers = useCallback(async () => {
     setIsLoading(true);
@@ -728,6 +731,6 @@ function AccountManagement({
       )}
     </section>
   );
-}
+});
 
 export default AccountManagement;

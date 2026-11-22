@@ -468,6 +468,7 @@ function App() {
   const [familyTab, setFamilyTab] = useState('members');
   const [givingHeaderActions, setGivingHeaderActions] = useState(null);
   const notesModuleRef = useRef(null);
+  const accountModuleRef = useRef(null);
   const [search, setSearch] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
@@ -839,9 +840,10 @@ function App() {
     }
   }
 
-  async function navigateTo(page) {
+  async function navigateTo(page, { resetFamily = false } = {}) {
     if (activePage === 'notes' && page !== 'notes' &&
         notesModuleRef.current && !(await notesModuleRef.current.flush())) return;
+    if (resetFamily) setFamilyTab('members');
     setActivePage(page);
   }
 
@@ -911,7 +913,10 @@ function App() {
               className={`nav-item ${activePage === 'accounts' ? 'nav-item-active' : ''}`}
               type="button"
               aria-current={activePage === 'accounts' ? 'page' : undefined}
-              onClick={() => navigateTo('accounts')}
+              onClick={() => {
+                if (activePage === 'accounts') accountModuleRef.current?.openFirstTab();
+                else navigateTo('accounts');
+              }}
             >
               <span className="nav-icon" aria-hidden="true">♙</span>
               User accounts
@@ -925,7 +930,7 @@ function App() {
               className={`nav-item ${activePage === 'members' ? 'nav-item-active' : ''}`}
               type="button"
               aria-current={activePage === 'members' ? 'page' : undefined}
-              onClick={() => navigateTo('members')}
+              onClick={() => navigateTo('members', { resetFamily: true })}
             >
               <span className="nav-icon" aria-hidden="true">⌂</span>
               Family
@@ -947,11 +952,7 @@ function App() {
               }`}
               type="button"
               aria-current={activePage === 'gifts' || activePage === 'charity' ? 'page' : undefined}
-              onClick={() => navigateTo(
-                activePage === 'charity' && hasCharityPageAccess
-                  ? 'charity'
-                  : hasGiftsPageAccess ? 'gifts' : 'charity'
-              )}
+              onClick={() => navigateTo(hasGiftsPageAccess ? 'gifts' : 'charity')}
             >
               <span className="nav-icon" aria-hidden="true">▤</span>
               Gifts & Giving
@@ -962,7 +963,10 @@ function App() {
               className={`nav-item ${activePage === 'notes' ? 'nav-item-active' : ''}`}
               type="button"
               aria-current={activePage === 'notes' ? 'page' : undefined}
-              onClick={() => navigateTo('notes')}
+              onClick={() => {
+                if (activePage === 'notes') notesModuleRef.current?.openFirstTab();
+                else navigateTo('notes');
+              }}
             >
               <span className="nav-icon" aria-hidden="true">📝</span>
               Notes &amp; Reminders
@@ -1122,6 +1126,7 @@ function App() {
           </section>
         ) : activePage === 'accounts' && ['admin', 'super_admin'].includes(authUser.role) ? (
           <AccountManagement
+            ref={accountModuleRef}
             authUser={authUser}
             onUserUpdated={(user) => {
               setAuthUser(user);

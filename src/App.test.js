@@ -111,6 +111,62 @@ test('switches between family members, family graph, and important dates', async
   expect(screen.getByRole('heading', { name: 'Your people' })).toBeInTheDocument();
 });
 
+test('sidebar opens the first tab of family, giving, accounts, and notes', async () => {
+  await renderOnFamilyMembers();
+  const sidebar = screen.getByRole('navigation', { name: 'Main navigation' });
+  fireEvent.click(screen.getByRole('button', { name: 'Important dates' }));
+  await screen.findByRole('heading', { name: 'Important dates' });
+  fireEvent.click(within(sidebar).getByRole('button', { name: 'Family', exact: true }));
+  expect(screen.getByRole('button', { name: 'Family members' })).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(screen.getByRole('button', { name: 'Family graph' }));
+  fireEvent.click(within(sidebar).getByRole('button', { name: 'Medical reports' }));
+  fireEvent.click(within(sidebar).getByRole('button', { name: 'Family', exact: true }));
+  expect(screen.getByRole('button', { name: 'Family members' })).toHaveAttribute('aria-pressed', 'true');
+
+  fireEvent.click(within(sidebar).getByRole('button', { name: 'Gifts & Giving' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Charity', exact: true }));
+  fireEvent.click(within(sidebar).getByRole('button', { name: 'Gifts & Giving' }));
+  expect(screen.getByRole('button', { name: 'Gift', exact: true })).toHaveAttribute('aria-pressed', 'true');
+
+  fireEvent.click(within(sidebar).getByRole('button', { name: 'User accounts' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+  fireEvent.click(within(sidebar).getByRole('button', { name: 'User accounts' }));
+  expect(within(screen.getByRole('navigation', { name: 'Account management' }))
+    .getByRole('button', { name: 'User accounts' })).toHaveAttribute('aria-pressed', 'true');
+
+  fireEvent.click(within(sidebar).getByRole('button', { name: 'Notes & Reminders' }));
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Reminders', exact: true }));
+  fireEvent.click(within(sidebar).getByRole('button', { name: 'Notes & Reminders' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page'));
+});
+
+test('sidebar reset keeps unsaved note edits when saving fails', async () => {
+  const note = { id: 1, title: 'Plans', content: 'Before', tags: [], is_pinned: true, updated_at: '2026-01-01' };
+  global.fetch = jest.fn((url, options) => Promise.resolve(
+    url === '/api/auth/me' ? authenticatedResponse()
+      : options?.method === 'PUT' ? apiResponse({ error: 'Save failed' }, 503)
+        : url === '/api/notes' ? apiResponse([note]) : apiResponse([])
+  ));
+  render(<App />);
+  const sidebar = await screen.findByRole('navigation', { name: 'Main navigation' });
+  fireEvent.click(within(sidebar).getByRole('button', { name: 'Notes & Reminders' }));
+  await screen.findByText('Plans');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  fireEvent.click(content);
+  fireEvent.click(screen.getByLabelText('Text formatting'));
+  fireEvent.click(screen.getByRole('button', { name: 'Heading' }));
+  fireEvent.click(within(sidebar).getByRole('button', { name: 'Family', exact: true }));
+  expect(await screen.findByText('Failed to save note: Save failed')).toBeInTheDocument();
+  expect(within(content).getByRole('heading', { name: 'Before' })).toBeInTheDocument();
+  fireEvent.click(within(sidebar).getByRole('button', { name: 'Notes & Reminders' }));
+  await waitFor(() => expect(screen.getByText('Failed to save note: Save failed')).toBeInTheDocument());
+  expect(within(content).getByRole('heading', { name: 'Before' })).toBeInTheDocument();
+  expect(within(screen.getByRole('navigation', { name: 'Notes and reminders navigation' }))
+    .getByRole('button', { name: 'Notes' })).toHaveAttribute('aria-current', 'page');
+});
+
 test('shows the family member empty state after loading members from the API', async () => {
   render(<App />);
 
@@ -456,6 +512,8 @@ test('opens charity directly when it is the only giving section granted', async 
   expect(screen.queryByRole('button', { name: 'Gift' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /record a gift/i })).not.toBeInTheDocument();
   expect(global.fetch).not.toHaveBeenCalledWith('/api/gifts');
+  fireEvent.click(screen.getByRole('button', { name: 'Gifts & Giving' }));
+  expect(screen.getByRole('button', { name: 'Charity' })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('shows the next upcoming birthday or wedding anniversary', async () => {

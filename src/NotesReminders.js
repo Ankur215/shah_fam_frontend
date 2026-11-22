@@ -105,6 +105,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
   const [now, setNow] = useState(() => new Date());
 
   useImperativeHandle(ref, () => ({
+    openFirstTab: () => switchView('Dashboard'),
     async flush() {
       if (switching.current) return false;
       switching.current = true;
