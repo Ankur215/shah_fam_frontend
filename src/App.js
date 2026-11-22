@@ -25,13 +25,13 @@ const MODULES = [
   },
   {
     id: 'gifts',
-    name: 'Gift log',
+    name: 'Gift',
     description: 'Record gifts given to or received from family and friends.',
     icon: '▤',
   },
   {
     id: 'charity',
-    name: 'Charity work',
+    name: 'Charity',
     description: 'Keep a record of charitable activities and contributions.',
     icon: '♡',
   },
@@ -1026,9 +1026,9 @@ function App() {
               : activePage === 'graph'
                 ? 'Family graph'
                 : activePage === 'gifts'
-                  ? 'Gift log'
+                  ? 'Gift'
                   : activePage === 'charity'
-                    ? 'Charity work'
+                    ? 'Charity'
                     : activePage === 'notes'
                       ? 'Notes & Reminders'
                     : activePage === 'accounts'
@@ -1473,8 +1473,8 @@ function App() {
               <div className="giving-header-actions" ref={setGivingHeaderActions} />
             </header>
             <nav className="section-tabs" aria-label="Gifts and giving sections">
-              {hasGiftsPageAccess && <button type="button" className={activePage === 'gifts' ? 'active' : ''} aria-pressed={activePage === 'gifts'} onClick={() => navigateTo('gifts')}>Gift log</button>}
-              {hasCharityPageAccess && <button type="button" className={activePage === 'charity' ? 'active' : ''} aria-pressed={activePage === 'charity'} onClick={() => navigateTo('charity')}>Charity work</button>}
+              {hasGiftsPageAccess && <button type="button" className={activePage === 'gifts' ? 'active' : ''} aria-pressed={activePage === 'gifts'} onClick={() => navigateTo('gifts')}>Gift</button>}
+              {hasCharityPageAccess && <button type="button" className={activePage === 'charity' ? 'active' : ''} aria-pressed={activePage === 'charity'} onClick={() => navigateTo('charity')}>Charity</button>}
             </nav>
             {hasGiftsPageAccess && (
               <GiftLog

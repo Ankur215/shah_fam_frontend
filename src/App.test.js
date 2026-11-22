@@ -176,9 +176,9 @@ test('opens introduction from the logo and explains account module access', asyn
     .toHaveTextContent('Available');
   expect(screen.getByText('Medical reports').parentElement)
     .toHaveTextContent('Ask your super admin');
-  expect(screen.getByText('Gift log').parentElement)
+  expect(screen.getByText('Gift').parentElement)
     .toHaveTextContent('Ask your super admin');
-  expect(screen.getByText('Charity work').parentElement)
+  expect(screen.getByText('Charity').parentElement)
     .toHaveTextContent('Ask your super admin');
   expect(screen.getByText('Family members & tree').closest('.introduction-module-column'))
     .toHaveAttribute('aria-label', 'Available sections');
@@ -400,11 +400,11 @@ test('shows only the gifts and charity modules granted to a regular user', async
 
   const menuButton = await screen.findByRole('button', { name: /gifts & giving/i });
   fireEvent.click(menuButton);
-  expect(await screen.findByRole('button', { name: 'Gift log' })).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Charity work' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /record charity work/i })).not.toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: 'Gift' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Charity' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /record charity/i })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /family members/i })).not.toBeInTheDocument();
-  expect(await screen.findByRole('region', { name: 'Gift log' })).toBeInTheDocument();
+  expect(await screen.findByRole('region', { name: 'Gift' })).toBeInTheDocument();
   expect(global.fetch).not.toHaveBeenCalledWith('/api/charity-records');
 });
 
@@ -415,9 +415,9 @@ test('opens charity directly when it is the only giving section granted', async 
   ));
   render(<App />);
   fireEvent.click(await screen.findByRole('button', { name: 'Gifts & Giving' }));
-  expect(await screen.findByRole('region', { name: 'Charity work' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Charity work' })).toHaveAttribute('aria-pressed', 'true');
-  expect(screen.queryByRole('button', { name: 'Gift log' })).not.toBeInTheDocument();
+  expect(await screen.findByRole('region', { name: 'Charity' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Charity' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.queryByRole('button', { name: 'Gift' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /record a gift/i })).not.toBeInTheDocument();
   expect(global.fetch).not.toHaveBeenCalledWith('/api/gifts');
 });
@@ -515,7 +515,7 @@ test('moves a family member and saves the reordered sequence', async () => {
   });
 });
 
-test('opens the gift log from the main navigation', async () => {
+test('opens gifts from the main navigation', async () => {
   render(<App />);
 
   fireEvent.click(await screen.findByRole('button', { name: /gifts & giving/i }));
@@ -523,22 +523,22 @@ test('opens the gift log from the main navigation', async () => {
   expect(
     await screen.findByRole('heading', { name: 'Gifts by person' })
   ).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Gift log' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('button', { name: 'Gift' })).toHaveAttribute('aria-pressed', 'true');
   expect(global.fetch).toHaveBeenCalledWith('/api/gifts');
 });
 
-test('opens the charity work section from the main navigation', async () => {
+test('opens the charity section from the main navigation', async () => {
   render(<App />);
 
   fireEvent.click(await screen.findByRole('button', { name: /gifts & giving/i }));
-  fireEvent.click(screen.getByRole('button', { name: 'Charity work' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Charity' }));
 
   expect(
     await screen.findByRole('heading', { name: 'All charity records' })
   ).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Charity work' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('button', { name: 'Charity' })).toHaveAttribute('aria-pressed', 'true');
   expect(global.fetch).toHaveBeenCalledWith('/api/charity-records');
-  fireEvent.click(screen.getByRole('button', { name: 'Gift log' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Gift' }));
   expect(await screen.findByRole('heading', { name: 'Gifts by person' })).toBeInTheDocument();
 });
 
@@ -549,18 +549,18 @@ test('record buttons stay in the giving header and open the correct section', as
   await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/charity-records'));
   const header = screen.getByRole('heading', { name: 'Gifts & Giving' }).closest('header');
   const giftButton = within(header).getByRole('button', { name: /record a gift/i });
-  const charityButton = within(header).getByRole('button', { name: /record charity work/i });
+  const charityButton = within(header).getByRole('button', { name: /record charity/i });
 
   charityButton.focus();
   fireEvent.click(charityButton);
-  expect(screen.getByRole('button', { name: 'Charity work', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  expect(screen.getByRole('dialog', { name: 'Record charity work' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Charity', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('dialog', { name: 'Record charity' })).toBeInTheDocument();
   fireEvent.keyDown(document, { key: 'Escape' });
   expect(charityButton).toHaveFocus();
 
   giftButton.focus();
   fireEvent.click(giftButton);
-  expect(screen.getByRole('button', { name: 'Gift log' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('button', { name: 'Gift' })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.getByRole('dialog', { name: 'Record a gift' })).toBeInTheDocument();
   fireEvent.keyDown(document, { key: 'Escape' });
   expect(giftButton).toHaveFocus();

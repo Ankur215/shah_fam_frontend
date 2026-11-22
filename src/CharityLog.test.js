@@ -14,7 +14,7 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-test('loads and shows every charity work record newest first', async () => {
+test('loads and shows every charity record newest first', async () => {
   global.fetch = jest.fn().mockResolvedValue(
     apiResponse([
       {
@@ -90,8 +90,8 @@ test('saves a charity record with amount, activity, and notes in order', async (
   const { container } = render(<CharityLog />);
 
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: /record charity work/i }));
-  expect(screen.getByRole('dialog', { name: 'Record charity work' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /record charity/i }));
+  expect(screen.getByRole('dialog', { name: 'Record charity' })).toBeInTheDocument();
   expect(
     [...container.querySelectorAll('.charity-form-grid input:not([type="checkbox"]), .charity-form-grid select, .charity-form-grid textarea')]
       .map((field) => field.name)
@@ -196,7 +196,7 @@ test('selects multiple family members and preserves selections when editing', as
     .mockResolvedValueOnce(apiResponse({ ...record, familyMemberIds: [6] }));
   render(<CharityLog familyMembers={members} />);
 
-  fireEvent.click(screen.getByRole('button', { name: /record charity work/i }));
+  fireEvent.click(screen.getByRole('button', { name: /record charity/i }));
   fireEvent.change(screen.getByLabelText(/organization \/ charity/i), {
     target: { value: 'Food Bank' },
   });
@@ -323,5 +323,5 @@ test('edits and deletes an existing charity record', async () => {
   expect(global.fetch).toHaveBeenLastCalledWith('/api/charity-records/12', {
     method: 'DELETE',
   });
-  expect(await screen.findByText('No charity work recorded yet')).toBeInTheDocument();
+  expect(await screen.findByText('No charity recorded yet')).toBeInTheDocument();
 });

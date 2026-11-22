@@ -7,8 +7,8 @@ import FormDialog from './FormDialog';
 const ACCESS_MODULES = {
   family: 'Family members and family tree',
   medical: 'Medical reports',
-  gifts: 'Gift log',
-  charity: 'Charity work',
+  gifts: 'Gift',
+  charity: 'Charity',
   notes: 'Notes & Reminders',
 };
 const DEFAULT_ACCESS_PAGES = ['family', 'medical'];

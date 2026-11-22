@@ -236,10 +236,10 @@ function CharityLog({
         }
         if (isCurrent) setRecords(sortRecords(data));
       } catch (loadError) {
-        console.error('Could not load charity work records from the API.', loadError);
+        console.error('Could not load charity records from the API.', loadError);
         if (isCurrent) {
           setError(
-            `Could not load charity work records. ${loadError.message || 'Check that the API is running.'}`
+            `Could not load charity records. ${loadError.message || 'Check that the API is running.'}`
           );
           setIsLoadError(true);
         }
@@ -307,9 +307,9 @@ function CharityLog({
       setSelectedFamilyMemberIds([]);
       setIsFormOpen(false);
     } catch (saveError) {
-      console.error('Could not save charity work through the API.', saveError);
+      console.error('Could not save charity through the API.', saveError);
       setError(
-        `Could not ${editingRecord ? 'update' : 'save'} charity work. ${saveError.message || 'Check that the API and database are available.'}`
+        `Could not ${editingRecord ? 'update' : 'save'} charity. ${saveError.message || 'Check that the API and database are available.'}`
       );
     } finally {
       setIsSaving(false);
@@ -337,9 +337,9 @@ function CharityLog({
       );
       if (editingRecord?.id === record.id) setEditingRecord(null);
     } catch (deleteError) {
-      console.error('Could not delete charity work through the API.', deleteError);
+      console.error('Could not delete charity through the API.', deleteError);
       setError(
-        `Could not delete charity work. ${deleteError.message || 'Check that the API and database are available.'}`
+        `Could not delete charity. ${deleteError.message || 'Check that the API and database are available.'}`
       );
     } finally {
       setDeletingRecordId(null);
@@ -377,7 +377,7 @@ function CharityLog({
       }
       setRecords(sortRecords(savedRecords));
     } catch (reorderError) {
-      console.error('Could not reorder charity work records through the API.', reorderError);
+      console.error('Could not reorder charity records through the API.', reorderError);
       setRecords(previousRecords);
       setError(
         `Could not reorder charity records. ${reorderError.message || 'Check that the API and database are available.'}`
@@ -415,12 +415,12 @@ function CharityLog({
         setIsFormOpen(true);
       }}
     >
-      + Record charity work
+      + Record charity
     </button>
   );
 
   return (
-    <section className="charity-page" aria-label="Charity work" hidden={hidden}>
+    <section className="charity-page" aria-label="Charity" hidden={hidden}>
       {actionContainer
         ? createPortal(recordButton, actionContainer)
         : <div className="charity-page-actions">{recordButton}</div>}
@@ -445,7 +445,7 @@ function CharityLog({
       <div className="charity-layout">
         {isFormOpen && (
         <FormDialog
-          title={editingRecord ? 'Edit charity record' : 'Record charity work'}
+          title={editingRecord ? 'Edit charity record' : 'Record charity'}
           description="Capture donations, goods, volunteering, and other contributions."
           onClose={closeCharityForm}
           isBusy={isSaving}
@@ -476,7 +476,7 @@ function CharityLog({
                 name="activity"
                 required
                 maxLength="200"
-                placeholder="Describe the charity work"
+                placeholder="Describe the charity activity"
                 defaultValue={editingRecord?.activity || ''}
               />
             </label>
@@ -551,8 +551,8 @@ function CharityLog({
               <legend>Family members for this charity record</legend>
               <p id="charity-family-member-help">
                 Select family members to share this record with people who have
-                Charity work access and access to any selected member. When no
-                members are linked, people with Charity work access in this workspace
+                Charity access and access to any selected member. When no
+                members are linked, people with Charity access in this workspace
                 can see it.
               </p>
               {editingRecord?.hasOtherFamilyMembers && (
@@ -639,7 +639,7 @@ function CharityLog({
             <div className="charity-empty-state">Charity records are unavailable right now.</div>
           ) : records.length === 0 ? (
             <div className="charity-empty-state">
-              <h3>No charity work recorded yet</h3>
+              <h3>No charity recorded yet</h3>
               <p>Your family’s contributions will be saved here.</p>
             </div>
           ) : (

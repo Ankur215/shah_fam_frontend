@@ -384,7 +384,7 @@ function GiftLog({
   );
 
   return (
-    <section className="gift-page" aria-label="Gift log" hidden={hidden}>
+    <section className="gift-page" aria-label="Gift" hidden={hidden}>
       {actionContainer
         ? createPortal(recordButton, actionContainer)
         : <div className="gift-page-actions">{recordButton}</div>}
@@ -550,13 +550,13 @@ function GiftLog({
             <fieldset className="gift-member-link gift-form-full">
               <legend>Family members for this gift</legend>
               <p id="gift-family-member-help">
-                Select family members to share this gift with people who have Gift log
+                Select family members to share this gift with people who have Gift
                 access and access to any selected member.
                 {editingGift?.workspaceVisible === false &&
                   !(editingGift.familyMemberIds || []).length &&
                   !editingGift.hasOtherFamilyMembers
                   ? ' This older unlinked family gift remains visible only to the workspace super admin.'
-                  : ' When no members are linked, people with Gift log access in this workspace can see it.'}
+                  : ' When no members are linked, people with Gift access in this workspace can see it.'}
               </p>
               {editingGift?.hasOtherFamilyMembers && (
                 <p>Additional family members you cannot access will remain selected.</p>

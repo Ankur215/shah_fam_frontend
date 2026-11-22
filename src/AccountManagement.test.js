@@ -176,15 +176,15 @@ test('lists accounts and lets an administrator create a normal user', async () =
   fireEvent.change(screen.getByLabelText('Temporary password'), {
     target: { value: 'a-secure-family-password' },
   });
-  fireEvent.click(screen.getByLabelText('Gift log'));
-  fireEvent.click(screen.getByLabelText('Charity work'));
+  fireEvent.click(screen.getByLabelText('Gift'));
+  fireEvent.click(screen.getByLabelText('Charity'));
   fireEvent.click(screen.getByRole('button', { name: 'Create normal user account' }));
 
   const accountRow = await screen.findByText('family@example.com');
   const row = within(accountRow.closest('li'));
   expect(row.getByText('Normal user')).toBeInTheDocument();
   expect(
-    row.getByText('Family members and family tree, Medical reports, Gift log, Charity work')
+    row.getByText('Family members and family tree, Medical reports, Gift, Charity')
   ).toBeInTheDocument();
   expect(
     row.getByText('Normal user').compareDocumentPosition(accountRow) &
@@ -447,7 +447,7 @@ test('lets an administrator update a normal user account', async () => {
   fireEvent.click(
     within(editForm).getByLabelText('Family members and family tree')
   );
-  fireEvent.click(within(editForm).getByLabelText('Gift log'));
+  fireEvent.click(within(editForm).getByLabelText('Gift'));
   expect(within(editForm).getByLabelText('Asha Shah (Family)')).toBeChecked();
   fireEvent.click(within(editForm).getByLabelText('Asha Shah (Family)'));
   fireEvent.change(
@@ -460,7 +460,7 @@ test('lets an administrator update a normal user account', async () => {
 
   const updatedAccount = await screen.findByText('updated-family@example.com');
   expect(
-    within(updatedAccount.closest('li')).getByText('Medical reports, Gift log')
+    within(updatedAccount.closest('li')).getByText('Medical reports, Gift')
   ).toBeInTheDocument();
   expect(global.fetch).toHaveBeenLastCalledWith('/api/auth/users/2', {
     method: 'PUT',
