@@ -104,7 +104,7 @@ function GiftEntry({
         </div>
       </div>
       <h4>{gift.occasion || gift.giftName}</h4>
-      <div className="gift-record-details">
+      {(gift.occasion || gift.amount) && <div className="gift-record-details">
         {gift.occasion && (
           <span className="gift-record-gift">Gift: {gift.giftName}</span>
         )}
@@ -113,7 +113,7 @@ function GiftEntry({
             {gift.amount}{gift.currency ? ` ${gift.currency}` : ''}
           </span>
         )}
-      </div>
+      </div>}
       {gift.notes && <p className="gift-notes">{gift.notes}</p>}
     </article>
   );
@@ -534,7 +534,7 @@ function GiftLog({
                 maxLength="3"
                 placeholder="USD / INR"
                 aria-label="Currency code"
-                defaultValue={editingGift?.currency || ''}
+                defaultValue={editingGift ? editingGift.currency || '' : 'USD'}
               />
             </label>
             <label className="gift-form-full">

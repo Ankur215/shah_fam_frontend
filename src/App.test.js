@@ -621,6 +621,30 @@ test('opens gifts from the main navigation', async () => {
   expect(global.fetch).toHaveBeenCalledWith('/api/gifts');
 });
 
+test('does not leave or duplicate giving sections when navigating between family and gifts', async () => {
+  const gift = {
+    id: 8, recipientName: 'Maya Patel', recipientType: 'Friend',
+    direction: 'Given', giftName: 'Photo album', occasion: '',
+    dateGiven: '2025-11-12', amount: '', currency: '', notes: '',
+  };
+  global.fetch = jest.fn((url) => Promise.resolve(
+    url === '/api/auth/me'
+      ? apiResponse({ user: { id: 1, email: 'admin@example.com', role: 'super_admin', workspaceId: 1 } })
+      : url === '/api/gifts' ? apiResponse([gift]) : apiResponse([])
+  ));
+  await renderOnFamilyMembers();
+  const sidebar = screen.getByRole('navigation', { name: 'Main navigation' });
+  for (let i = 0; i < 2; i += 1) {
+    fireEvent.click(within(sidebar).getByRole('button', { name: 'Gifts & Giving' }));
+    expect(await screen.findAllByRole('heading', { name: 'Gifts by person' })).toHaveLength(1);
+    expect(await screen.findAllByRole('button', { name: /Maya Patel/ })).toHaveLength(1);
+    fireEvent.click(within(sidebar).getByRole('button', { name: 'Family', exact: true }));
+    expect(screen.getByRole('heading', { name: 'Your people' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Gifts by person', hidden: true })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'All charity records', hidden: true })).not.toBeInTheDocument();
+  }
+});
+
 test('opens the charity section from the main navigation', async () => {
   render(<App />);
 

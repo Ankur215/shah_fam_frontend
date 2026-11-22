@@ -28,16 +28,16 @@
 .gift-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 17px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .gift-stat-card {
   display: flex;
-  min-height: 75px;
+  min-height: 62px;
   align-items: center;
   gap: 13px;
-  padding: 12px 17px;
+  padding: 9px 14px;
   border: 1px solid var(--family-border);
   border-radius: 10px;
   background: #fff;
@@ -287,7 +287,7 @@
 .gift-history-heading {
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 11px;
+  margin-bottom: 9px;
 }
 
 .gift-history-count {
@@ -351,7 +351,7 @@
 .gift-group-toggle {
   display: flex;
   width: 100%;
-  min-height: 65px;
+  min-height: 56px;
   align-items: center;
   gap: 11px;
   padding: 10px 12px;
@@ -395,7 +395,7 @@
 .gift-group-summary strong {
   overflow: hidden;
   color: var(--family-text);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -428,16 +428,23 @@
 }
 
 .gift-group-records {
-  padding: 0 13px;
+  padding: 10px;
   border-top: 1px solid var(--family-border);
+}
+
+.gift-group-records:not([hidden]) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  align-items: start;
+  gap: 10px;
 }
 
 .gift-direction-group {
-  padding: 13px 0;
-}
-
-.gift-direction-group + .gift-direction-group {
-  border-top: 1px solid var(--family-border);
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--family-border);
+  border-radius: 8px;
+  background: var(--family-soft);
 }
 
 .gift-direction-toggle {
@@ -461,12 +468,13 @@
 
 .gift-direction-title {
   color: #536457;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .gift-direction-metrics {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: flex-end;
   gap: 5px 8px;
@@ -486,6 +494,7 @@
   font-size: 9px;
   font-weight: 600;
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .gift-direction-chevron {
@@ -498,11 +507,12 @@
   margin: 0;
   padding: 10px 0 3px;
   color: #9aa29c;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .gift-record {
-  padding: 12px 0;
+  min-width: 0;
+  padding: 10px 0 2px;
 }
 
 .gift-record + .gift-record {
@@ -514,7 +524,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
 }
 
 .gift-record time {
@@ -525,7 +536,9 @@
 .gift-record-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-left: auto;
 }
 
 .gift-move-button,
@@ -592,6 +605,7 @@
   color: #3e4d42;
   font-size: 13px;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .gift-record-details {
@@ -601,7 +615,7 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 7px;
-  margin-top: 10px;
+  margin-top: 6px;
 }
 
 .gift-record-details span {
@@ -671,19 +685,17 @@
 
 @media (max-width: 480px) {
   .gift-stats {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
   }
 
   .gift-stat-card {
-    gap: 8px;
-    padding: 10px;
+    min-height: 0;
+    padding: 9px;
   }
 
   .gift-stat-icon {
-    width: 30px;
-    height: 30px;
-    font-size: 17px;
+    display: none;
   }
 
   .gift-stat-card strong {

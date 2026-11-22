@@ -71,7 +71,7 @@ test('saves a gift and displays the saved entry', async () => {
     occasion: 'Just because',
     dateGiven: '2025-10-10',
     amount: '',
-    currency: '',
+    currency: 'USD',
     notes: '',
     familyMemberId: 5,
   };
@@ -94,6 +94,7 @@ test('saves a gift and displays the saved entry', async () => {
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: /record a gift/i }));
   expect(screen.getByRole('dialog', { name: 'Record a gift' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Currency code')).toHaveValue('USD');
   expect(
     [...container.querySelectorAll('.gift-form-grid input, .gift-form-grid select, .gift-form-grid textarea')]
       .map((field) => field.name)
@@ -129,7 +130,7 @@ test('saves a gift and displays the saved entry', async () => {
       occasion: 'Just because',
       dateGiven: '2025-10-10',
       amount: '',
-      currency: '',
+      currency: 'USD',
       notes: '',
       familyMemberIds: [5],
     }),
@@ -183,7 +184,7 @@ test('records a received gift from the recipient group', async () => {
     occasion: 'Home visit',
     dateGiven: '2026-11-11',
     amount: '20.00',
-    currency: 'USD',
+    currency: 'CAD',
     notes: '',
     familyMemberIds: [],
   };
@@ -213,7 +214,7 @@ test('records a received gift from the recipient group', async () => {
     target: { value: '20.00' },
   });
   fireEvent.change(screen.getByLabelText('Currency code'), {
-    target: { value: 'USD' },
+    target: { value: 'CAD' },
   });
   fireEvent.change(screen.getByPlaceholderText('Birthday, wedding, just because…'), {
     target: { value: 'Home visit' },
@@ -232,7 +233,7 @@ test('records a received gift from the recipient group', async () => {
       occasion: 'Home visit',
       dateGiven: '2026-11-11',
       amount: '20.00',
-      currency: 'USD',
+      currency: 'CAD',
       notes: '',
       familyMemberIds: [],
     }),
@@ -374,6 +375,19 @@ test('edits a saved gift and displays the updated entry', async () => {
   expect(await screen.findByText(/Framed photo/)).toBeInTheDocument();
   expect(screen.getByText('Updated note')).toBeInTheDocument();
   expect(screen.queryByText('Photo album')).not.toBeInTheDocument();
+});
+
+test('preserves an existing blank currency when editing', async () => {
+  const gift = {
+    id: 22, recipientName: 'Maya Patel', recipientType: 'Friend',
+    direction: 'Given', giftName: 'Book', occasion: '', dateGiven: '2025-11-12',
+    amount: '10.00', currency: '', notes: '',
+  };
+  global.fetch = jest.fn().mockResolvedValue(apiResponse([gift]));
+  render(<GiftLog />);
+  fireEvent.click(await screen.findByRole('button', { name: /Maya Patel/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Edit Book gift for Maya Patel' }));
+  expect(screen.getByLabelText('Currency code')).toHaveValue('');
 });
 
 test('confirms and deletes a gift from its recipient history', async () => {

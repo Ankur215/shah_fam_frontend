@@ -1439,7 +1439,7 @@ function App() {
             {hasGiftsPageAccess && (
               <GiftLog
                 familyMembers={members}
-                key={authUser.currentWorkspaceId || authUser.workspaceId}
+                key={`gifts-${authUser.currentWorkspaceId || authUser.workspaceId}`}
                 loadFamilyMembers={!hasFamilyPageAccess}
                 actionContainer={givingHeaderActions}
                 hidden={activePage !== 'gifts'}
@@ -1449,7 +1449,7 @@ function App() {
             {hasCharityPageAccess && (
               <CharityLog
                 familyMembers={members}
-                key={authUser.currentWorkspaceId || authUser.workspaceId}
+                key={`charity-${authUser.currentWorkspaceId || authUser.workspaceId}`}
                 loadFamilyMembers={!hasFamilyPageAccess}
                 actionContainer={givingHeaderActions}
                 hidden={activePage !== 'charity'}
