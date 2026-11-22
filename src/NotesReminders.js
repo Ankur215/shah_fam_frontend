@@ -276,6 +276,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
   const query = search.trim().toLowerCase();
   const matchingNotes = notes.filter((note) =>
     matchesSearch([note.title, note.content, note.group_name, ...(note.tags || [])], query));
+  const pinnedNotes = notes.filter((note) => note.is_pinned);
   const matchingReminders = reminders.filter((reminder) =>
     matchesSearch([reminder.title, reminder.description, reminder.priority, reminder.recurrence], query));
   const pending = reminders.filter((item) => !item.is_completed)
@@ -351,7 +352,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
     groupedNotes.get(group).push(note);
   });
   const groupNames = [...groupedNotes.keys()].filter(Boolean).sort((a, b) => a.localeCompare(b));
-  const visibleNotes = view === 'Pinned' ? notes.filter((note) => note.is_pinned) : notes;
+  const visibleNotes = view === 'Pinned' ? pinnedNotes : notes;
   const visibleGroups = new Map();
   visibleNotes.forEach((note) => {
     const group = note.group_name || null;
@@ -414,8 +415,8 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
       {section('Reminders', matchingReminders, reminderList, 'No matching reminders.')}
     </> : view === 'Dashboard' ? <>
       <div className="nr-dashboard-columns">
-        <div className="nr-dashboard-column" aria-label="Recent notes">
-          {section('Recent notes', notes.slice(0, 5), noteList)}
+        <div className="nr-dashboard-column" aria-label="Pinned notes">
+          {section('Pinned notes', pinnedNotes, noteList, 'Pin a note to keep it close.')}
         </div>
         <div className="nr-dashboard-column" aria-label="Reminders overview">
           <section className="nr-dashboard-reminders">

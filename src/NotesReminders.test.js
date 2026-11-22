@@ -235,18 +235,47 @@ test('allows an untitled draft to reopen the title editor', async () => {
   expect(await screen.findByRole('dialog', { name: 'Rename note' })).toBeInTheDocument();
 });
 
-test('dashboard renders notes and reminders in separate columns', async () => {
+test('dashboard renders pinned notes and reminders in separate columns', async () => {
+  const unpinned = { ...note, id: 8, title: 'Recent unpinned note', is_pinned: false };
+  const pinned = Array.from({ length: 7 }, (_, index) => ({
+    ...note, id: index + 10, title: `Pinned note ${index + 1}`,
+  }));
   global.fetch = jest.fn((url) => Promise.resolve(response(
-    url === '/api/notes' ? [note] : url === '/api/reminders' ? [reminder] : []
+    url === '/api/notes' ? [unpinned, ...pinned] : url === '/api/reminders' ? [reminder] : []
   )));
   render(<NotesReminders />);
-  const notesColumn = await screen.findByLabelText('Recent notes');
+  const notesColumn = await screen.findByLabelText('Pinned notes');
   const remindersColumn = screen.getByLabelText('Reminders overview');
   expect(notesColumn.parentElement).toHaveClass('nr-dashboard-columns');
   expect(remindersColumn.parentElement).toBe(notesColumn.parentElement);
-  expect(within(notesColumn).getByText('Family recipes')).toBeInTheDocument();
+  expect(within(notesColumn).getByText('Pinned note 7')).toBeInTheDocument();
+  expect(within(notesColumn).queryByText('Recent unpinned note')).not.toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Recent notes' })).not.toBeInTheDocument();
+  fireEvent.click(within(notesColumn).getAllByRole('button', { name: 'Edit' })[0]);
+  expect(await screen.findByRole('dialog', { name: 'Edit note' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Close form' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   fireEvent.click(within(remindersColumn).getByRole('button', { name: /Upcoming/ }));
   expect(within(remindersColumn).getByText('Call home')).toBeInTheDocument();
+});
+
+test('dashboard updates pinned notes after unpinning and shows an empty state', async () => {
+  let isPinned = true;
+  global.fetch = jest.fn((url, options) => {
+    if (url === '/api/notes/1' && options?.method === 'PUT') {
+      isPinned = false;
+      return Promise.resolve(response({ id: 1 }));
+    }
+    return Promise.resolve(response(url === '/api/notes' ? [{ ...note, is_pinned: isPinned }] : []));
+  });
+  render(<NotesReminders />);
+  const notesColumn = await screen.findByLabelText('Pinned notes');
+  fireEvent.click(within(notesColumn).getByRole('button', { name: 'Unpin' }));
+  expect(await within(notesColumn).findByText('Pin a note to keep it close.')).toBeInTheDocument();
+  expect(within(notesColumn).queryByText('Family recipes')).not.toBeInTheDocument();
+  expect(global.fetch).toHaveBeenCalledWith('/api/notes/1', expect.objectContaining({
+    method: 'PUT', body: JSON.stringify({ is_pinned: false }),
+  }));
 });
 
 test('opens the full reminder list for each dashboard category', async () => {

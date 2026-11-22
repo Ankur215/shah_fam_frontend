@@ -179,9 +179,16 @@
 .nr-rich-editor .tiptap h3 { font-size: 1.1em; }
 .nr-rich-editor .tiptap ul, .nr-rich-editor .tiptap ol { margin: .4em 0; padding-left: 1.5em; }
 .nr-rich-editor .tiptap ul[data-type='taskList'] { padding-left: 0; list-style: none; }
-.nr-rich-editor .tiptap li[data-type='taskItem'] { display: flex; align-items: baseline; gap: 8px; }
-.nr-rich-editor .tiptap li[data-type='taskItem'] > div { flex: 1; min-width: 0; }
-.nr-rich-editor .tiptap li[data-type='taskItem'] input { accent-color: var(--family-primary); }
+.nr-rich-editor .tiptap ul[data-type='taskList'] > li { display: flex; align-items: flex-start; gap: 8px; }
+.nr-rich-editor .tiptap ul[data-type='taskList'] > li > label { display: flex; flex: 0 0 auto; padding-top: .25em; }
+.nr-rich-editor .tiptap ul[data-type='taskList'] > li > div { flex: 1; min-width: 0; }
+.nr-rich-editor .tiptap ul[data-type='taskList'] > li > label > input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--family-primary);
+}
 .nr-tags { display: flex; flex-wrap: wrap; gap: 5px; }
 .nr-card-footer { align-items: flex-end; flex-wrap: wrap; color: #9aa59d; font-size: 10px; }
 .nr-actions { justify-content: flex-start; flex-wrap: wrap; gap: 6px; }
