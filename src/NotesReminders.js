@@ -347,7 +347,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
       const snoozed = Boolean(item.snoozed_until);
       return <article className="nr-reminder" key={item.id}>
         <div className="nr-reminder-main">
-          <button type="button" className="nr-check" disabled={busy}
+          <button type="button" className="nr-check" disabled={busy} aria-pressed={item.is_completed}
             aria-label={`${item.is_completed ? 'Reopen' : 'Complete'} ${item.title}`}
             onClick={() => updateReminder(item, { is_completed: !item.is_completed })}>
             {item.is_completed ? '✓' : ''}
@@ -444,8 +444,13 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
       </nav>}
     </div>
     <div className="nr-search"><label htmlFor="nr-global-search">Search notes and reminders</label>
-      <input id="nr-global-search" type="search" placeholder="Search notes and reminders..." value={search}
-        onChange={(event) => setSearch(event.target.value)} />
+      <div className="nr-search-field">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" />
+        </svg>
+        <input id="nr-global-search" type="search" placeholder="Search notes and reminders..." value={search}
+          onChange={(event) => setSearch(event.target.value)} />
+      </div>
     </div>
     {error && <p className="nr-error" role="alert">{error}</p>}
     {loading ? <p className="nr-empty">Loading notes and reminders...</p> : query ? <>
@@ -676,7 +681,7 @@ function ReminderListDetails({ list, items, busy, onAddItem, onEditItem, onUpdat
     </form>
     <div className="nr-reminder-items">
       {items.map((item) => <article className="nr-reminder-item" key={item.id}>
-        <button type="button" className="nr-check" disabled={busy}
+        <button type="button" className="nr-check" disabled={busy} aria-pressed={item.is_completed}
           aria-label={`${item.is_completed ? 'Reopen' : 'Complete'} ${item.title}`}
           onClick={() => onUpdateItem(item, { is_completed: !item.is_completed })}>
           {item.is_completed ? '✓' : ''}
