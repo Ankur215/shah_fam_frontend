@@ -85,6 +85,7 @@ const AccountManagement = forwardRef(function AccountManagement({
   const [password, setPassword] = useState('');
   const [accountRole, setAccountRole] = useState('user');
   const [accountSection, setAccountSection] = useState('accounts');
+  const [search, setSearch] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [familyName, setFamilyName] = useState(authUser.familyName || '');
   const [familyTheme, setFamilyTheme] = useState(authUser.theme || 'sage');
@@ -377,13 +378,17 @@ const AccountManagement = forwardRef(function AccountManagement({
     }
   }
 
+  const searchTerm = search.trim().toLowerCase();
+  const filteredUsers = users.filter((user) =>
+    [user.email, user.role.replace(/_/g, ' ')]
+      .some((value) => value.toLowerCase().includes(searchTerm))
+  );
+
   return (
     <section className="page-content account-page" aria-labelledby="accounts-heading">
       <header className="section-header account-heading">
         <div>
-          <h1 id="accounts-heading">
-            {isSuperAdmin && accountSection === 'settings' ? 'Settings' : 'User accounts'}
-          </h1>
+          <h1 id="accounts-heading">User accounts</h1>
           <p>
             {isSuperAdmin && accountSection === 'settings'
               ? 'Changes apply only to your primary family workspace.'
@@ -402,18 +407,11 @@ const AccountManagement = forwardRef(function AccountManagement({
         )}
       </header>
 
-      {accountSection === 'accounts' && (
-        <p className="account-hint">
-          {isSuperAdmin
-            ? 'Create admins and users within your family tenant. Promoting an admin creates an independent copy of their family data.'
-            : 'You can create and manage users in your family workspace. Become a super admin to manage a separate copy of your family tree.'}
-        </p>
-      )}
       {isSuperAdmin && (
-        <nav className="account-section-nav" aria-label="Account management">
+        <nav className="section-tabs" aria-label="Account management">
           <button
             aria-pressed={accountSection === 'accounts'}
-            className={accountSection === 'accounts' ? 'account-section-active' : ''}
+            className={accountSection === 'accounts' ? 'active' : ''}
             onClick={() => setAccountSection('accounts')}
             type="button"
           >
@@ -421,7 +419,7 @@ const AccountManagement = forwardRef(function AccountManagement({
           </button>
           <button
             aria-pressed={accountSection === 'settings'}
-            className={accountSection === 'settings' ? 'account-section-active' : ''}
+            className={accountSection === 'settings' ? 'active' : ''}
             onClick={() => setAccountSection('settings')}
             type="button"
           >
@@ -437,10 +435,12 @@ const AccountManagement = forwardRef(function AccountManagement({
 
       {isSuperAdmin && accountSection === 'settings' && (
           <section
-            className="account-card"
+            className="members-panel account-settings"
             aria-labelledby="family-appearance-heading"
           >
-            <h2 id="family-appearance-heading">Family appearance</h2>
+            <div className="panel-heading">
+              <div><h2 id="family-appearance-heading">Family appearance</h2></div>
+            </div>
             {!isPrimaryWorkspace && (
               <p className="account-muted">Refresh the page to access your primary family workspace.</p>
             )}
@@ -507,11 +507,18 @@ const AccountManagement = forwardRef(function AccountManagement({
       )}
 
       {(!isSuperAdmin || accountSection === 'accounts') && (
-        <>
-        <section className="account-card" aria-labelledby="create-account-heading">
-        <h2 id="create-account-heading">Create an account</h2>
+        <section className="members-panel account-panel" aria-labelledby="existing-accounts-heading">
+        <div className="panel-heading">
+          <div>
+            <h2 id="existing-accounts-heading">Existing accounts</h2>
+            <p>
+              {isSuperAdmin
+                ? 'Create admins and users within your family tenant. Promoting an admin creates an independent copy of their family data.'
+                : 'Manage users in your family workspace. Become a super admin to manage a separate copy of your family tree.'}
+            </p>
+          </div>
         <button
-          className="account-submit"
+          className="primary-button"
           type="button"
           disabled={isLoading}
           onClick={() => {
@@ -520,8 +527,24 @@ const AccountManagement = forwardRef(function AccountManagement({
             setIsCreateOpen(true);
           }}
         >
-          + Create an account
+          <span aria-hidden="true">＋</span> Create an account
         </button>
+        </div>
+        <div className="member-toolbar">
+          <label className="search-box">
+            <span className="search-icon" aria-hidden="true">⌕</span>
+            <span className="visually-hidden">Search user accounts</span>
+            <input
+              type="search"
+              placeholder="Search by email or role..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          <span className="member-count">
+            {filteredUsers.length} {filteredUsers.length === 1 ? 'account' : 'accounts'}
+          </span>
+        </div>
         {isCreateOpen && (
         <FormDialog
           title="Create an account"
@@ -599,15 +622,11 @@ const AccountManagement = forwardRef(function AccountManagement({
         </form>
         </FormDialog>
         )}
-      </section>
-
-      <section className="account-card" aria-labelledby="existing-accounts-heading">
-        <h2 id="existing-accounts-heading">Existing accounts</h2>
         {isLoading ? (
-          <p className="account-muted">Loading accounts…</p>
-        ) : users.length ? (
+          <div className="empty-state" role="status">Loading accounts…</div>
+        ) : filteredUsers.length ? (
           <ul className="account-list">
-            {users.map((user) => (
+            {filteredUsers.map((user) => (
               <li key={user.id}>
                 {editingUserId === user.id && (
                   <FormDialog
@@ -671,6 +690,7 @@ const AccountManagement = forwardRef(function AccountManagement({
                   </FormDialog>
                 )}
                   <>
+                    <div className="account-identity">
                     <span className={`account-role account-role-${user.role}`}>
                       {user.role === 'super_admin'
                         ? 'Super admin'
@@ -679,6 +699,7 @@ const AccountManagement = forwardRef(function AccountManagement({
                           : 'Normal user'}
                     </span>
                     <span className="account-email">{user.email}</span>
+                    </div>
                     {isSuperAdmin && user.role !== 'super_admin' && (
                       <small className="account-access">
                         Workspace: {user.familyName || workspaces.find((item) => item.id === user.workspaceId)?.name || 'Unknown'}
@@ -724,10 +745,11 @@ const AccountManagement = forwardRef(function AccountManagement({
             ))}
           </ul>
         ) : (
-          <p className="account-muted">No accounts found.</p>
+          <div className="empty-state">
+            {searchTerm && users.length ? 'No accounts match your search.' : 'No accounts found.'}
+          </div>
         )}
         </section>
-        </>
       )}
     </section>
   );

@@ -44,7 +44,10 @@ test('lets a super admin update the active family name and theme', async () => {
     />
   );
   await screen.findByText('root@example.com');
+  expect(screen.getByRole('button', { name: 'User accounts' })).toHaveAttribute('aria-pressed', 'true');
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+  expect(screen.getByRole('heading', { name: 'User accounts' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Settings' })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.queryByLabelText('Email address')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Active family workspace')).not.toBeInTheDocument();
   expect(screen.getByRole('textbox', { name: 'Family name' })).toHaveValue('Old Family');
@@ -69,6 +72,36 @@ test('lets a super admin update the active family name and theme', async () => {
   expect(onUserUpdated).toHaveBeenCalledWith(
     expect.objectContaining({ familyName: 'Shah Family', theme: 'rose' })
   );
+});
+
+test('filters accounts by email or role and shows the matching count', async () => {
+  global.fetch = jest.fn()
+    .mockResolvedValueOnce(apiResponse([
+      { id: 1, email: 'root@example.com', role: 'admin' },
+      { id: 2, email: 'family@example.com', role: 'user' },
+    ]))
+    .mockResolvedValueOnce(apiResponse([]));
+
+  render(<AccountManagement />);
+  await screen.findByText('family@example.com');
+  const search = screen.getByRole('searchbox', { name: 'Search user accounts' });
+  expect(screen.getByText('2 accounts')).toBeInTheDocument();
+
+  fireEvent.change(search, { target: { value: 'FAMILY@' } });
+  expect(screen.getByText('family@example.com')).toBeInTheDocument();
+  expect(screen.queryByText('root@example.com')).not.toBeInTheDocument();
+  expect(screen.getByText('1 account')).toBeInTheDocument();
+
+  fireEvent.change(search, { target: { value: 'admin' } });
+  expect(screen.getByText('root@example.com')).toBeInTheDocument();
+  expect(screen.queryByText('family@example.com')).not.toBeInTheDocument();
+
+  fireEvent.change(search, { target: { value: 'missing' } });
+  expect(screen.getByText('No accounts match your search.')).toBeInTheDocument();
+  expect(screen.getByText('0 accounts')).toBeInTheDocument();
+
+  fireEvent.change(search, { target: { value: '' } });
+  expect(screen.getByText('2 accounts')).toBeInTheDocument();
 });
 
 test('allows appearance editing only in the primary family workspace', async () => {
