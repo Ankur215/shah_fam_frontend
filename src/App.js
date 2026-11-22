@@ -432,7 +432,6 @@ function MedicalReports() {
     >
       <header className="section-header medical-reports-heading">
         <div>
-          <span className="eyebrow">HEALTH RECORDS</span>
           <h1 id="medical-reports-heading">Medical reports</h1>
           <p>Redacted summaries of the medical documents you choose to keep here.</p>
         </div>
@@ -1024,7 +1023,6 @@ function App() {
           <section className="page-content introduction-page">
             <header className="section-header introduction-hero">
               <div>
-                <span className="eyebrow">WELCOME TO {familyName.toUpperCase()}</span>
                 <h1>Your family, all in one place.</h1>
                 <p>
                   This private space helps your family keep its story, important
@@ -1133,7 +1131,6 @@ function App() {
         <section className="page-content">
           <div className="section-header welcome-banner">
             <div className="welcome-copy">
-              <span className="eyebrow">YOUR FAMILY, ALL IN ONE PLACE</span>
               <h1>Family</h1>
               <p>Keep the important details of your family close at hand.</p>
             </div>
@@ -1425,7 +1422,6 @@ function App() {
           <section className="page-content" aria-labelledby="giving-heading">
             <header className="section-header giving-header">
               <div>
-                <span className="eyebrow">THOUGHTFULNESS, REMEMBERED</span>
                 <h1 id="giving-heading">Gifts &amp; Giving</h1>
                 <p>Keep track of thoughtful gifts and the ways your family gives back.</p>
               </div>

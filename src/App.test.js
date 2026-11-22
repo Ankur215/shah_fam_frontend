@@ -68,6 +68,22 @@ async function renderOnFamilyMembers() {
   return app;
 }
 
+test('section headers omit eyebrow text while keeping page titles', async () => {
+  const { container } = render(<App />);
+  await screen.findByRole('heading', { name: 'Your family, all in one place.' });
+  for (const [button, heading] of [
+    ['Family', 'Family'],
+    ['Medical reports', 'Medical reports'],
+    ['Gifts & Giving', 'Gifts & Giving'],
+    ['User accounts', 'User accounts'],
+    ['Notes & Reminders', 'Notes & Reminders'],
+  ]) {
+    fireEvent.click(screen.getByRole('button', { name: button, exact: true }));
+    expect(await screen.findByRole('heading', { name: heading, level: 1 })).toBeInTheDocument();
+    expect(container.querySelector('.section-header .eyebrow, .section-header .nr-eyebrow')).toBeNull();
+  }
+});
+
 test('switches between family members, family graph, and important dates', async () => {
   global.fetch = jest.fn((url) => Promise.resolve(
     url === '/api/auth/me' ? authenticatedResponse() :

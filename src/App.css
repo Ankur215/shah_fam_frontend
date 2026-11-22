@@ -413,13 +413,6 @@ button {
   letter-spacing: -.7px;
 }
 .section-header p { margin: 0; color: #65756a; font-size: 13px; line-height: 1.6; }
-.section-header .eyebrow, .section-header .nr-eyebrow {
-  color: var(--family-muted-accent);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.4px;
-}
-
 .introduction-page {
   display: grid;
   gap: 28px;

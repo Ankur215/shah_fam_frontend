@@ -419,7 +419,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
 
   return <div className="page-content notes-reminders-container">
     <header className="section-header nr-header">
-      <div><span className="nr-eyebrow">YOUR FAMILY SPACE</span><h1>Notes &amp; Reminders</h1>
+      <div><h1>Notes &amp; Reminders</h1>
         <p>A little space for the things you want to remember.</p></div>
       <div className="nr-header-actions">
         <button type="button" className="nr-button nr-button-primary" disabled={loading || switchingNote} onClick={async () => {

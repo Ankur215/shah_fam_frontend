@@ -378,7 +378,6 @@ function AccountManagement({
     <section className="page-content account-page" aria-labelledby="accounts-heading">
       <header className="section-header account-heading">
         <div>
-          <span className="eyebrow">ADMINISTRATION</span>
           <h1 id="accounts-heading">
             {isSuperAdmin && accountSection === 'settings' ? 'Settings' : 'User accounts'}
           </h1>
