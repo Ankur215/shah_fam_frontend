@@ -3,6 +3,7 @@ import './App.css';
 import CharityLog from './CharityLog';
 import FamilyGraph from './FamilyGraph';
 import GiftLog from './GiftLog';
+import ImportantDates from './ImportantDates';
 import NotesReminders from './NotesReminders';
 import AccountManagement from './AccountManagement';
 import AuthPage from './AuthPage';
@@ -465,6 +466,7 @@ function App() {
   const [authError, setAuthError] = useState('');
   const [logoutError, setLogoutError] = useState('');
   const [activePage, setActivePage] = useState('intro');
+  const [familyTab, setFamilyTab] = useState('members');
   const notesModuleRef = useRef(null);
   const [isFamilyMenuOpen, setIsFamilyMenuOpen] = useState(true);
   const [isLogsMenuOpen, setIsLogsMenuOpen] = useState(false);
@@ -1207,6 +1209,20 @@ function App() {
             </div>
           </div>
 
+          <nav className="family-tabs" aria-label="Family sections">
+            <button type="button" className={familyTab === 'members' ? 'active' : ''} aria-pressed={familyTab === 'members'} onClick={() => setFamilyTab('members')}>Members</button>
+            <button type="button" className={familyTab === 'dates' ? 'active' : ''} aria-pressed={familyTab === 'dates'} onClick={() => setFamilyTab('dates')}>Important dates</button>
+          </nav>
+          {familyTab === 'dates' ? (
+            <ImportantDates
+              key={authUser.currentWorkspaceId || authUser.workspaceId}
+              members={members}
+              membersLoading={isLoading}
+              membersError={isLoadError}
+              onRetryMembers={() => setLoadAttempt((attempt) => attempt + 1)}
+              canEdit={authUser.role === 'super_admin'}
+            />
+          ) : <>
           <div className="summary-row">
             <section className="summary-card" aria-label="Family member count">
               <span className="summary-icon" aria-hidden="true">♧</span>
@@ -1455,6 +1471,7 @@ function App() {
               Family information is saved to your connected database.
             </p>
           </section>
+          </>}
         </section>
         ) : activePage === 'graph' && hasFamilyPageAccess ? (
           <FamilyGraph

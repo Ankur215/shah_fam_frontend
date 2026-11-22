@@ -1279,6 +1279,65 @@ button {
   line-height: 1;
 }
 
+.family-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 5px;
+  margin-bottom: 18px;
+  border: 1px solid var(--family-border);
+  border-radius: 13px;
+  background: #fff;
+}
+
+.family-tabs button {
+  flex: 0 0 auto;
+  padding: 11px 16px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #586a5d;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.family-tabs button:hover,
+.family-tabs button.active {
+  background: var(--family-tint);
+  color: var(--family-primary-strong);
+}
+
+.important-date-list { display: grid; }
+.important-date-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--family-border);
+}
+.important-date-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  background: var(--family-tint);
+  color: var(--family-primary-strong);
+  font-size: 21px;
+}
+.important-date-details { display: grid; gap: 5px; flex: 1; min-width: 0; }
+.important-date-when { display: grid; gap: 5px; text-align: right; }
+.important-date-details span, .important-date-when span { color: #718078; font-size: 12px; }
+.important-date-details strong, .important-date-when strong { overflow-wrap: anywhere; font-size: 14px; }
+
+@media (max-width: 600px) {
+  .important-date-row { flex-wrap: wrap; }
+  .important-date-when { margin-left: auto; }
+  .important-date-row .member-actions { width: 100%; justify-content: flex-end; }
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

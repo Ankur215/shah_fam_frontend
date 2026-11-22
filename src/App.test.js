@@ -68,6 +68,20 @@ async function renderOnFamilyMembers() {
   return app;
 }
 
+test('switches between family members and important dates', async () => {
+  global.fetch = jest.fn((url) => Promise.resolve(
+    url === '/api/auth/me' ? authenticatedResponse() :
+      url === '/api/family-members' ? apiResponse([{ ...savedMember, dateOfBirth: '2000-02-29' }]) :
+        apiResponse([])
+  ));
+  await renderOnFamilyMembers();
+  fireEvent.click(screen.getByRole('button', { name: 'Important dates' }));
+  expect(await screen.findByText("Asha Shah's birthday")).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /add important date/i })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Members', exact: true }));
+  expect(screen.getByRole('heading', { name: 'Your people' })).toBeInTheDocument();
+});
+
 test('shows the family member empty state after loading members from the API', async () => {
   render(<App />);
 
