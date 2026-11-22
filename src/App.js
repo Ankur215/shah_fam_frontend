@@ -469,7 +469,6 @@ function App() {
   const [familyTab, setFamilyTab] = useState('members');
   const [givingHeaderActions, setGivingHeaderActions] = useState(null);
   const notesModuleRef = useRef(null);
-  const [isFamilyMenuOpen, setIsFamilyMenuOpen] = useState(true);
   const [search, setSearch] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
@@ -560,7 +559,6 @@ function App() {
     if (!authUser) return;
     const pageAccess = {
       members: hasFamilyPageAccess,
-      graph: hasFamilyPageAccess,
       medical: hasMedicalPageAccess,
       gifts: hasGiftsPageAccess,
       charity: hasCharityPageAccess,
@@ -924,49 +922,15 @@ function App() {
             <div className="sidebar-label">FAMILY</div>
           )}
           {hasFamilyPageAccess && (
-            <div className="nav-group">
-              <button
-                className={`nav-item ${
-                  activePage === 'members' || activePage === 'graph'
-                    ? 'nav-item-active'
-                    : ''
-                }`}
-                type="button"
-                aria-expanded={isFamilyMenuOpen}
-                aria-controls="family-submenu"
-                onClick={() => setIsFamilyMenuOpen((isOpen) => !isOpen)}
-              >
-                <span className="nav-icon" aria-hidden="true">⌂</span>
-                Family
-                <span className="nav-chevron" aria-hidden="true">
-                  {isFamilyMenuOpen ? '⌃' : '⌄'}
-                </span>
-              </button>
-              {isFamilyMenuOpen && (
-                <div className="nav-submenu" id="family-submenu">
-                  <button
-                    className={`nav-item nav-subitem ${
-                      activePage === 'members' ? 'nav-item-active' : ''
-                    }`}
-                    type="button"
-                    aria-current={activePage === 'members' ? 'page' : undefined}
-                    onClick={() => navigateTo('members')}
-                  >
-                    Family members
-                  </button>
-                  <button
-                    className={`nav-item nav-subitem ${
-                      activePage === 'graph' ? 'nav-item-active' : ''
-                    }`}
-                    type="button"
-                    aria-current={activePage === 'graph' ? 'page' : undefined}
-                    onClick={() => navigateTo('graph')}
-                  >
-                    Family graph
-                  </button>
-                </div>
-              )}
-            </div>
+            <button
+              className={`nav-item ${activePage === 'members' ? 'nav-item-active' : ''}`}
+              type="button"
+              aria-current={activePage === 'members' ? 'page' : undefined}
+              onClick={() => navigateTo('members')}
+            >
+              <span className="nav-icon" aria-hidden="true">⌂</span>
+              Family
+            </button>
           )}
           {hasMedicalPageAccess && <button
             className={`nav-item ${activePage === 'medical' ? 'nav-item-active' : ''}`}
@@ -1022,9 +986,7 @@ function App() {
             {activePage === 'intro'
               ? 'Introduction'
               : activePage === 'members'
-              ? 'Members'
-              : activePage === 'graph'
-                ? 'Family graph'
+              ? familyTab === 'graph' ? 'Family graph' : familyTab === 'dates' ? 'Important dates' : 'Family members'
                 : activePage === 'gifts'
                   ? 'Gift'
                   : activePage === 'charity'
@@ -1172,7 +1134,7 @@ function App() {
           <div className="section-header welcome-banner">
             <div className="welcome-copy">
               <span className="eyebrow">YOUR FAMILY, ALL IN ONE PLACE</span>
-              <h1>Family members</h1>
+              <h1>Family</h1>
               <p>Keep the important details of your family close at hand.</p>
             </div>
             <div className="welcome-art" aria-hidden="true">
@@ -1186,7 +1148,8 @@ function App() {
           </div>
 
           <nav className="section-tabs" aria-label="Family sections">
-            <button type="button" className={familyTab === 'members' ? 'active' : ''} aria-pressed={familyTab === 'members'} onClick={() => setFamilyTab('members')}>Members</button>
+            <button type="button" className={familyTab === 'members' ? 'active' : ''} aria-pressed={familyTab === 'members'} onClick={() => setFamilyTab('members')}>Family members</button>
+            <button type="button" className={familyTab === 'graph' ? 'active' : ''} aria-pressed={familyTab === 'graph'} onClick={() => setFamilyTab('graph')}>Family graph</button>
             <button type="button" className={familyTab === 'dates' ? 'active' : ''} aria-pressed={familyTab === 'dates'} onClick={() => setFamilyTab('dates')}>Important dates</button>
           </nav>
           {familyTab === 'dates' ? (
@@ -1197,6 +1160,14 @@ function App() {
               membersError={isLoadError}
               onRetryMembers={() => setLoadAttempt((attempt) => attempt + 1)}
               canEdit={authUser.role === 'super_admin'}
+            />
+          ) : familyTab === 'graph' ? (
+            <FamilyGraph
+              members={members}
+              isLoading={isLoading}
+              isLoadError={isLoadError}
+              onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
+              onManageMembers={() => setFamilyTab('members')}
             />
           ) : <>
           <div className="summary-row">
@@ -1449,18 +1420,6 @@ function App() {
           </section>
           </>}
         </section>
-        ) : activePage === 'graph' && hasFamilyPageAccess ? (
-          <FamilyGraph
-            members={members}
-            isLoading={isLoading}
-            isLoadError={isLoadError}
-            onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
-            onManageMembers={
-              authUser.role === 'super_admin'
-                ? () => setActivePage('members')
-                : undefined
-            }
-          />
         ) : (activePage === 'gifts' && hasGiftsPageAccess) ||
             (activePage === 'charity' && hasCharityPageAccess) ? (
           <section className="page-content" aria-labelledby="giving-heading">

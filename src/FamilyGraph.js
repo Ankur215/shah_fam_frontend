@@ -435,15 +435,14 @@ function FamilyGraph({ members, isLoading, isLoadError, onRetry, onManageMembers
   const graph = useMemo(() => createFamilyGraph(members), [members]);
 
   return (
-    <section className="family-graph-page page-content" aria-labelledby="family-graph-title">
-      <header className="section-header family-graph-header">
+    <section className="family-graph-page" aria-labelledby="family-graph-title">
+      <header className="family-graph-header">
         <div>
-          <span className="eyebrow">YOUR FAMILY, ACROSS GENERATIONS</span>
-          <h1 id="family-graph-title">Family graph</h1>
+          <h2 id="family-graph-title">Family graph</h2>
           <p>Connect parents and spouses from a member’s edit form to build your tree.</p>
         </div>
         <button className="secondary-button" type="button" onClick={onManageMembers}>
-          Manage members
+          View family members
         </button>
       </header>
 

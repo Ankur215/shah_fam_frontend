@@ -256,27 +256,6 @@ button {
   line-height: 1.6;
 }
 
-.nav-group {
-  position: relative;
-}
-
-.nav-chevron {
-  margin-left: auto;
-  font-size: 13px;
-}
-
-.nav-submenu {
-  display: grid;
-  gap: 3px;
-  margin: 3px 0 4px;
-}
-
-.nav-subitem {
-  min-height: 36px;
-  padding-left: 40px;
-  font-size: 11px;
-}
-
 .nav-icon {
   width: 17px;
   flex: 0 0 auto;
@@ -1616,27 +1595,6 @@ button {
   .nav-icon {
     width: 14px;
     font-size: 16px;
-  }
-
-  .nav-submenu {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    z-index: 5;
-    width: 145px;
-    margin: 0;
-    padding: 5px;
-    border: 1px solid var(--family-border);
-    border-radius: 8px;
-    background: #fff;
-    box-shadow: 0 8px 20px rgb(39 53 47 / 12%);
-  }
-
-  .nav-subitem {
-    width: 100%;
-    min-height: 36px;
-    padding: 0 10px;
-    font-size: 11px;
   }
 
   .main-content {

@@ -4,6 +4,26 @@
   min-width: 0;
 }
 
+.family-graph-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.family-graph-header h2 {
+  margin: 0 0 4px;
+  color: var(--family-heading);
+  font: 500 20px Georgia, serif;
+}
+
+.family-graph-header p {
+  margin: 0;
+  color: #65756a;
+  font-size: 12px;
+}
+
 .family-graph-panel,
 .family-graph-state {
   box-sizing: border-box;

@@ -64,21 +64,24 @@ afterEach(() => {
 
 async function renderOnFamilyMembers() {
   const app = render(<App />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Family members' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Family', exact: true }));
   return app;
 }
 
-test('switches between family members and important dates', async () => {
+test('switches between family members, family graph, and important dates', async () => {
   global.fetch = jest.fn((url) => Promise.resolve(
     url === '/api/auth/me' ? authenticatedResponse() :
       url === '/api/family-members' ? apiResponse([{ ...savedMember, dateOfBirth: '2000-02-29' }]) :
         apiResponse([])
   ));
   await renderOnFamilyMembers();
+  fireEvent.click(screen.getByRole('button', { name: 'Family graph' }));
+  expect(screen.getByRole('button', { name: 'Family graph' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('region', { name: 'Family graph' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Important dates' }));
   expect(await screen.findByText("Asha Shah's birthday")).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /add important date/i })).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Members', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: 'Family members', exact: true }));
   expect(screen.getByRole('heading', { name: 'Your people' })).toBeInTheDocument();
 });
 
@@ -88,7 +91,7 @@ test('shows the family member empty state after loading members from the API', a
   expect(
     await screen.findByRole('heading', { name: 'Your family, all in one place.' })
   ).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Family members' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Family', exact: true }));
   expect(
     await screen.findByRole('heading', { name: /your family story starts here/i })
   ).toBeInTheDocument();
@@ -100,13 +103,14 @@ test('shows the family member empty state after loading members from the API', a
     userAccountsButton.compareDocumentPosition(familyMenuButton) &
       Node.DOCUMENT_POSITION_FOLLOWING
   ).toBeTruthy();
-  const familySubmenu = document.getElementById('family-submenu');
+  const familyTabs = screen.getByRole('navigation', { name: 'Family sections' });
   expect(
-    within(familySubmenu).getByRole('button', { name: 'Family members' })
+    within(familyTabs).getByRole('button', { name: 'Family members' })
   ).toBeInTheDocument();
   expect(
-    within(familySubmenu).getByRole('button', { name: 'Family graph' })
+    within(familyTabs).getByRole('button', { name: 'Family graph' })
   ).toBeInTheDocument();
+  expect(within(familyTabs).getByRole('button', { name: 'Important dates' })).toBeInTheDocument();
   expect(
     screen.getByRole('button', { name: /add your first member/i })
   ).toBeInTheDocument();
@@ -233,6 +237,12 @@ test('lets admins view family information without edit controls', async () => {
   expect(screen.queryByRole('button', { name: /add family member/i })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Edit Asha Shah' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Delete Asha Shah' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Family graph' }));
+  fireEvent.click(screen.getByRole('button', { name: 'View family members' }));
+  expect(screen.getByRole('heading', { name: 'Your people' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Important dates' }));
+  expect(await screen.findByRole('heading', { name: 'Important dates' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /add important date/i })).not.toBeInTheDocument();
 });
 
 test('requires a login before opening the family space', async () => {
@@ -257,7 +267,7 @@ test('requires a login before opening the family space', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
   expect(
-    await screen.findByRole('button', { name: /family members/i })
+    await screen.findByRole('button', { name: 'Family', exact: true })
   ).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'User accounts' })).not.toBeInTheDocument();
 });
@@ -304,7 +314,7 @@ test('shows only pages granted to a regular user', async () => {
   fireEvent.click(screen.getByRole('button', { name: /medical reports/i }));
   expect(await screen.findByRole('heading', { name: 'Medical reports' })).toBeInTheDocument();
   expect(
-    screen.queryByRole('button', { name: /family members/i })
+    screen.queryByRole('button', { name: 'Family', exact: true })
   ).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Gifts & Giving' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Notes & Reminders' })).not.toBeInTheDocument();
@@ -378,7 +388,7 @@ test('keeps unsaved note edits when navigating away fails', async () => {
   fireEvent.click(content);
   fireEvent.click(screen.getByLabelText('Text formatting'));
   fireEvent.click(screen.getByRole('button', { name: 'Heading' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Family members' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Family', exact: true }));
   expect(await screen.findByText('Failed to save note: Could not save note.')).toBeInTheDocument();
   expect(within(content).getByRole('heading', { name: 'Before' })).toBeInTheDocument();
 });
@@ -403,7 +413,7 @@ test('shows only the gifts and charity modules granted to a regular user', async
   expect(await screen.findByRole('button', { name: 'Gift' })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Charity' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /record charity/i })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /family members/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Family', exact: true })).not.toBeInTheDocument();
   expect(await screen.findByRole('region', { name: 'Gift' })).toBeInTheDocument();
   expect(global.fetch).not.toHaveBeenCalledWith('/api/charity-records');
 });
