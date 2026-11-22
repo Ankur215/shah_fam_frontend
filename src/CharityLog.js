@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './CharityLog.css';
 import { API_URL, apiFetch, readApiResponse } from './api';
 import FormDialog from './FormDialog';
@@ -166,7 +167,9 @@ function CharityRecordEntry({
   );
 }
 
-function CharityLog({ familyMembers = [], loadFamilyMembers = false }) {
+function CharityLog({
+  familyMembers = [], loadFamilyMembers = false, actionContainer, hidden = false, onCreate,
+}) {
   const [records, setRecords] = useState([]);
   const [assignedFamilyMembers, setAssignedFamilyMembers] = useState([]);
   const [familyMemberError, setFamilyMemberError] = useState('');
@@ -401,9 +404,26 @@ function CharityLog({ familyMembers = [], loadFamilyMembers = false }) {
         .includes(normalizedSearch)
     );
   }, [records, search]);
+  const recordButton = (
+    <button
+      className="primary-button"
+      type="button"
+      disabled={isSaving || isReordering || deletingRecordId !== null}
+      onClick={() => {
+        onCreate?.();
+        closeCharityForm();
+        setIsFormOpen(true);
+      }}
+    >
+      + Record charity work
+    </button>
+  );
 
   return (
-    <section className="charity-page" aria-label="Charity work">
+    <section className="charity-page" aria-label="Charity work" hidden={hidden}>
+      {actionContainer
+        ? createPortal(recordButton, actionContainer)
+        : <div className="charity-page-actions">{recordButton}</div>}
       <div className="charity-summary">
         <div>
           <span className="summary-label">RECORDS SAVED</span>
@@ -419,19 +439,6 @@ function CharityLog({ familyMembers = [], loadFamilyMembers = false }) {
         </div>
       </div>
 
-      <div className="charity-page-actions">
-        <button
-          className="primary-button"
-          type="button"
-          disabled={isSaving || isReordering || deletingRecordId !== null}
-          onClick={() => {
-            closeCharityForm();
-            setIsFormOpen(true);
-          }}
-        >
-          + Record charity work
-        </button>
-      </div>
       {error && !isLoadError && !isFormOpen && (
         <div className="error-message" role="alert">{error}</div>
       )}

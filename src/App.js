@@ -467,6 +467,7 @@ function App() {
   const [logoutError, setLogoutError] = useState('');
   const [activePage, setActivePage] = useState('intro');
   const [familyTab, setFamilyTab] = useState('members');
+  const [givingHeaderActions, setGivingHeaderActions] = useState(null);
   const notesModuleRef = useRef(null);
   const [isFamilyMenuOpen, setIsFamilyMenuOpen] = useState(true);
   const [search, setSearch] = useState('');
@@ -1469,22 +1470,30 @@ function App() {
                 <h1 id="giving-heading">Gifts &amp; Giving</h1>
                 <p>Keep track of thoughtful gifts and the ways your family gives back.</p>
               </div>
+              <div className="giving-header-actions" ref={setGivingHeaderActions} />
             </header>
             <nav className="section-tabs" aria-label="Gifts and giving sections">
               {hasGiftsPageAccess && <button type="button" className={activePage === 'gifts' ? 'active' : ''} aria-pressed={activePage === 'gifts'} onClick={() => navigateTo('gifts')}>Gift log</button>}
               {hasCharityPageAccess && <button type="button" className={activePage === 'charity' ? 'active' : ''} aria-pressed={activePage === 'charity'} onClick={() => navigateTo('charity')}>Charity work</button>}
             </nav>
-            {activePage === 'gifts' ? (
+            {hasGiftsPageAccess && (
               <GiftLog
                 familyMembers={members}
                 key={authUser.currentWorkspaceId || authUser.workspaceId}
                 loadFamilyMembers={!hasFamilyPageAccess}
+                actionContainer={givingHeaderActions}
+                hidden={activePage !== 'gifts'}
+                onCreate={() => setActivePage('gifts')}
               />
-            ) : (
+            )}
+            {hasCharityPageAccess && (
               <CharityLog
                 familyMembers={members}
                 key={authUser.currentWorkspaceId || authUser.workspaceId}
                 loadFamilyMembers={!hasFamilyPageAccess}
+                actionContainer={givingHeaderActions}
+                hidden={activePage !== 'charity'}
+                onCreate={() => setActivePage('charity')}
               />
             )}
           </section>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './GiftLog.css';
 import { API_URL, apiFetch, readApiResponse } from './api';
 import FormDialog from './FormDialog';
@@ -118,7 +119,9 @@ function GiftEntry({
   );
 }
 
-function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
+function GiftLog({
+  familyMembers = [], loadFamilyMembers = false, actionContainer, hidden = false, onCreate,
+}) {
   const [gifts, setGifts] = useState([]);
   const [assignedFamilyMembers, setAssignedFamilyMembers] = useState([]);
   const [familyMemberError, setFamilyMemberError] = useState('');
@@ -365,9 +368,26 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
   const visibleRecipientGroups = recipientGroups.filter((group) =>
     group.name.toLocaleLowerCase().includes(normalizedSearch)
   );
+  const recordButton = (
+    <button
+      className="primary-button"
+      type="button"
+      disabled={isSaving || isReordering || deletingGiftId !== null}
+      onClick={() => {
+        onCreate?.();
+        closeGiftForm();
+        setIsFormOpen(true);
+      }}
+    >
+      + Record a gift
+    </button>
+  );
 
   return (
-    <section className="gift-page" aria-label="Gift log">
+    <section className="gift-page" aria-label="Gift log" hidden={hidden}>
+      {actionContainer
+        ? createPortal(recordButton, actionContainer)
+        : <div className="gift-page-actions">{recordButton}</div>}
       <div className="gift-stats">
         <div className="gift-stat-card">
           <span className="gift-stat-icon" aria-hidden="true">✦</span>
@@ -395,19 +415,6 @@ function GiftLog({ familyMembers = [], loadFamilyMembers = false }) {
         </div>
       </div>
 
-      <div className="gift-page-actions">
-        <button
-          className="primary-button"
-          type="button"
-          disabled={isSaving || isReordering || deletingGiftId !== null}
-          onClick={() => {
-            closeGiftForm();
-            setIsFormOpen(true);
-          }}
-        >
-          + Record a gift
-        </button>
-      </div>
       {error && !isLoadError && !isFormOpen && (
         <div className="error-message" role="alert">{error}</div>
       )}

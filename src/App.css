@@ -1280,6 +1280,7 @@ button {
 }
 
 .giving-header { margin-bottom: 18px; }
+.giving-header-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .section-tabs {
   display: flex;
@@ -1561,6 +1562,9 @@ button {
     padding: 14px 16px;
     border-radius: 16px;
   }
+
+  .giving-header-actions { width: 100%; }
+  .giving-header-actions .primary-button { flex: 1 1 auto; }
 
   .introduction-modules {
     grid-template-columns: 1fr;
