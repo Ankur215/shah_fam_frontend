@@ -1,11 +1,11 @@
 .notes-reminders-container {
   display: grid;
-  gap: 24px;
+  gap: 18px;
   color: var(--family-text);
 }
 
 .nr-header-actions, .nr-card-top, .nr-card-footer,
-.nr-section-heading, .nr-reminder, .nr-reminder-main, .nr-actions,
+.nr-reminder, .nr-reminder-main, .nr-actions,
 .nr-calendar-header, .nr-form-footer {
   display: flex;
   align-items: center;
@@ -29,29 +29,7 @@
 .nr-button-secondary { background: #fff; color: var(--family-primary-strong); }
 .nr-button:disabled, .nr-actions button:disabled, .nr-check:disabled { opacity: .5; cursor: not-allowed; }
 .nr-navigation { display: grid; gap: 4px; }
-.nr-nav {
-  display: flex;
-  overflow-x: auto;
-  gap: 4px;
-  padding: 5px;
-  border: 1px solid var(--family-border);
-  border-radius: 13px;
-  background: #fff;
-  box-shadow: 0 3px 14px rgba(40, 55, 45, .035);
-}
-.nr-nav button {
-  flex: 0 0 auto;
-  padding: 11px 16px;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: #586a5d;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color .16s ease, color .16s ease;
-}
-.nr-nav button:hover, .nr-nav button.nr-nav-active { background: var(--family-tint); color: var(--family-primary-strong); }
+.nr-navigation .nr-nav { margin-bottom: 0; }
 .nr-subnav { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--family-border); }
 .nr-subnav button {
   flex: 0 0 auto;
@@ -64,11 +42,10 @@
   font-weight: 600;
 }
 .nr-subnav button.nr-subnav-active { border-bottom-color: var(--family-primary); color: var(--family-primary-strong); }
-.nr-search { display: grid; gap: 8px; }
-.nr-search-field { position: relative; }
-.nr-search-field svg { position: absolute; top: 50%; left: 15px; width: 18px; height: 18px; color: var(--family-muted-accent); transform: translateY(-50%); pointer-events: none; }
-.nr-search label, .nr-form label { font-size: 11px; font-weight: 700; color: var(--family-heading); }
-.nr-search input, .nr-form input, .nr-form textarea, .nr-form select {
+.nr-search-panel { padding-top: 0; padding-bottom: 0; }
+.nr-search-toolbar { border: 0; }
+.nr-form label { font-size: 11px; font-weight: 700; color: var(--family-heading); }
+.nr-form input, .nr-form textarea, .nr-form select {
   width: 100%;
   min-width: 0;
   padding: 11px 12px;
@@ -79,15 +56,14 @@
   font: inherit;
   font-size: 13px;
 }
-.nr-search-field input { min-height: 46px; padding-left: 43px; border-radius: 12px; box-shadow: 0 3px 14px rgba(40, 55, 45, .035); }
 .nr-search-list { display: grid; gap: 5px; width: 100%; padding: 17px; border: 1px solid var(--family-border); border-radius: 10px; background: #fff; color: var(--family-heading); text-align: left; }
 .notes-reminders-container :focus-visible { outline: 2px solid var(--family-focus); outline-offset: 2px; }
-.nr-dashboard-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; }
-.nr-dashboard-column, .nr-note-groups { display: grid; gap: 24px; min-width: 0; }
+.nr-dashboard-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.nr-dashboard-column, .nr-note-groups { display: grid; gap: 18px; min-width: 0; }
 .nr-dashboard-column .nr-note-grid { grid-template-columns: 1fr; }
-.nr-dashboard-categories { display: grid; gap: 10px; }
-.nr-dashboard-category { min-width: 0; overflow: hidden; border: 1px solid var(--family-border); border-radius: 14px; background: #fff; box-shadow: 0 4px 16px rgba(40, 55, 45, .035); }
-.nr-dashboard-category-toggle { display: flex; width: 100%; align-items: center; gap: 12px; padding: 16px 17px; border: 0; border-radius: 13px; background: transparent; text-align: left; cursor: pointer; }
+.nr-dashboard-categories { display: grid; }
+.nr-dashboard-category { min-width: 0; border-top: 1px solid var(--family-border); }
+.nr-dashboard-category-toggle { display: flex; width: 100%; align-items: center; gap: 12px; padding: 16px 0; border: 0; background: transparent; text-align: left; cursor: pointer; }
 .nr-dashboard-category-toggle::before { content: ''; width: 10px; height: 10px; flex: 0 0 10px; border-radius: 50%; background: var(--family-primary); box-shadow: 0 0 0 5px var(--family-tint); margin: 0 4px 0 5px; }
 .nr-dashboard-category-toggle:hover, .nr-dashboard-category-toggle[aria-expanded='true'] { background: var(--family-tint); }
 .nr-dashboard-category-toggle > span:first-child { display: grid; flex: 1; gap: 4px; min-width: 0; }
@@ -95,19 +71,16 @@
 .nr-dashboard-category-toggle small { color: #65756a; font-size: 12px; }
 .nr-dashboard-category-count { min-width: 32px; padding: 5px 8px; border-radius: 9px; background: var(--family-tint); color: var(--family-primary-strong); font-size: 13px; font-weight: 700; text-align: center; }
 .nr-dashboard-category-chevron { color: var(--family-primary-strong); font-size: 18px; }
-.nr-dashboard-category-list { padding: 12px; }
-.nr-section { min-width: 0; }
-.nr-section-heading { margin-bottom: 14px; }
-.nr-section-heading h2, .nr-calendar h2 { margin: 0; color: var(--family-heading); font: 500 22px Georgia, serif; }
-.nr-section-heading > span { color: #98a49a; font-size: 12px; }
+.nr-dashboard-category-list { padding: 0 0 16px; }
+.nr-section, .nr-dashboard-reminders, .nr-calendar { min-width: 0; padding-bottom: 22px; }
+.nr-calendar h2 { margin: 0; color: var(--family-heading); font: 500 19px Georgia, serif; }
 .nr-note-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 13px; }
-.nr-card, .nr-reminder, .nr-calendar {
+.nr-card {
   min-width: 0;
   padding: 19px;
   border: 1px solid var(--family-border);
-  border-radius: 14px;
+  border-radius: 10px;
   background: #fff;
-  box-shadow: 0 4px 18px rgba(40, 55, 45, .035);
 }
 .nr-card { display: grid; align-content: start; gap: 12px; }
 .nr-card-group { color: var(--family-muted-accent); font-size: 11px; font-weight: 600; overflow-wrap: anywhere; }
@@ -131,14 +104,13 @@
   min-height: 520px;
   overflow: hidden;
   border: 1px solid var(--family-border);
-  border-radius: 18px;
+  border-radius: 12px;
   background: #fff;
-  box-shadow: 0 8px 28px rgba(40, 55, 45, .05);
 }
 .nr-note-workspace[hidden] { display: none; }
-.nr-note-sidebar { min-width: 0; padding: 22px 12px; border-right: 1px solid var(--family-border); background: var(--family-canvas); }
+.nr-note-sidebar { min-width: 0; padding: 22px 12px; border-right: 1px solid var(--family-border); background: var(--family-soft); }
 .nr-note-sidebar-heading { display: flex; align-items: center; justify-content: space-between; padding: 0 10px 18px; }
-.nr-note-sidebar-heading h2 { margin: 0; color: var(--family-heading); font: 500 21px Georgia, serif; }
+.nr-note-sidebar-heading h2 { margin: 0; color: var(--family-heading); font: 500 19px Georgia, serif; }
 .nr-note-sidebar-heading span, .nr-note-list-empty { color: #89968c; font-size: 11px; }
 .nr-note-list-empty { padding: 4px 9px; line-height: 1.5; }
 .nr-note-list-group h3 { margin: 12px 9px 5px; color: var(--family-muted-accent); font-size: 10px; font-weight: 700; overflow-wrap: anywhere; }
@@ -158,7 +130,7 @@
   transition: background-color .16s ease;
 }
 .nr-note-list-item:hover { background: var(--family-tint); }
-.nr-note-list-item.nr-note-list-selected { background: var(--family-soft); box-shadow: inset 3px 0 var(--family-primary); }
+.nr-note-list-item.nr-note-list-selected { background: var(--family-tint); box-shadow: inset 3px 0 var(--family-primary); }
 .nr-note-list-item strong, .nr-note-list-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nr-note-list-item strong { color: var(--family-heading); font-size: 13px; }
 .nr-note-list-item span, .nr-note-list-item small { color: #66766b; font-size: 11px; }
@@ -189,7 +161,8 @@
   font-size: 13px;
 }
 .nr-reminder-items { display: grid; gap: 8px; }
-.nr-reminder-item { display: flex; align-items: flex-start; gap: 12px; padding: 15px; border: 1px solid var(--family-border); border-radius: 12px; background: #fff; }
+.nr-reminder-item { display: flex; align-items: flex-start; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--family-border); background: #fff; }
+.nr-reminder-item:last-child { border-bottom: 0; }
 .nr-reminder-item .nr-check { margin-top: 1px; }
 .nr-reminder-item-body { flex: 1; min-width: 0; }
 .nr-reminder-item-body h3 { margin: 0; color: var(--family-heading); font-size: 14px; overflow-wrap: anywhere; }
@@ -232,7 +205,8 @@
 }
 .nr-actions button:hover, .nr-format button:hover, .nr-link:hover { background: var(--family-soft); }
 .nr-list { display: grid; gap: 8px; }
-.nr-reminder { flex-wrap: wrap; }
+.nr-reminder { flex-wrap: wrap; min-width: 0; padding: 16px 0; border-bottom: 1px solid var(--family-border); }
+.nr-reminder:last-child { border-bottom: 0; }
 .nr-reminder-main { justify-content: flex-start; align-items: flex-start; min-width: 0; }
 .nr-reminder p { margin: 5px 0; color: #77857b; font-size: 12px; overflow-wrap: anywhere; }
 .nr-check { width: 23px; height: 23px; flex: 0 0 auto; border: 1.5px solid var(--family-focus); border-radius: 50%; background: #fff; color: var(--family-primary); cursor: pointer; }
@@ -242,7 +216,7 @@
 .nr-priority-high { color: #a74d48; }
 .nr-priority-medium { color: #a2712f; }
 .nr-priority-low { color: var(--family-primary); }
-.nr-empty { margin: 0; padding: 26px; border: 1px dashed var(--family-border); border-radius: 14px; color: #65756a; background: #fff; font-size: 13px; line-height: 1.5; text-align: center; }
+.nr-empty { margin: 0; padding: 26px; color: #65756a; background: #fff; font-size: 13px; line-height: 1.5; text-align: center; }
 .nr-error { margin: 0; padding: 12px; border-radius: 8px; background: #fff0ef; color: #a5433f; font-size: 12px; }
 .nr-calendar-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
 .nr-calendar-header { margin-bottom: 17px; }
@@ -273,7 +247,7 @@
 @media (max-width: 700px) {
   .notes-reminders-container { gap: 18px; }
   .nr-header-actions { width: 100%; flex-wrap: wrap; }
-  .nr-header-actions .nr-button { flex: 1 1 auto; }
+  .nr-header-actions .primary-button { flex: 1 1 auto; }
   .nr-calendar-layout { grid-template-columns: 1fr; }
   .nr-dashboard-columns { grid-template-columns: 1fr; }
   .nr-note-workspace { grid-template-columns: 1fr; min-height: 420px; }

@@ -372,8 +372,8 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
       </article>;
     })}</div> : <p className="nr-empty">{empty}</p>;
 
-  const section = (title, items, render, empty) => <section className="nr-section">
-    <div className="nr-section-heading"><h2>{title}</h2><span>{items.length}</span></div>
+  const section = (title, items, render, empty) => <section className="members-panel nr-section">
+    <div className="panel-heading"><h2>{title}</h2><span className="member-count">{items.length}</span></div>
     {render(items, empty)}
   </section>;
 
@@ -423,34 +423,38 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
       <div><h1>Notes &amp; Reminders</h1>
         <p>A little space for the things you want to remember.</p></div>
       <div className="nr-header-actions">
-        <button type="button" className="nr-button nr-button-primary" disabled={loading || switchingNote} onClick={async () => {
+        <button type="button" className="primary-button" disabled={loading || switchingNote} onClick={async () => {
           if (activeMainView === 'Notes' && !query) {
             if (await changeSelection({})) { setView('Notes'); setSearch(''); setMetadataEdit('title'); }
           } else {
             openNoteDialog({});
           }
         }}>+ New Note</button>
-        <button type="button" className="nr-button nr-button-primary" disabled={loading}
+        <button type="button" className="primary-button" disabled={loading}
           onClick={() => setReminderEditor({ list_id: selectedListId })}>+ New Reminder</button>
       </div>
     </header>
     <div className="nr-navigation">
-      <nav className="nr-nav" aria-label="Notes and reminders navigation">
+      <nav className="section-tabs nr-nav" aria-label="Notes and reminders navigation">
         {MAIN_VIEWS.map((item) => <button key={item} type="button" aria-current={activeMainView === item ? 'page' : undefined}
-          className={activeMainView === item ? 'nr-nav-active' : ''} onClick={() => switchView(item)}>{item}</button>)}
+          className={activeMainView === item ? 'active' : ''} onClick={() => switchView(item)}>{item}</button>)}
       </nav>
       {SUB_VIEWS[activeMainView] && <nav className="nr-subnav" aria-label={`${activeMainView} sections`}>
         {SUB_VIEWS[activeMainView].map((item) => <button key={item} type="button" aria-current={view === item ? 'page' : undefined}
           className={view === item ? 'nr-subnav-active' : ''} onClick={() => switchView(item)}>{item}</button>)}
       </nav>}
     </div>
-    <div className="nr-search"><label htmlFor="nr-global-search">Search notes and reminders</label>
-      <div className="nr-search-field">
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" />
-        </svg>
-        <input id="nr-global-search" type="search" placeholder="Search notes and reminders..." value={search}
-          onChange={(event) => setSearch(event.target.value)} />
+    <div className="members-panel nr-search-panel">
+      <div className="member-toolbar nr-search-toolbar">
+        <label className="search-box">
+          <span className="search-icon" aria-hidden="true">⌕</span>
+          <input type="search" aria-label="Search notes and reminders" placeholder="Search notes and reminders..." value={search}
+            onChange={(event) => setSearch(event.target.value)} />
+        </label>
+        {query && !loading && <span className="member-count">
+          {matchingNotes.length + matchingReminders.length + matchingLists.length}{' '}
+          {matchingNotes.length + matchingReminders.length + matchingLists.length === 1 ? 'result' : 'results'}
+        </span>}
       </div>
     </div>
     {error && <p className="nr-error" role="alert">{error}</p>}
@@ -473,8 +477,8 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
           {section('Pinned notes', pinnedNotes, noteList, 'Pin a note to keep it close.')}
         </div>
         <div className="nr-dashboard-column" aria-label="Reminders overview">
-          <section className="nr-dashboard-reminders">
-            <div className="nr-section-heading"><h2>Reminders</h2></div>
+          <section className="members-panel nr-dashboard-reminders">
+            <div className="panel-heading"><h2>Reminders</h2></div>
             <div className="nr-dashboard-categories">
               {dashboardCategories.map(({ name, items, description, empty }) => {
                 const expanded = dashboardCategory === name;
@@ -499,7 +503,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
     </> : view === 'Notes' || view === 'Pinned' || view === 'Reminders' ? null
       : view === 'Completed' ? section('Completed reminders', reminders.filter((item) => item.is_completed), reminderList, 'Completed reminders will appear here.')
       : view === 'Calendar' ? <div className="nr-calendar-layout">
-        <section className="nr-calendar">
+        <section className="members-panel nr-calendar">
           <div className="nr-calendar-header"><button type="button" aria-label="Previous month" onClick={() => changeMonth(-1)}>‹</button>
             <h2>{month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</h2>
             <button type="button" aria-label="Next month" onClick={() => changeMonth(1)}>›</button></div>
@@ -515,10 +519,10 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
             })}
           </div>
         </section>
-        <section className="nr-section"><div className="nr-section-heading"><h2>{formatDay(selectedDate)}</h2>
+        <section className="members-panel nr-section"><div className="panel-heading"><h2>{formatDay(selectedDate)}</h2>
           <button type="button" className="nr-link" onClick={() => setReminderEditor({ due_date: selectedDate })}>+ Add reminder</button></div>
           {reminderList(selectedReminders, 'No reminders on this date.')}</section>
-      </div> : <section className="nr-section"><div className="nr-section-heading"><h2>Trash</h2></div>
+      </div> : <section className="members-panel nr-section"><div className="panel-heading"><h2>Trash</h2></div>
         <p className="nr-help">Restore an item or permanently delete it.</p>
         {!trashNotes.length && !trashReminders.length && !trashReminderLists.length ? <p className="nr-empty">Trash is empty.</p> :
           <div className="nr-list">{[...trashNotes.map((item) => ({ ...item, type: 'note' })),
@@ -541,7 +545,7 @@ const NotesReminders = forwardRef(function NotesReminders(props, ref) {
     <div className={`nr-note-workspace${showNoteDetail ? ' nr-note-detail-open' : ''}`}
       hidden={loading || Boolean(query) || (view !== 'Notes' && view !== 'Pinned')}>
       <aside className="nr-note-sidebar" aria-label="Note list">
-        <div className="nr-note-sidebar-heading"><h2>{view === 'Pinned' ? 'Pinned notes' : 'Notes'}</h2><span>{visibleNotes.length}</span></div>
+        <div className="nr-note-sidebar-heading"><h2>{view === 'Pinned' ? 'Pinned notes' : 'Notes'}</h2><span>{visibleNotes.length} {visibleNotes.length === 1 ? 'note' : 'notes'}</span></div>
         {!loading && !query && (view === 'Notes' || view === 'Pinned') && !visibleNotes.length &&
           <p className="nr-note-list-empty">{view === 'Pinned' ? 'Pin a note to keep it close.' : 'No notes yet. Create one to get started!'}</p>}
         {!loading && !query && (view === 'Notes' || view === 'Pinned') &&
@@ -636,7 +640,7 @@ const ReminderWorkspace = forwardRef(function ReminderWorkspace({
 
   return <div className={`nr-note-workspace nr-reminder-workspace${showDetail ? ' nr-note-detail-open' : ''}`} hidden={hidden}>
     <aside className="nr-note-sidebar" aria-label="Reminder lists">
-      <div className="nr-note-sidebar-heading"><h2>Lists</h2>
+      <div className="nr-note-sidebar-heading"><div><h2>Lists</h2><span>{lists.length} {lists.length === 1 ? 'list' : 'lists'}</span></div>
         <button type="button" className="nr-link" disabled={busy} onClick={onNewList}>+ New list</button></div>
       {lists.map((list) => <button key={list.id} type="button"
         className={`nr-note-list-item${selectedListId === list.id ? ' nr-note-list-selected' : ''}`}

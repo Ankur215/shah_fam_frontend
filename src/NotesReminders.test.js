@@ -33,11 +33,17 @@ test('searches both notes and reminders including tags and descriptions', async 
   });
   expect(screen.getByText('Family recipes')).toBeInTheDocument();
   expect(screen.getByText('Call home')).toBeInTheDocument();
+  expect(screen.getByText('2 results')).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Search notes and reminders'), {
     target: { value: 'food' },
   });
   expect(screen.getByText('Family recipes')).toBeInTheDocument();
   expect(screen.queryByText('Call home')).not.toBeInTheDocument();
+  expect(screen.getByText('1 result')).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Search notes and reminders'), {
+    target: { value: 'missing' },
+  });
+  expect(screen.getByText('0 results')).toBeInTheDocument();
 });
 
 test('selects a calendar date and pre-fills a new reminder', async () => {

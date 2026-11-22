@@ -66,7 +66,7 @@ function GiftEntry({
         <time dateTime={gift.dateGiven}>{formatGiftDate(gift.dateGiven)}</time>
         <div className="gift-record-actions">
           <button
-            className="gift-move-button"
+            className="member-move-button"
             type="button"
             disabled={isBusy || !canMoveUp}
             aria-label={`Move ${moveDescription} for ${gift.recipientName} up`}
@@ -75,7 +75,7 @@ function GiftEntry({
             ↑
           </button>
           <button
-            className="gift-move-button"
+            className="member-move-button"
             type="button"
             disabled={isBusy || !canMoveDown}
             aria-label={`Move ${moveDescription} for ${gift.recipientName} down`}
@@ -614,14 +614,26 @@ function GiftLog({
         </FormDialog>
         )}
 
-        <section className="gift-history-card" aria-labelledby="gift-history-heading">
-          <div className="gift-history-heading">
+        <section className="members-panel gift-history-card" aria-labelledby="gift-history-heading">
+          <div className="panel-heading">
             <div>
               <h2 id="gift-history-heading">Gifts by person</h2>
               <p>Choose a name to open their gift history.</p>
             </div>
-            <span className="gift-history-count">
-              {recipientGroups.length} {recipientGroups.length === 1 ? 'person' : 'people'}
+          </div>
+          <div className="member-toolbar">
+            <label className="search-box">
+              <span className="search-icon" aria-hidden="true">⌕</span>
+              <span className="visually-hidden">Search recipients</span>
+              <input
+                type="search"
+                placeholder="Find someone by name…"
+                value={groupSearch}
+                onChange={(event) => setGroupSearch(event.target.value)}
+              />
+            </label>
+            <span className="member-count">
+              {visibleRecipientGroups.length} {visibleRecipientGroups.length === 1 ? 'person' : 'people'}
             </span>
           </div>
 
@@ -646,16 +658,6 @@ function GiftLog({
             <div className="gift-empty-state">Your gift journal is unavailable right now.</div>
           ) : recipientGroups.length > 0 ? (
             <>
-              <label className="gift-search">
-                <span aria-hidden="true">⌕</span>
-                <span className="visually-hidden">Search recipients</span>
-                <input
-                  type="search"
-                  placeholder="Find someone by name…"
-                  value={groupSearch}
-                  onChange={(event) => setGroupSearch(event.target.value)}
-                />
-              </label>
               {visibleRecipientGroups.length > 0 ? (
                 <div className="gift-groups">
                   {visibleRecipientGroups.map((group) => {

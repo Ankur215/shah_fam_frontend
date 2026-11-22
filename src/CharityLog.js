@@ -86,7 +86,7 @@ function CharityRecordEntry({
         </div>
         <div className="charity-record-actions">
           <button
-            className="charity-move-button"
+            className="member-move-button"
             type="button"
             disabled={isBusy || !canReorder || index === 0}
             aria-label={`Move ${record.activity} up`}
@@ -96,7 +96,7 @@ function CharityRecordEntry({
             ↑
           </button>
           <button
-            className="charity-move-button"
+            className="member-move-button"
             type="button"
             disabled={isBusy || !canReorder || index === recordCount - 1}
             aria-label={`Move ${record.activity} down`}
@@ -609,13 +609,27 @@ function CharityLog({
         </FormDialog>
         )}
 
-        <section className="charity-history-card" aria-labelledby="charity-history-heading">
-          <div className="charity-history-heading">
+        <section className="members-panel charity-history-card" aria-labelledby="charity-history-heading">
+          <div className="panel-heading">
             <div>
               <h2 id="charity-history-heading">All charity records</h2>
-              <p>Every saved entry, newest first.</p>
+              <p>Every saved entry in your chosen order.</p>
             </div>
-            <span>{records.length}</span>
+          </div>
+          <div className="member-toolbar">
+            <label className="search-box">
+              <span className="search-icon" aria-hidden="true">⌕</span>
+              <span className="visually-hidden">Search charity records</span>
+              <input
+                type="search"
+                placeholder="Search organization or activity…"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
+            <span className="member-count">
+              {visibleRecords.length} {visibleRecords.length === 1 ? 'record' : 'records'}
+            </span>
           </div>
 
           {error && isLoadError && (
@@ -644,16 +658,6 @@ function CharityLog({
             </div>
           ) : (
             <>
-              <label className="charity-search">
-                <span aria-hidden="true">⌕</span>
-                <span className="visually-hidden">Search charity records</span>
-                <input
-                  type="search"
-                  placeholder="Search organization or activity…"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                />
-              </label>
               <div className="charity-record-list">
                 {visibleRecords.length > 0 ? (
                   visibleRecords.map((record, index) => (

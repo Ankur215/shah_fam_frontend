@@ -58,6 +58,31 @@ test('loads and shows every charity record newest first', async () => {
   expect(global.fetch).toHaveBeenCalledWith('/api/charity-records');
 });
 
+test('shows the matching charity count and prevents reordering while searching', async () => {
+  const record = {
+    id: 1, organization: 'Community Pantry', workType: 'Donation',
+    activity: 'Donated groceries', datePerformed: '2025-03-10', sortOrder: 0,
+  };
+  global.fetch = jest.fn().mockResolvedValue(apiResponse([
+    record, { ...record, id: 2, organization: 'Local Shelter', activity: 'Prepared dinner', sortOrder: 1 },
+  ]));
+  render(<CharityLog />);
+  await screen.findByText('Community Pantry');
+  const panel = within(screen.getByRole('region', { name: 'All charity records' }));
+  expect(panel.getByText('2 records')).toBeInTheDocument();
+
+  const search = panel.getByRole('searchbox', { name: 'Search charity records' });
+  fireEvent.change(search, { target: { value: 'PANTRY' } });
+  expect(panel.getByText('1 record')).toBeInTheDocument();
+  expect(panel.queryByText('Local Shelter')).not.toBeInTheDocument();
+  expect(panel.getByRole('button', { name: 'Move Donated groceries down' })).toBeDisabled();
+  fireEvent.change(search, { target: { value: 'missing' } });
+  expect(panel.getByText('0 records')).toBeInTheDocument();
+  expect(panel.getByText('No matching records')).toBeInTheDocument();
+  fireEvent.change(search, { target: { value: '' } });
+  expect(panel.getByRole('button', { name: 'Move Donated groceries down' })).toBeEnabled();
+});
+
 test('saves a charity record with amount, activity, and notes in order', async () => {
   const savedRecord = {
     id: 7,

@@ -47,6 +47,29 @@ test('loads gift history from the API', async () => {
   expect(global.fetch).toHaveBeenCalledWith('/api/gifts');
 });
 
+test('shows the number of people matching the recipient search', async () => {
+  const gift = {
+    id: 1, recipientName: 'Maya Patel', recipientType: 'Friend',
+    giftName: 'Photo album', dateGiven: '2025-11-12',
+  };
+  global.fetch = jest.fn().mockResolvedValue(apiResponse([
+    gift, { ...gift, id: 2, recipientName: 'Rohan Shah' },
+  ]));
+  render(<GiftLog />);
+  await screen.findByRole('button', { name: /Maya Patel/ });
+  const panel = within(screen.getByRole('region', { name: 'Gifts by person' }));
+  expect(panel.getByText('2 people')).toBeInTheDocument();
+
+  fireEvent.change(panel.getByRole('searchbox', { name: 'Search recipients' }), {
+    target: { value: 'MAYA' },
+  });
+  expect(panel.getByText('1 person')).toBeInTheDocument();
+  expect(panel.queryByRole('button', { name: /Rohan Shah/ })).not.toBeInTheDocument();
+  fireEvent.change(panel.getByRole('searchbox'), { target: { value: 'missing' } });
+  expect(panel.getByText('0 people')).toBeInTheDocument();
+  expect(panel.getByText('No people found')).toBeInTheDocument();
+});
+
 test('opens the gift dialog and returns focus on Escape', async () => {
   global.fetch = jest.fn().mockResolvedValue(apiResponse([]));
   render(<GiftLog />);
