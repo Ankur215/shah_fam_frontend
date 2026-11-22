@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import FormDialog from './FormDialog';
 import { API_URL, apiFetch, readApiResponse } from './api';
+import UpcomingEventCard, { useCurrentTime } from './UpcomingEventCard';
+import { formatElapsedYears } from './elapsedYears';
 
 const endpoint = `${API_URL}/api/important-dates`;
 
@@ -33,15 +35,19 @@ function displayDate(value) {
 function ImportantDates({ members, membersLoading, membersError, onRetryMembers, canEdit }) {
   const [dates, setDates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
   const [editing, setEditing] = useState(null);
+  const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState('');
+  const now = useCurrentTime();
 
   useEffect(() => {
     let current = true;
     setLoading(true);
+    setLoadError(false);
     setError('');
     async function load() {
       try {
@@ -49,7 +55,10 @@ function ImportantDates({ members, membersLoading, membersError, onRetryMembers,
         if (!Array.isArray(data)) throw new Error('Unexpected response from the server.');
         if (current) setDates(data);
       } catch (loadError) {
-        if (current) setError(`Could not load important dates. ${loadError.message}`);
+        if (current) {
+          setLoadError(true);
+          setError(`Could not load important dates. ${loadError.message}`);
+        }
       } finally {
         if (current) setLoading(false);
       }
@@ -107,17 +116,34 @@ function ImportantDates({ members, membersLoading, membersError, onRetryMembers,
     }
   }
 
-  const today = localDateString(new Date());
-  const events = [
-    ...members.filter((member) => member.dateOfBirth).map((member) => ({
-      key: `birthday-${member.id}`,
-      title: `${`${member.firstName} ${member.lastName || ''}`.trim()}'s birthday`,
-      date: member.dateOfBirth,
-      repeatYearly: true,
-      birthday: true,
-    })),
-    ...dates.map((item) => ({ ...item, key: `date-${item.id}` })),
-  ].map((item) => ({ ...item, next: nextDate(item.date, item.repeatYearly, today) }))
+  async function moveDate(index, offset) {
+    const destination = index + offset;
+    if (busy || search.trim() || destination < 0 || destination >= events.length) return;
+    const reordered = [...events];
+    [reordered[index], reordered[destination]] = [reordered[destination], reordered[index]];
+    const previousDates = dates;
+    setDates(reordered.map((item, sortOrder) => ({ ...item, sortOrder })));
+    setBusy(true);
+    setError('');
+    try {
+      const saved = await readApiResponse(await apiFetch(`${endpoint}/order`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dateIds: reordered.map((item) => item.id) }),
+      }));
+      if (!Array.isArray(saved)) throw new Error('Unexpected response from the server.');
+      setDates(saved);
+    } catch (reorderError) {
+      setDates(previousDates);
+      setError(`Could not reorder important dates. ${reorderError.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const today = localDateString(new Date(now));
+  const chronologicalEvents = dates
+    .map((item) => ({ ...item, next: nextDate(item.date, item.repeatYearly, today) }))
     .sort((a, b) => {
       const aPast = a.next < today;
       const bPast = b.next < today;
@@ -125,53 +151,99 @@ function ImportantDates({ members, membersLoading, membersError, onRetryMembers,
         (aPast ? b.next.localeCompare(a.next) : a.next.localeCompare(b.next)) ||
         a.title.localeCompare(b.title);
     });
+  const events = [...chronologicalEvents].sort((a, b) => {
+    if (a.sortOrder == null && b.sortOrder == null) return 0;
+    if (a.sortOrder == null) return 1;
+    if (b.sortOrder == null) return -1;
+    return a.sortOrder - b.sortOrder;
+  });
+  const upcoming = chronologicalEvents.find((item) => item.next >= today);
+  const query = search.trim().toLowerCase();
+  const filteredEvents = query ? events.filter((item) => {
+    const member = members.find((person) => person.id === item.familyMemberId);
+    return [
+      item.title, member?.firstName, member?.lastName, item.date, displayDate(item.date),
+    ].filter(Boolean).join(' ').toLowerCase().includes(query);
+  }) : events;
 
   return (
+    <>
+    <div className="summary-row">
+      <UpcomingEventCard
+        date={!loading && !loadError ? upcoming?.next : undefined}
+        description={upcoming && chronologicalEvents.filter((item) => item.next === upcoming.next)
+          .map((item) => item.title).join(' · ')}
+        now={now}
+        emptyMessage={loading ? 'Loading upcoming events…'
+          : loadError ? 'Upcoming events are unavailable.'
+            : 'No upcoming important dates'}
+      />
+    </div>
     <section className="members-panel important-dates" aria-labelledby="important-dates-heading">
       <div className="panel-heading">
         <div>
           <h2 id="important-dates-heading">Important dates</h2>
-          <p>Birthdays and meaningful dates, all in one place.</p>
+          <p>Keep meaningful dates together in one place.</p>
         </div>
-        {canEdit && <button className="primary-button" type="button" disabled={membersLoading || membersError} onClick={() => {
+        {canEdit && <button className="primary-button" type="button" disabled={busy || membersLoading || membersError} onClick={() => {
           setFormError('');
           setEditing({});
         }}><span aria-hidden="true">＋</span> Add important date</button>}
       </div>
       {!canEdit && <p className="family-readonly-note">Only a super administrator can change family information.</p>}
+      <div className="member-toolbar">
+        <label className="search-box">
+          <span className="search-icon" aria-hidden="true">⌕</span>
+          <span className="visually-hidden">Search important dates</span>
+          <input
+            type="search"
+            placeholder="Search by title, member, or date..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </label>
+        <span className="member-count">
+          {filteredEvents.length} {filteredEvents.length === 1 ? 'date' : 'dates'}
+        </span>
+      </div>
       {error && <div className="error-message" role="alert">
         <span>{error}</span>
         <button className="retry-button" type="button" onClick={() => setAttempt((value) => value + 1)}>Reload</button>
       </div>}
       {membersError && <div className="error-message" role="alert">
-        <span>Could not load family birthdays or member choices.</span>
+        <span>Could not load family member choices.</span>
         <button className="retry-button" type="button" onClick={onRetryMembers}>Retry</button>
       </div>}
       {loading || membersLoading ? <div className="empty-state" role="status">Loading important dates…</div>
-        : events.length ? <div className="important-date-list">
-          {events.map((item) => {
+        : filteredEvents.length ? <div className="important-date-list">
+          {filteredEvents.map((item, index) => {
             const member = members.find((person) => person.id === item.familyMemberId);
-            return <article className="important-date-row" key={item.key}>
-              <span className="important-date-icon" aria-hidden="true">{item.birthday ? '♡' : '◇'}</span>
+            const elapsed = formatElapsedYears(item.date, 'ago', new Date(now));
+            return <article className="important-date-row" key={item.id}>
+              <span className="important-date-icon" aria-hidden="true">◇</span>
               <div className="important-date-details">
-                <strong>{item.title}</strong>
-                <span>{item.birthday ? 'Birthday · Yearly' : item.repeatYearly ? 'Yearly' : 'One-time'}
-                  {member && ` · ${`${member.firstName} ${member.lastName || ''}`.trim()}`}
-                </span>
+                <div className="important-date-label">
+                  <strong className="important-date-title">{item.title}</strong>
+                  <span>{item.repeatYearly ? 'Yearly' : 'One-time'}
+                    {member && ` · ${`${member.firstName} ${member.lastName || ''}`.trim()}`}
+                  </span>
+                </div>
+                <div className="important-date-when">
+                  <strong>{displayDate(item.date)}</strong>
+                  {elapsed && <span className="elapsed-years">{elapsed}</span>}
+                </div>
               </div>
-              <div className="important-date-when">
-                <strong>{displayDate(item.next)}</strong>
-                <span>{item.next < today ? 'Past' : item.next === today ? 'Today' : 'Upcoming'}</span>
-              </div>
-              {canEdit && !item.birthday && <div className="member-actions">
+              {canEdit && <div className="member-actions">
+                <button className="member-move-button" type="button" disabled={busy || loadError || membersError || Boolean(query) || index === 0} title={query ? 'Clear search to reorder the full list' : 'Move up'} aria-label={`Move ${item.title} up`} onClick={() => moveDate(index, -1)}>↑</button>
+                <button className="member-move-button" type="button" disabled={busy || loadError || membersError || Boolean(query) || index === events.length - 1} title={query ? 'Clear search to reorder the full list' : 'Move down'} aria-label={`Move ${item.title} down`} onClick={() => moveDate(index, 1)}>↓</button>
                 <button className="member-edit-button" type="button" disabled={busy || membersError} aria-label={`Edit ${item.title}`} onClick={() => { setFormError(''); setEditing(item); }}>Edit</button>
                 <button className="member-edit-button" type="button" disabled={busy} aria-label={`Delete ${item.title}`} onClick={() => remove(item)}>Delete</button>
               </div>}
             </article>;
           })}
         </div> : !error && !membersError && <div className="empty-state">
-          <h3>No important dates yet</h3>
-          <p>Add a date or a family member’s birthday to see it here.</p>
+          <h3>{query ? 'No important dates found' : 'No important dates yet'}</h3>
+          <p>{query ? 'Try another title, member, or date.' : 'Add a meaningful date to see it here.'}</p>
         </div>}
       <p className="storage-note">Yearly dates on February 29 are observed on February 28 in non-leap years.</p>
       {editing && <FormDialog title={editing.id ? 'Edit important date' : 'Add important date'} onClose={() => setEditing(null)} isBusy={busy}>
@@ -195,6 +267,7 @@ function ImportantDates({ members, membersLoading, membersError, onRetryMembers,
         </form>
       </FormDialog>}
     </section>
+    </>
   );
 }
 

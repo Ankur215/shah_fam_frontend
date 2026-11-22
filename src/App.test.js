@@ -105,10 +105,29 @@ test('switches between family members, family graph, and important dates', async
   expect(screen.getByRole('button', { name: 'Family graph' })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.getByRole('region', { name: 'Family graph' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Important dates' }));
-  expect(await screen.findByText("Asha Shah's birthday")).toBeInTheDocument();
+  expect(await within(screen.getByRole('region', { name: 'Important dates' }))
+    .findByText('No important dates yet')).toBeInTheDocument();
+  expect(screen.queryByText("Asha Shah's birthday")).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: /add important date/i })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Family members', exact: true }));
   expect(screen.getByRole('heading', { name: 'Your people' })).toBeInTheDocument();
+  expect(screen.getByText('Feb 29, 2000')).toBeInTheDocument();
+});
+
+test('keeps the family count in the members list alongside the upcoming event', async () => {
+  global.fetch = jest.fn((url) => Promise.resolve(
+    url === '/api/auth/me' ? authenticatedResponse() :
+      url === '/api/family-members'
+        ? apiResponse([savedMember, { ...savedMember, id: 2, firstName: 'Rohan' }])
+        : apiResponse([])
+  ));
+  await renderOnFamilyMembers();
+  const people = await screen.findByRole('region', { name: 'Your people' });
+  await within(people).findByText('2 people');
+  expect(screen.queryByRole('region', { name: 'Family member count' })).not.toBeInTheDocument();
+  expect(screen.getByRole('region', { name: 'Upcoming event' })).toBeInTheDocument();
+  fireEvent.change(within(people).getByRole('searchbox'), { target: { value: 'Rohan' } });
+  expect(within(people).getByText('1 person')).toBeInTheDocument();
 });
 
 test('sidebar opens the first tab of family, giving, accounts, and notes', async () => {

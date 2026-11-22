@@ -3,11 +3,13 @@ import './App.css';
 import CharityLog from './CharityLog';
 import FamilyGraph from './FamilyGraph';
 import GiftLog from './GiftLog';
+import UpcomingEventCard, { useCurrentTime } from './UpcomingEventCard';
 import ImportantDates from './ImportantDates';
 import NotesReminders from './NotesReminders';
 import AccountManagement from './AccountManagement';
 import AuthPage from './AuthPage';
 import { API_URL, apiFetch } from './api';
+import { formatElapsedYears } from './elapsedYears';
 
 const FAMILY_MEMBERS_ENDPOINT = `${API_URL}/api/family-members`;
 const MODULES = [
@@ -274,27 +276,6 @@ function getInitials(firstName, lastName) {
   return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
 }
 
-function calculateElapsedYears(date) {
-  if (!date) return null;
-
-  const today = new Date();
-  const startDate = new Date(`${date}T00:00:00`);
-  let years = today.getFullYear() - startDate.getFullYear();
-  const anniversaryHasPassed =
-    today.getMonth() > startDate.getMonth() ||
-    (today.getMonth() === startDate.getMonth() &&
-      today.getDate() >= startDate.getDate());
-
-  if (!anniversaryHasPassed) years -= 1;
-  return years >= 0 ? years : null;
-}
-
-function formatElapsedYears(date, description) {
-  const years = calculateElapsedYears(date);
-  if (years === null) return '';
-  return `${years} ${years === 1 ? 'year' : 'years'} ${description}`;
-}
-
 function formatDate(date) {
   if (!date) return '—';
   return new Intl.DateTimeFormat('en', {
@@ -370,57 +351,17 @@ function formatCelebrationEvents(events) {
     .join(' · ');
 }
 
-function formatCountdown(date, now) {
-  const [year, month, day] = date.split('-').map(Number);
-  const target = new Date(year, month - 1, day).getTime();
-  const secondsRemaining = Math.max(0, Math.floor((target - now) / 1000));
-  if (secondsRemaining === 0) return 'Today';
-
-  const days = Math.floor(secondsRemaining / 86400);
-  const hours = Math.floor((secondsRemaining % 86400) / 3600);
-  const minutes = Math.floor((secondsRemaining % 3600) / 60);
-  const seconds = secondsRemaining % 60;
-  return `${days}d ${hours}h ${minutes}m ${String(seconds).padStart(2, '0')}s`;
-}
-
 export function UpcomingEvent({ members }) {
-  const [now, setNow] = useState(() => Date.now());
+  const now = useCurrentTime();
   const nextCelebration = getNextCelebration(members);
 
-  useEffect(() => {
-    const intervalId = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(intervalId);
-  }, []);
-
   return (
-    <section
-      className="summary-card summary-card-warm"
-      aria-label="Upcoming event"
-    >
-      <span className="summary-icon summary-icon-warm" aria-hidden="true">♡</span>
-      <div>
-        <span className="summary-label">UPCOMING EVENT</span>
-        {nextCelebration ? (
-          <>
-            <div className="summary-celebration-date">
-              <strong className="summary-number summary-date">
-                {formatDate(nextCelebration.date)}
-              </strong>
-              <span className="upcoming-countdown" aria-live="off">
-                {formatCountdown(nextCelebration.date, now)}
-              </span>
-            </div>
-            <span className="summary-caption summary-event-caption">
-              {formatCelebrationEvents(nextCelebration.events)}
-            </span>
-          </>
-        ) : (
-          <span className="summary-caption">
-            Add a birthday or wedding anniversary
-          </span>
-        )}
-      </div>
-    </section>
+    <UpcomingEventCard
+      date={nextCelebration?.date}
+      description={nextCelebration && formatCelebrationEvents(nextCelebration.events)}
+      now={now}
+      emptyMessage="Add a birthday or wedding anniversary"
+    />
   );
 }
 
@@ -1173,16 +1114,6 @@ function App() {
             />
           ) : <>
           <div className="summary-row">
-            <section className="summary-card" aria-label="Family member count">
-              <span className="summary-icon" aria-hidden="true">♧</span>
-              <div>
-                <span className="summary-label">IN YOUR FAMILY</span>
-                <strong className="summary-number">{members.length}</strong>
-                <span className="summary-caption">
-                  {members.length === 1 ? 'family member' : 'family members'}
-                </span>
-              </div>
-            </section>
             <UpcomingEvent members={members} />
           </div>
 
