@@ -1021,13 +1021,21 @@ function App() {
 
         {activePage === 'intro' ? (
           <section className="page-content introduction-page">
-            <header className="section-header introduction-hero">
-              <div>
+            <header className="section-header introduction-hero welcome-banner">
+              <div className="welcome-copy">
                 <h1>Your family, all in one place.</h1>
                 <p>
                   This private space helps your family keep its story, important
                   information, and shared moments organized and easy to find.
                 </p>
+              </div>
+              <div className="welcome-art" aria-hidden="true">
+                <span className="art-sun" />
+                <span className="art-person art-person-one">●</span>
+                <span className="art-person art-person-two">●</span>
+                <span className="art-person art-person-three">●</span>
+                <span className="art-ground" />
+                <span className="art-heart">♥</span>
               </div>
             </header>
 
@@ -1130,17 +1138,9 @@ function App() {
         ) : activePage === 'members' && hasFamilyPageAccess ? (
         <section className="page-content">
           <div className="section-header welcome-banner">
-            <div className="welcome-copy">
+            <div>
               <h1>Family</h1>
               <p>Keep the important details of your family close at hand.</p>
-            </div>
-            <div className="welcome-art" aria-hidden="true">
-              <span className="art-sun" />
-              <span className="art-person art-person-one">●</span>
-              <span className="art-person art-person-two">●</span>
-              <span className="art-person art-person-three">●</span>
-              <span className="art-ground" />
-              <span className="art-heart">♥</span>
             </div>
           </div>
 

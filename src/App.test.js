@@ -68,6 +68,16 @@ async function renderOnFamilyMembers() {
   return app;
 }
 
+test('shows the family illustration on the logo introduction, not the family page', async () => {
+  const { container } = render(<App />);
+  await screen.findByRole('heading', { name: 'Your family, all in one place.' });
+  expect(container.querySelector('.introduction-hero .welcome-art')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Family', exact: true }));
+  expect(container.querySelector('.welcome-art')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByLabelText('Family Tree introduction'));
+  expect(container.querySelector('.introduction-hero .welcome-art')).toBeInTheDocument();
+});
+
 test('section headers omit eyebrow text while keeping page titles', async () => {
   const { container } = render(<App />);
   await screen.findByRole('heading', { name: 'Your family, all in one place.' });
