@@ -179,17 +179,39 @@
 .nr-rich-editor .tiptap:focus { outline: 2px solid var(--family-focus); outline-offset: 1px; }
 .nr-rich-editor .tiptap p { margin: 0 0 .5em; }
 .nr-rich-editor .tiptap h1, .nr-rich-editor .tiptap h2, .nr-rich-editor .tiptap h3,
-.nr-rich-editor .tiptap h4, .nr-rich-editor .tiptap h5, .nr-rich-editor .tiptap h6 { margin: .4em 0; padding-left: 30px; color: var(--family-heading); line-height: 1.3; }
+.nr-rich-editor .tiptap h4, .nr-rich-editor .tiptap h5, .nr-rich-editor .tiptap h6 { margin: 0 0 .4em; padding: .4em 0 0 28px; color: var(--family-heading); line-height: 1.3; }
 .nr-rich-editor .tiptap h1 { font-size: 1.5em; }
 .nr-rich-editor .tiptap h2 { font-size: 1.25em; }
 .nr-rich-editor .tiptap h3 { font-size: 1.1em; }
 .nr-rich-editor .tiptap h4 { font-size: 1em; }
 .nr-rich-editor .tiptap h5 { font-size: .9em; }
 .nr-rich-editor .tiptap h6 { font-size: .8em; }
-.nr-rich-editor .tiptap :is(h1, h2, h3, h4, h5, h6) ~ :not(h1, h2, h3, h4, h5, h6, .nr-section-toggle) { margin-left: 54px; }
-.nr-section-toggle { position: absolute; width: 26px; height: 28px; margin-top: .35em; padding: 0; border: 0; border-radius: 5px; background: var(--family-tint); color: var(--family-primary-strong); font-size: 16px; line-height: 1; cursor: pointer; }
-.nr-section-toggle:hover { background: var(--family-soft); }
-.nr-rich-editor .tiptap .nr-folded-content { display: none; }
+.nr-section-depth-0 { --nr-section-indent: 0px; }
+.nr-section-depth-1 { --nr-section-indent: 20px; }
+.nr-section-depth-2 { --nr-section-indent: 40px; }
+.nr-section-depth-3 { --nr-section-indent: 60px; }
+.nr-section-depth-4 { --nr-section-indent: 80px; }
+.nr-section-depth-5 { --nr-section-indent: 100px; }
+.nr-section-depth-6 { --nr-section-indent: 120px; }
+.nr-rich-editor .tiptap .nr-section-block { margin-left: var(--nr-section-indent); transition: opacity 180ms ease, display 180ms allow-discrete; }
+.nr-section-toggle { position: absolute; width: 28px; height: 28px; margin-top: calc(1.05 * var(--nr-heading-size) - 14px); margin-left: var(--nr-section-indent); padding: 0; border: 0; background: transparent; color: var(--family-muted-accent); font: inherit; cursor: pointer; }
+.nr-section-level-1 { --nr-heading-size: 1.5em; }
+.nr-section-level-2 { --nr-heading-size: 1.25em; }
+.nr-section-level-3 { --nr-heading-size: 1.1em; }
+.nr-section-level-4 { --nr-heading-size: 1em; }
+.nr-section-level-5 { --nr-heading-size: .9em; }
+.nr-section-level-6 { --nr-heading-size: .8em; }
+.nr-section-toggle::before { content: ''; display: inline-block; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); }
+.nr-section-toggle[aria-expanded='true']::before { transform: rotate(45deg); }
+.nr-section-toggle:hover { color: var(--family-text); }
+.nr-section-toggle:focus-visible { outline: 2px solid var(--family-focus); outline-offset: -2px; border-radius: 4px; }
+.nr-rich-editor .tiptap .nr-folded-content { display: none; opacity: 0; pointer-events: none; }
+@starting-style {
+  .nr-rich-editor .tiptap .nr-section-block:not(.nr-folded-content) { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nr-rich-editor .tiptap .nr-section-block { transition: none; }
+}
 .nr-rich-editor .tiptap blockquote { margin: 1em 0; padding-left: 16px; border-left: 3px solid var(--family-border); color: var(--family-muted-accent); }
 .nr-rich-editor .tiptap pre { overflow-x: auto; padding: 12px; border-radius: 8px; background: var(--family-soft); font-size: 13px; }
 .nr-rich-editor .tiptap hr { margin: 20px 0; border: 0; border-top: 1px solid var(--family-border); }

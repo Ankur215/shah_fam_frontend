@@ -478,7 +478,7 @@ test('saves edits before switching notes and keeps the editor open on failure', 
   const content = await screen.findByRole('textbox', { name: 'Note content' });
   fireEvent.click(content);
   fireEvent.click(screen.getByText('Headings'));
-  fireEvent.click(screen.getByRole('button', { name: 'Heading - H2' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Heading' }));
   fireEvent.click(screen.getByRole('button', { name: /^Packing list/ }));
   expect(await screen.findByText('Failed to save note: Save failed')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Retry saving' })).toBeInTheDocument();
@@ -515,9 +515,9 @@ test('applies formatting in place and automatically saves it', async () => {
   const content = await screen.findByRole('textbox', { name: 'Note content' });
   fireEvent.click(content);
   fireEvent.click(screen.getByText('Headings'));
-  fireEvent.click(screen.getByRole('button', { name: 'Heading - H2' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Heading' }));
   expect(within(content).getByRole('heading', { name: 'Soup for everyone' })).toBeInTheDocument();
-  expect(within(content).getByRole('button', { name: 'Collapse section Soup for everyone' })).toBeInTheDocument();
+  expect(within(content).queryByRole('button', { name: 'Collapse section Soup for everyone' })).not.toBeInTheDocument();
   await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/notes/1', expect.objectContaining({
     method: 'PUT', body: expect.stringContaining('## Soup for everyone'),
   })), { timeout: 3000 });
@@ -534,8 +534,8 @@ test('groups headings, lists, and text styles into separate menus', async () => 
   const styleMenu = within(toolbar).getByText('Text styles').closest('details');
   fireEvent.click(within(toolbar).getByText('Headings'));
   expect(within(headingMenu).getAllByRole('button').map((button) => button.textContent))
-    .toEqual(['Heading - H1', 'Heading - H2', 'Heading - H3', 'Heading - H4',
-      'Heading - H5', 'Heading - H6', 'Body', 'Blockquote', 'Code block', 'Divider']);
+    .toEqual(['Title', 'Heading', 'Subheading',
+      'Body', 'Blockquote', 'Code block', 'Divider']);
   fireEvent.click(within(toolbar).getByText('Lists'));
   await waitFor(() => expect(headingMenu).not.toHaveAttribute('open'));
   expect(within(listMenu).getAllByRole('button').map((button) => button.textContent))
@@ -568,8 +568,8 @@ test('highlights formatting at the current text selection', async () => {
 
   await selectText(within(content).getByRole('heading', { name: 'Heading' }));
   fireEvent.click(within(toolbar).getByText('Headings'));
-  expect(within(toolbar).getByRole('button', { name: 'Heading - H2' })).toHaveAttribute('aria-pressed', 'true');
-  expect(within(toolbar).getByRole('button', { name: 'Heading - H1' })).toHaveAttribute('aria-pressed', 'false');
+  expect(within(toolbar).getByRole('button', { name: 'Heading' })).toHaveAttribute('aria-pressed', 'true');
+  expect(within(toolbar).getByRole('button', { name: 'Title' })).toHaveAttribute('aria-pressed', 'false');
   expect(within(toolbar).getByRole('button', { name: 'Divider' })).not.toHaveAttribute('aria-pressed');
 
   await selectText(content.querySelector('strong'));
@@ -594,7 +594,7 @@ test('dismisses formatting menus on outside pointer press or Escape', async () =
   const summary = within(toolbar).getByText('Headings');
   const menu = summary.closest('details');
   fireEvent.click(summary);
-  fireEvent.pointerDown(within(toolbar).getByRole('button', { name: 'Heading - H1' }));
+  fireEvent.pointerDown(within(toolbar).getByRole('button', { name: 'Title' }));
   expect(menu).toHaveAttribute('open');
   fireEvent.pointerDown(screen.getByRole('textbox', { name: 'Note content' }));
   expect(menu).not.toHaveAttribute('open');
@@ -605,7 +605,7 @@ test('dismisses formatting menus on outside pointer press or Escape', async () =
 });
 
 test.each([
-  ...['Heading - H1', 'Heading - H2', 'Heading - H3', 'Heading - H4', 'Heading - H5', 'Heading - H6', 'Body', 'Blockquote', 'Code block', 'Divider'].map((option) => ['Headings', option]),
+  ...['Title', 'Heading', 'Subheading', 'Body', 'Blockquote', 'Code block', 'Divider'].map((option) => ['Headings', option]),
   ...['Bullets', 'Numbers', 'Checklist'].map((option) => ['Lists', option]),
   ...['Bold', 'Italic', 'Underline', 'Strikethrough'].map((option) => ['Text styles', option]),
 ])(
@@ -1250,7 +1250,7 @@ test.each([
   expect(global.fetch.mock.calls.some(([, options]) => options?.method === 'PUT')).toBe(false);
 });
 
-test.each([1, 2, 3, 4, 5, 6])('saves and reopens H%i headings', async (level) => {
+test.each([1, 2, 3])('saves and reopens H%i headings', async (level) => {
   let savedContent = note.content;
   global.fetch = jest.fn((url, options) => {
     if (options?.method === 'PUT') {
@@ -1265,7 +1265,7 @@ test.each([1, 2, 3, 4, 5, 6])('saves and reopens H%i headings', async (level) =>
   const content = await screen.findByRole('textbox', { name: 'Note content' });
   fireEvent.click(content);
   fireEvent.click(screen.getByText('Headings'));
-  fireEvent.click(screen.getByRole('button', { name: `Heading - H${level}` }));
+  fireEvent.click(screen.getByRole('button', { name: ['Title', 'Heading', 'Subheading'][level - 1] }));
   await waitFor(() => expect(savedContent.trimEnd()).toBe(`${'#'.repeat(level)} Soup for everyone`), { timeout: 3000 });
   unmount();
   render(<NotesReminders />);
@@ -1274,8 +1274,187 @@ test.each([1, 2, 3, 4, 5, 6])('saves and reopens H%i headings', async (level) =>
   const reopened = await screen.findByRole('textbox', { name: 'Note content' });
   expect(within(reopened).getByRole('heading', { name: 'Soup for everyone', level })).toBeInTheDocument();
   const sectionToggle = within(reopened).queryByRole('button', { name: 'Collapse section Soup for everyone' });
-  if (level === 2) expect(sectionToggle).toBeInTheDocument();
-  else expect(sectionToggle).not.toBeInTheDocument();
+  expect(sectionToggle).not.toBeInTheDocument();
+});
+
+test.each([4, 5, 6])('preserves existing H%i headings after editing and reopening', async (level) => {
+  let savedContent = `${'#'.repeat(level)} Legacy\n\nBody`;
+  global.fetch = jest.fn((url, options) => {
+    if (options?.method === 'PUT') {
+      savedContent = JSON.parse(options.body).content;
+      return Promise.resolve(response({ id: 1 }));
+    }
+    return Promise.resolve(response(url === '/api/notes' ? [{ ...note, content: savedContent }] : []));
+  });
+  const { unmount } = render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  expect(within(content).getByRole('heading', { name: 'Legacy', level })).toBeInTheDocument();
+  await selectHierarchyText(content, 'Body');
+  act(() => content.editor.commands.insertContent(' edited'));
+  await waitFor(() => expect(savedContent).toContain('Body edited'), { timeout: 3000 });
+  unmount();
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const reopened = await screen.findByRole('textbox', { name: 'Note content' });
+  expect(within(reopened).getByRole('heading', { name: 'Legacy', level })).toBeInTheDocument();
+  fireEvent.click(within(reopened).getByRole('button', { name: 'Collapse section Legacy' }));
+  expect(within(reopened).getByText('Body edited')).toHaveClass('nr-folded-content');
+});
+
+test.each([1, 2, 3, 4, 5, 6])('H%i collapses up to the next same-level heading', async (level) => {
+  const marks = '#'.repeat(level);
+  const lower = level < 6 ? `\n\n${marks}# Child\n\nChild body` : '';
+  const formatted = { ...note, content: `${marks} Parent\n\nParent body${lower}\n\n${marks} Next\n\nNext body` };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  fireEvent.click(within(content).getByRole('button', { name: 'Collapse section Parent' }));
+  expect(within(content).getByText('Parent body')).toHaveClass('nr-folded-content');
+  if (level < 6) {
+    expect(content.querySelector(`h${level + 1}`)).toHaveClass('nr-folded-content');
+    expect(within(content).queryByRole('button', { name: 'Collapse section Child', hidden: true })).not.toBeInTheDocument();
+  }
+  expect(within(content).getByText('Next body')).not.toHaveClass('nr-folded-content');
+  expect(within(content).getByRole('button', { name: 'Collapse section Next' })).toBeInTheDocument();
+  fireEvent.click(within(content).getByRole('button', { name: 'Expand section Parent' }));
+  expect(within(content).getByText('Parent body')).not.toHaveClass('nr-folded-content');
+  if (level < 6) expect(within(content).getByRole('button', { name: 'Collapse section Child' })).toBeInTheDocument();
+  expect(global.fetch.mock.calls.some(([, options]) => options?.method === 'PUT')).toBe(false);
+});
+
+test('preserves a nested section collapse when its parent is collapsed and expanded', async () => {
+  const formatted = { ...note, content: '# Parent\n\nIntro\n\n### Child\n\nChild body\n\n## Sibling\n\nSibling body\n\n# Next\n\nOutside' };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  fireEvent.click(within(content).getByRole('button', { name: 'Collapse section Child' }));
+  expect(within(content).getByText('Child body')).toHaveClass('nr-folded-content');
+  expect(within(content).getByText('Sibling body')).not.toHaveClass('nr-folded-content');
+  fireEvent.click(within(content).getByRole('button', { name: 'Collapse section Parent' }));
+  expect(within(content).queryByRole('button', { name: 'Expand section Child', hidden: true })).not.toBeInTheDocument();
+  expect(within(content).getByText('Sibling body')).toHaveClass('nr-folded-content');
+  expect(within(content).getByText('Outside')).not.toHaveClass('nr-folded-content');
+  fireEvent.click(within(content).getByRole('button', { name: 'Expand section Parent' }));
+  expect(within(content).getByRole('button', { name: 'Expand section Child' })).toBeInTheDocument();
+  expect(within(content).getByText('Child body')).toHaveClass('nr-folded-content');
+  expect(within(content).getByText('Sibling body')).not.toHaveClass('nr-folded-content');
+  fireEvent.click(within(content).getByRole('button', { name: 'Expand section Child' }));
+  expect(within(content).getByText('Child body')).not.toHaveClass('nr-folded-content');
+});
+
+test('only shows a chevron when a heading has content and places new lines in its section', async () => {
+  const formatted = { ...note, content: '## Empty\n\n## Next\n\nOutside' };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  const heading = within(content).getByRole('heading', { name: 'Empty' });
+  expect(within(content).queryByRole('button', { name: 'Collapse section Empty' })).not.toBeInTheDocument();
+  await act(async () => {
+    content.focus();
+    const range = document.createRange();
+    range.selectNodeContents(heading);
+    range.collapse(false);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    document.dispatchEvent(new Event('selectionchange'));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  });
+  fireEvent.keyDown(content, { key: 'Enter' });
+  act(() => content.editor.commands.insertContent('New body'));
+  const body = within(content).getByText('New body');
+  expect(body.tagName).toBe('P');
+  expect(body).toHaveClass('nr-section-depth-1');
+  fireEvent.click(within(content).getByRole('button', { name: 'Collapse section Empty' }));
+  expect(body).toHaveClass('nr-folded-content');
+  expect(within(content).getByText('Outside')).not.toHaveClass('nr-folded-content');
+});
+
+test('updates the section chevron when a heading changes level', async () => {
+  const formatted = { ...note, content: '# Parent\n\nText\n\n## Topic\n\nBody' };
+  global.fetch = jest.fn((url) => Promise.resolve(response(url === '/api/notes' ? [formatted] : [])));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  expect(within(content).getByRole('button', { name: 'Collapse section Topic' }))
+    .toHaveClass('nr-section-level-2', 'nr-section-depth-1');
+  let position;
+  content.editor.state.doc.descendants((node, offset) => {
+    if (node.type.name === 'heading' && node.textContent === 'Topic') position = offset;
+  });
+  act(() => content.editor.commands.setTextSelection(position + 1));
+  const toolbar = screen.getByRole('toolbar', { name: 'Note formatting' });
+  fireEvent.click(within(toolbar).getByText('Headings'));
+  fireEvent.click(within(toolbar).getByRole('button', { name: 'Title' }));
+  expect(within(content).getByRole('button', { name: 'Collapse section Topic' }))
+    .toHaveClass('nr-section-level-1', 'nr-section-depth-0');
+});
+
+test('keeps collapsed state while editing heading text and content outside the section', async () => {
+  const formatted = { ...note, content: '# Parent\n\nIntro\n\n## Child\n\nChild body\n\n# Next\n\nOutside' };
+  global.fetch = jest.fn((url, options) => Promise.resolve(response(
+    options?.method === 'PUT' ? { id: 1 } : url === '/api/notes' ? [formatted] : []
+  )));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  expect(within(content).getByRole('heading', { name: 'Child' })).toHaveClass('nr-section-depth-1');
+  expect(within(content).getByText('Child body')).toHaveClass('nr-section-depth-2');
+  expect(within(content).getByText('Outside')).toHaveClass('nr-section-depth-1');
+  fireEvent.click(within(content).getByRole('button', { name: 'Collapse section Parent' }));
+  const heading = within(content).getByRole('heading', { name: 'Parent' });
+  fireEvent.click(heading);
+  expect(within(content).getByRole('button', { name: 'Expand section Parent' })).toBeInTheDocument();
+  await act(async () => {
+    content.focus();
+    const range = document.createRange();
+    range.selectNodeContents(heading);
+    range.collapse(false);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    document.dispatchEvent(new Event('selectionchange'));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+  });
+  act(() => content.editor.commands.insertContent(' edited'));
+  expect(within(content).getByRole('button', { name: 'Expand section Parent edited' })).toBeInTheDocument();
+  await selectHierarchyText(content, 'Outside');
+  act(() => content.editor.commands.insertContent(' edited'));
+  expect(within(content).getByRole('button', { name: 'Expand section Parent edited' })).toBeInTheDocument();
+  expect(within(content).getByText('Intro')).toHaveClass('nr-folded-content');
+  expect(within(content).getByText('Outside edited')).not.toHaveClass('nr-folded-content');
+});
+
+test('preserves section content and recalculates hierarchy when a collapsed heading is deleted', async () => {
+  const formatted = { ...note, content: '# Parent\n\nIntro\n\n## Child\n\nChild body\n\n# Next\n\nOutside' };
+  global.fetch = jest.fn((url, options) => Promise.resolve(response(
+    options?.method === 'PUT' ? { id: 1 } : url === '/api/notes' ? [formatted] : []
+  )));
+  render(<NotesReminders />);
+  await screen.findByText('Nothing overdue.');
+  fireEvent.click(screen.getByRole('button', { name: 'Notes', exact: true }));
+  const content = await screen.findByRole('textbox', { name: 'Note content' });
+  fireEvent.click(within(content).getByRole('button', { name: 'Collapse section Child' }));
+  let child;
+  content.editor.state.doc.descendants((node, position) => {
+    if (node.type.name === 'heading' && node.textContent === 'Child') child = { position, size: node.nodeSize };
+  });
+  act(() => content.editor.commands.deleteRange({ from: child.position, to: child.position + child.size }));
+  expect(within(content).queryByRole('heading', { name: 'Child' })).not.toBeInTheDocument();
+  expect(within(content).getByText('Child body')).not.toHaveClass('nr-folded-content');
+  expect(within(content).getByText('Child body')).toHaveClass('nr-section-depth-1');
+  fireEvent.click(within(content).getByRole('button', { name: 'Collapse section Parent' }));
+  expect(within(content).getByText('Child body')).toHaveClass('nr-folded-content');
+  expect(within(content).getByText('Outside')).not.toHaveClass('nr-folded-content');
 });
 
 test('collapses heading sections without changing saved content and expands them when reopened', async () => {
@@ -1434,7 +1613,7 @@ test('hides the saved label in the note editor without disabling autosave', asyn
   expect(within(editor).queryByText('Saved')).not.toBeInTheDocument();
   fireEvent.click(content);
   fireEvent.click(within(editor).getByText('Headings'));
-  fireEvent.click(within(editor).getByRole('button', { name: 'Heading - H2' }));
+  fireEvent.click(within(editor).getByRole('button', { name: 'Heading' }));
   await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/notes/1', expect.objectContaining({
     method: 'PUT', body: expect.stringContaining('## Soup for everyone'),
   })), { timeout: 3000 });
@@ -1454,7 +1633,7 @@ test('shares the top formatting toolbar across selected notes', async () => {
   let content = await screen.findByRole('textbox', { name: 'Note content' });
   fireEvent.click(content);
   fireEvent.click(within(toolbar).getByText('Headings'));
-  fireEvent.click(within(toolbar).getByRole('button', { name: 'Heading - H2' }));
+  fireEvent.click(within(toolbar).getByRole('button', { name: 'Heading' }));
   expect(within(content).getByRole('heading', { name: 'Soup for everyone' })).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: /^Packing list/ }));
@@ -1463,7 +1642,7 @@ test('shares the top formatting toolbar across selected notes', async () => {
   content = screen.getByRole('textbox', { name: 'Note content' });
   fireEvent.click(content);
   fireEvent.click(within(toolbar).getByText('Headings'));
-  fireEvent.click(within(toolbar).getByRole('button', { name: 'Heading - H2' }));
+  fireEvent.click(within(toolbar).getByRole('button', { name: 'Heading' }));
   expect(within(content).getByRole('heading', { name: 'Shoes' })).toBeInTheDocument();
   await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/notes/4', expect.objectContaining({
     method: 'PUT', body: expect.stringContaining('## Shoes'),
@@ -1517,7 +1696,7 @@ test('preserves literal HTML as text when formatting and reopening a note', asyn
   const content = await screen.findByRole('textbox', { name: 'Note content' });
   fireEvent.click(content);
   fireEvent.click(screen.getByText('Headings'));
-  fireEvent.click(screen.getByRole('button', { name: 'Heading - H2' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Heading' }));
   await waitFor(() => expect(savedContent).toContain('## '), { timeout: 3000 });
   unmount();
   render(<NotesReminders />);

@@ -16,6 +16,7 @@ const REMINDERS_ENDPOINT = `${API_URL}/api/reminders`;
 const REMINDER_LISTS_ENDPOINT = `${API_URL}/api/reminder-lists`;
 const RICH_MARKDOWN_PREFIX = '<!-- shah-family-note-format:1 -->\n';
 const RICH_DOCUMENT_PREFIX = '<!-- shah-family-note-format:2 -->\n';
+const HEADING_LEVELS = [1, 2, 3];
 const ListStyles = Extension.create({
   name: 'listStyles',
   addGlobalAttributes() {
@@ -1076,7 +1077,7 @@ function NoteFormatting({ editor, disabled }) {
       const isList = (type) => list?.type.name === type && current.isActive(type);
       const itemType = list && (list.type.name === 'taskList' ? 'taskItem' : 'listItem');
       return {
-        ...Object.fromEntries([1, 2, 3, 4, 5, 6].map((level) =>
+        ...Object.fromEntries(HEADING_LEVELS.map((level) =>
           [`heading${level}`, current.isActive('heading', { level })])),
         paragraph: current.isActive('paragraph'),
         blockquote: current.isActive('blockquote'),
@@ -1121,8 +1122,9 @@ function NoteFormatting({ editor, disabled }) {
   }, [editor, disabled]);
 
   const headings = [
-    ...[1, 2, 3, 4, 5, 6].map((level) =>
-      [`Heading - H${level}`, () => editor.chain().focus().setHeading({ level }).run(), `heading${level}`]),
+    ...HEADING_LEVELS.map((level) =>
+      [['Title', 'Heading', 'Subheading'][level - 1],
+        () => editor.chain().focus().setHeading({ level }).run(), `heading${level}`]),
     ['Body', () => editor.chain().focus().setParagraph().run(), 'paragraph'],
     ['Blockquote', () => editor.chain().focus().toggleBlockquote().run(), 'blockquote'],
     ['Code block', () => editor.chain().focus().toggleCodeBlock().run(), 'codeBlock'],
